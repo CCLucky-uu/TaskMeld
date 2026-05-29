@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json.schemastore.org/package.json",
+  "name": "taskmeld",
+  "version": "0.1.2",
+  "description": "Agent pipeline orchestration platform — CLI, HTTP/WS backend, React console",
+  "main": "dist/src/index.js",
+  "bin": {
+    "taskmeld": "dist/src/cli/index.js"
+  },
+  "files": [
+    "dist/src",
+    "web/dist"
+  ],
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "npm run build && node dist/test/artifact-storage.spec.js && node dist/test/data-dir.spec.js && node dist/test/gateway-client.spec.js && node dist/test/gateway-frame-sanitizer.spec.js && node dist/test/workflow-v2.spec.js && node dist/test/structured-output-contract.spec.js && node dist/test/structured-output-parser.spec.js && node dist/test/run-log-reader.spec.js && node dist/test/runtime-store-timeline-sanitize.spec.js && node dist/test/pipeline-regression.spec.js && node dist/test/pipeline-management.spec.js && node dist/test/pipeline-status-semantics.spec.js && node dist/test/pipeline-routing.spec.js && node dist/test/pipeline-branch-isolation.spec.js && node dist/test/pipeline-diagnostics.spec.js && node dist/test/pipeline-join-policy.spec.js && node dist/test/pipeline-module-boundaries.spec.js && node dist/test/server-lifecycle-client.spec.js && node dist/test/taskmeld-cli.spec.js && node dist/test/taskmeld-cli-error-contract.spec.js && node dist/test/server/router.spec.js && node dist/test/server/middleware.spec.js && node dist/test/server/routes-health.spec.js && node dist/test/server/api-handler-contract.spec.js",
+    "dev": "tsx src/index.ts",
+    "dev:cli": "tsx src/cli/index.ts",
+    "prebuild": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
+    "build": "tsx scripts/gen-version.ts && tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint \"src/**/*.ts\" \"test/**/*.ts\"",
+    "verify": "npm run typecheck && npm run lint && npm test",
+    "test:watch": "npm run test",
+    "start": "node dist/src/index.js",
+    "cli": "node dist/src/cli/index.js",
+    "dev:web": "npm --prefix web run dev",
+    "build:web": "npm --prefix web run build",
+    "prepublishOnly": "npm run build && npm run build:web"
+  },
+  "keywords": ["agent", "pipeline", "orchestration", "openclaw", "workflow", "cli"],
+  "author": "liaocclucky <1796301524@qq.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/CCLucky-uu/TaskMeld.git"
+  },
+  "bugs": {
+    "url": "https://github.com/CCLucky-uu/TaskMeld/issues"
+  },
+  "homepage": "https://taskmeld.com",
+  "engines": {
+    "node": ">=18"
+  },
+  "type": "commonjs",
+  "dependencies": {
+    "dotenv": "^17.4.1",
+    "ws": "^8.20.0"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.46.1",
+    "@typescript-eslint/parser": "^8.46.1",
+    "@types/node": "^25.6.0",
+    "@types/ws": "^8.18.1",
+    "eslint": "^9.37.0",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.2",
+    "vitest": "^4.1.4"
+  }
+}

@@ -1,0 +1,1303 @@
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { AgentListCard } from "../../../widgets/agent-list/ui/AgentListCard";
+import { NavPanel } from "../../../widgets/nav-panel/ui/NavPanel";
+import { GroupDetailPanel, NodeDetailPanel } from "../../../widgets/node-detail";
+import { PipelineCard } from "../../../widgets/pipeline-board/ui/PipelineCard";
+import { PipelinePluginModal } from "../../../widgets/pipeline-board/ui/PipelinePluginModal";
+import { PipelineDispatchBoard } from "../../../widgets/pipeline-dispatch-board/ui/PipelineDispatchBoard";
+import { SessionModal } from "../../../widgets/session-modal/ui/SessionModal";
+import { RunLogPage } from "../../../widgets/run-log-viewer";
+import { TopBar } from "../../../widgets/top-bar/ui/TopBar";
+import { OverviewBoard } from "../../../widgets/overview-board/ui/OverviewBoard";
+import { ArtifactBoard } from "../../../widgets/artifact-board";
+import { CloseIcon, InlineSelect } from "../../../shared/ui";
+import { useMediaQuery } from "../../../shared/lib/useMediaQuery";
+import { actionRowClassName, panelHeaderClassName } from "../../../shared/ui/panelClasses";
+import { detailPanelShellClassName } from "../../../widgets/node-detail/ui/detailPanelClasses";
+import {
+  controlInputClassName,
+  controlInputMonoClassName,
+  controlSingleLineClassName,
+  controlSingleLineMonoClassName,
+  controlTextAreaMonoClassName,
+  drawerCloseClassName,
+  modalFrameBaseClassName,
+  modalFrameClosedClassName,
+  modalFrameOpenClassName,
+  modalMaskBaseClassName,
+  modalMaskClosedClassName,
+  modalMaskOpenClassName,
+  modalPanelBaseClassName,
+  modalSublineClassName,
+} from "../../../shared/ui/surfaceClassNames";
+import { controlPlaneNavItems } from "../model/controlPlaneNavItems";
+import { useControlPlanePage } from "../model/useControlPlanePage";
+import PlusIcon from "@iconify-react/lucide/plus";
+const smallModalPanelClassName = `${modalPanelBaseClassName} w-[min(560px,94vw)]`;
+const outputModalPanelClassName =
+  `${modalPanelBaseClassName} grid max-h-[90vh] w-[min(980px,96vw)] grid-rows-[auto_auto_minmax(0,1fr)] gap-[10px] max-[760px]:h-screen max-[760px]:max-h-screen max-[760px]:w-screen`;
+const workflowModalPanelClassName =
+  `${modalPanelBaseClassName} max-h-[90vh] w-[min(1100px,96vw)] max-[760px]:h-screen max-[760px]:max-h-screen max-[760px]:w-screen`;
+const monoClassName = "font-[JetBrains_Mono,monospace]";
+const fieldClassName = "mx-3 min-w-0";
+const fieldLabelClassName = "mb-1.5 block text-xs text-[var(--muted)]";
+const actionButtonClassName =
+  "mt-0 cursor-pointer border border-[var(--live-25)] bg-transparent px-[10px] py-2 font-semibold text-[var(--live)] hover:bg-[rgba(50,215,186,0.1)]";
+// 流水线入口按钮单独控制为 32px 高，且所在栏位去掉上下留白。
+const pipelineCreateButtonClassName =
+  "mt-0 inline-flex h-8 items-center justify-center cursor-pointer border border-[var(--live-25)] bg-[rgba(12,21,27,0.96)] px-[10px] text-[13px] font-semibold text-[var(--live)] hover:bg-[rgba(18,31,38,0.98)]";
+
+const statusTone: Record<string, string> = {
+  ready: "muted",
+  success: "good",
+  running: "live",
+  blocked: "warn",
+  waiting: "warn",
+  rejected: "warn",
+  skipped: "muted",
+  stopped: "muted",
+  queued: "muted",
+  failed: "bad",
+};
+
+const statusLabel: Record<string, string> = {
+  ready: "就绪",
+  connecting: "连接中",
+  ws_open: "通道已开",
+  challenged: "挑战校验中",
+  connect_sent: "握手已发送",
+  idle: "空闲",
+  failed: "失败",
+  success: "成功",
+  running: "运行中",
+  blocked: "阻塞",
+  waiting: "等待中",
+  rejected: "打回",
+  skipped: "已跳过",
+  stopped: "已停止",
+  queued: "排队中",
+};
+
+type ModalLayerProps = {
+  open: boolean;
+  onClose: () => void;
+  panelClassName: string;
+  /** 屏幕阅读器可读的模态标题 */
+  ariaLabel: string;
+  children: React.ReactNode;
+};
+
+function ModalLayer({ open, onClose, panelClassName, ariaLabel, children }: ModalLayerProps) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  // Escape 键关闭
+  const handleKeyDown = useCallback((event: KeyboardEvent) => {
+    if (event.key === "Escape") {
+      onCloseRef.current();
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+
+    document.addEventListener("keydown", handleKeyDown);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    // 聚焦面板，确保屏幕阅读器感知上下文切换
+    panelRef.current?.focus();
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [open, handleKeyDown]);
+
+  if (!open) return null;
+
+  return (
+    <>
+      <div
+        className={`${modalMaskBaseClassName} ${modalMaskOpenClassName}`}
+        onClick={onClose}
+        aria-hidden
+      />
+      <aside
+        className={`${modalFrameBaseClassName} ${modalFrameOpenClassName}`}
+        aria-hidden
+        onClick={onClose}
+      >
+        <div
+          ref={panelRef}
+          role="dialog"
+          aria-modal="true"
+          aria-label={ariaLabel}
+          tabIndex={-1}
+          className={`${panelClassName} outline-none`}
+          onClick={(event) => event.stopPropagation()}
+        >
+          {children}
+        </div>
+      </aside>
+    </>
+  );
+}
+
+type ControlPlanePageProps = {
+  pageRoute?: "home" | "pipeline" | "logs" | "agents" | "artifacts";
+  initialActive?: string;
+  onNavigateByNav?: (label: string, pipelineId?: string) => void;
+  onNavigateHome?: () => void;
+  focusPipelineId?: string;
+};
+
+export function ControlPlanePage({
+  pageRoute = "home",
+  initialActive = "总览",
+  onNavigateByNav,
+  onNavigateHome,
+  focusPipelineId,
+}: ControlPlanePageProps) {
+  const vm = useControlPlanePage();
+  const effectivePageRoute: "home" | "pipeline" | "logs" | "agents" | "artifacts" = pageRoute;
+  const isPipelineRoute = effectivePageRoute === "pipeline";
+  const routeText =
+    effectivePageRoute === "pipeline"
+      ? "流水线"
+      : effectivePageRoute === "logs"
+        ? "日志"
+        : effectivePageRoute === "agents"
+          ? "智能体"
+          : effectivePageRoute === "artifacts"
+            ? "产物"
+          : "总览";
+  const isMobile = useMediaQuery("(max-width: 767px)");
+  const [navCollapsed, setNavCollapsed] = useState(false);
+  // 从桌面端缩小窗口到移动端时，同步关闭抽屉避免中间帧闪烁
+  useLayoutEffect(() => {
+    if (isMobile) setNavCollapsed(true);
+  }, [isMobile]);
+  const [detailCollapsed, setDetailCollapsed] = useState(true);
+  const [workflowJsonModalOpen, setWorkflowJsonModalOpen] = useState(false);
+  const [pluginModalPipelineId, setPluginModalPipelineId] = useState<string | null>(null);
+  const [createPipelineModalOpen, setCreatePipelineModalOpen] = useState(false);
+  const [createPipelineId, setCreatePipelineId] = useState("");
+  const [createPipelineTitle, setCreatePipelineTitle] = useState("");
+  const [createPipelineCloneEnabled, setCreatePipelineCloneEnabled] = useState(false);
+  const [createPipelineCloneFrom, setCreatePipelineCloneFrom] = useState("");
+  const [createPipelineError, setCreatePipelineError] = useState("");
+  const [renamePipelineTargetId, setRenamePipelineTargetId] = useState<string | null>(null);
+  const [renamePipelineTitle, setRenamePipelineTitle] = useState("");
+  const [renamePipelineError, setRenamePipelineError] = useState("");
+  const [deletePipelineTargetId, setDeletePipelineTargetId] = useState<string | null>(null);
+  const [deletePipelineError, setDeletePipelineError] = useState("");
+  const [dispatchBoardOpen, setDispatchBoardOpen] = useState(false);
+  const renamePipelineTarget = vm.pipelineList.find((item) => item.id === renamePipelineTargetId) ?? null;
+  const deletePipelineTarget = vm.pipelineList.find((item) => item.id === deletePipelineTargetId) ?? null;
+  // 移动端：侧边栏不占布局空间，作为浮层抽屉独立渲染
+  const pageLayoutClassName = isMobile
+    ? "grid h-screen overflow-hidden grid-cols-[minmax(0,1fr)]"
+    : [
+        "grid h-screen overflow-hidden",
+        navCollapsed ? "grid-cols-[53px_minmax(0,1fr)]" : "grid-cols-[210px_minmax(0,1fr)]",
+      ].join(" ");
+  const contentLayoutClassName = "grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden";
+  const shellLayoutClassName = [
+    // 主体只允许占用 TopBar 下方这一行高度，避免右栏内容把整行 grid 撑出容器。
+    "grid h-full min-h-0 grid-rows-[minmax(0,1fr)] overflow-hidden border-b border-r border-[var(--line)]",
+    !isPipelineRoute
+      ? "grid-cols-[minmax(0,1fr)]"
+      : detailCollapsed
+        ? "grid-cols-[minmax(0,1fr)_0px]"
+        : "grid-cols-[minmax(0,1fr)_300px]",
+  ].join(" ");
+  const centerColumnClassName = [
+    `flex min-h-0 min-w-0 flex-col overflow-x-hidden ${
+      effectivePageRoute === "agents" || effectivePageRoute === "pipeline" || effectivePageRoute === "artifacts"
+        ? "overflow-y-hidden"
+        : "overflow-y-auto"
+    } border-r border-[var(--line)]`,
+    "[&>[data-center-card]]:min-h-0 [&>[data-center-card]]:min-w-0 [&>[data-center-card]]:shrink-0 [&>[data-center-card]]:border-b [&>[data-center-card]]:border-[var(--line)]",
+    "[&>[data-pipeline-card]]:shrink [&>[data-pipeline-card]]:flex-1 [&>[data-pipeline-card]]:overflow-y-auto",
+    "[&>[data-agent-card]]:shrink [&>[data-agent-card]]:flex-1 [&>[data-agent-card]]:overflow-hidden",
+    "[&>[data-center-card]:last-child]:border-b-0",
+    // 日志页暂时仍保留独立滚动与高度策略，避免改造外层布局时影响虚拟列表测量结果。
+    "[&>[data-run-log-page]]:min-h-0 [&>[data-run-log-page]]:flex-1 [&>[data-run-log-page]]:overflow-hidden [&>[data-run-log-page]]:border-b-0",
+  ].join(" ");
+  const deleteTargetNode = vm.pipeline.find((node) => node.id === vm.deleteTargetNodeId);
+  const deleteTargetGroup = vm.parallelGroups.find((group) => group.id === vm.deleteTargetGroupId);
+  const outputAgent = vm.agentCards.find((agent) => agent.id === vm.agentOutputModalAgentId);
+  const blurActiveElement = () => {
+    const active = document.activeElement as HTMLElement | null;
+    active?.blur();
+  };
+  const closePipelineScopedOverlays = (pipelineId: string) => {
+    if (pluginModalPipelineId === pipelineId) {
+      setPluginModalPipelineId(null);
+    }
+    if (workflowJsonModalOpen && vm.activePipelineId === pipelineId) {
+      setWorkflowJsonModalOpen(false);
+    }
+    if (renamePipelineTargetId === pipelineId) {
+      setRenamePipelineError("");
+      setRenamePipelineTargetId(null);
+    }
+    if (vm.activePipelineId === pipelineId) {
+      vm.setIsCreateNodeModalOpen(false);
+      vm.setDeleteTargetNodeId("");
+      vm.setDeleteTargetGroupId("");
+      setDetailCollapsed(true);
+    }
+  };
+  const resetCreatePipelineDraft = () => {
+    setCreatePipelineId("");
+    setCreatePipelineTitle("");
+    setCreatePipelineCloneEnabled(false);
+    setCreatePipelineCloneFrom(vm.activePipelineId || vm.pipelineList[0]?.id || "");
+    setCreatePipelineError("");
+  };
+  const closeRenamePipelineModal = () => {
+    setRenamePipelineError("");
+    setRenamePipelineTargetId(null);
+    setRenamePipelineTitle("");
+  };
+  const submitCreatePipeline = async () => {
+    const result = await vm.createPipeline({
+      id: createPipelineId,
+      title: createPipelineTitle,
+      cloneFrom: createPipelineCloneEnabled ? createPipelineCloneFrom : undefined,
+    });
+    if (!result.ok) {
+      setCreatePipelineError(result.message);
+      return;
+    }
+    blurActiveElement();
+    setCreatePipelineModalOpen(false);
+    resetCreatePipelineDraft();
+  };
+  const submitRenamePipeline = async () => {
+    if (!renamePipelineTargetId) return;
+    const result = await vm.renamePipeline(renamePipelineTargetId, renamePipelineTitle);
+    if (!result.ok) {
+      setRenamePipelineError(result.message);
+      return;
+    }
+    blurActiveElement();
+    closeRenamePipelineModal();
+  };
+  const confirmDeletePipeline = async (pipelineId: string) => {
+    const result = await vm.deletePipeline(pipelineId);
+    if (!result.ok) {
+      setDeletePipelineError(result.message);
+      return;
+    }
+    setDeletePipelineError("");
+    closePipelineScopedOverlays(pipelineId);
+    blurActiveElement();
+    setDeletePipelineTargetId(null);
+  };
+
+  useEffect(() => {
+    // 路由变化时同步默认激活导航项，避免 URL 与页面高亮不一致。
+    vm.setActive(initialActive);
+  }, [initialActive, vm.setActive]);
+
+  useEffect(() => {
+    if (!isPipelineRoute || detailCollapsed) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (!target) return;
+      // 点击节点或并行组时不关闭，避免从节点A切到节点B出现“先关后开”的抖动。
+      if (target.closest("[data-pipeline-node-id]") || target.closest("[data-pipeline-group-id]")) return;
+      // 点击右侧详情面板内部不关闭，保持编辑连续性。
+      if (target.closest("[data-pipeline-detail-panel]")) return;
+      setDetailCollapsed(true);
+    };
+    window.addEventListener("pointerdown", handlePointerDown, true);
+    return () => window.removeEventListener("pointerdown", handlePointerDown, true);
+  }, [detailCollapsed, isPipelineRoute]);
+
+  useEffect(() => {
+    if (!isPipelineRoute || !focusPipelineId?.trim()) return;
+    const targetPipelineId = focusPipelineId.trim();
+    vm.setActivePipelineId(targetPipelineId);
+    const timer = window.setTimeout(() => {
+      const target = document.querySelector<HTMLElement>(`[data-pipeline-section-id="${targetPipelineId}"]`);
+      target?.scrollIntoView({ block: "start", behavior: "smooth" });
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [focusPipelineId, isPipelineRoute, vm.setActivePipelineId]);
+
+  useEffect(() => {
+    const handleKeydown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      if (renamePipelineTargetId) {
+        blurActiveElement();
+        closeRenamePipelineModal();
+        return;
+      }
+      if (deletePipelineTargetId) {
+        blurActiveElement();
+        setDeletePipelineError("");
+        setDeletePipelineTargetId(null);
+        return;
+      }
+      if (createPipelineModalOpen) {
+        blurActiveElement();
+        setCreatePipelineModalOpen(false);
+        resetCreatePipelineDraft();
+        return;
+      }
+      if (vm.agentOutputModalAgentId) {
+        blurActiveElement();
+        vm.setAgentOutputModalAgentId("");
+        return;
+      }
+      if (vm.deleteTargetNodeId) {
+        blurActiveElement();
+        vm.setDeleteTargetNodeId("");
+        return;
+      }
+      if (vm.deleteTargetGroupId) {
+        blurActiveElement();
+        vm.setDeleteTargetGroupId("");
+        return;
+      }
+      if (vm.isCreateNodeModalOpen) {
+        blurActiveElement();
+        vm.setIsCreateNodeModalOpen(false);
+        return;
+      }
+      if (workflowJsonModalOpen) {
+        blurActiveElement();
+        setWorkflowJsonModalOpen(false);
+        return;
+      }
+      if (pluginModalPipelineId) {
+        blurActiveElement();
+        setPluginModalPipelineId(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeydown);
+    return () => window.removeEventListener("keydown", handleKeydown);
+  }, [
+    createPipelineModalOpen,
+    renamePipelineTargetId,
+    deletePipelineTargetId,
+    vm.agentOutputModalAgentId,
+    vm.deleteTargetNodeId,
+    vm.deleteTargetGroupId,
+    vm.isCreateNodeModalOpen,
+    workflowJsonModalOpen,
+    pluginModalPipelineId,
+    vm.setAgentOutputModalAgentId,
+    vm.setDeleteTargetNodeId,
+    vm.setDeleteTargetGroupId,
+    vm.setIsCreateNodeModalOpen,
+  ]);
+
+  useEffect(() => {
+    const pipelineIds = new Set(vm.pipelineList.map((item) => item.id));
+    if (pluginModalPipelineId && !pipelineIds.has(pluginModalPipelineId)) {
+      setPluginModalPipelineId(null);
+    }
+    if (renamePipelineTargetId && !pipelineIds.has(renamePipelineTargetId)) {
+      closeRenamePipelineModal();
+    }
+    if (deletePipelineTargetId && !pipelineIds.has(deletePipelineTargetId)) {
+      setDeletePipelineError("");
+      setDeletePipelineTargetId(null);
+    }
+    if (workflowJsonModalOpen && !vm.activePipelineId) {
+      setWorkflowJsonModalOpen(false);
+    }
+  }, [deletePipelineTargetId, pluginModalPipelineId, renamePipelineTargetId, vm.activePipelineId, vm.pipelineList, workflowJsonModalOpen]);
+
+  return (
+    <div className={pageLayoutClassName}>
+      {isMobile ? (
+          <>
+            {/* 移动端：侧边栏从左侧滑出的浮层抽屉 */}
+            {!navCollapsed && (
+              <div
+                className="fixed inset-0 z-40 bg-black/50"
+                onClick={() => setNavCollapsed(true)}
+                aria-hidden
+              />
+            )}
+            <NavPanel
+              navItems={controlPlaneNavItems}
+              active={vm.active}
+              onChangeActive={(label) => {
+                vm.setActive(label);
+                onNavigateByNav?.(label);
+              }}
+              onNavigateHome={onNavigateHome}
+              protocol={vm.gateway.protocol}
+              scopes={vm.gateway.scopes}
+              collapsed={navCollapsed}
+              variant="overlay"
+              onCloseDrawer={() => setNavCollapsed(true)}
+            />
+          </>
+        ) : (
+          <NavPanel
+            navItems={controlPlaneNavItems}
+            active={vm.active}
+            onChangeActive={(label) => {
+              vm.setActive(label);
+              onNavigateByNav?.(label);
+            }}
+            onNavigateHome={onNavigateHome}
+            protocol={vm.gateway.protocol}
+            scopes={vm.gateway.scopes}
+            collapsed={navCollapsed}
+          />
+        )}
+
+      <div className={contentLayoutClassName}>
+        <TopBar
+          runId={vm.runId}
+          gateway={vm.gateway}
+          latencyMs={vm.latencyMs}
+          agentCount={vm.agents.length}
+          sessionCount={vm.sessions.length}
+          statusLabel={statusLabel}
+          navCollapsed={navCollapsed}
+          onToggleNav={() => setNavCollapsed((prev) => !prev)}
+          routeText={routeText}
+        />
+
+        <main className={shellLayoutClassName} id="main-content">
+        <section className={centerColumnClassName}>
+          {effectivePageRoute === "logs" ? (
+            <RunLogPage currentRunId={vm.runId} />
+          ) : effectivePageRoute === "pipeline" ? (
+            <>
+          <div
+            data-center-card
+            className="sticky top-0 z-10 shrink-0 flex h-[66px] items-center justify-start px-8 [background-color:rgba(9,15,21,0.1)] [background-image:repeating-linear-gradient(-45deg,rgba(150,170,190,0.07)_0,rgba(150,170,190,0.07)_2px,transparent_2px,transparent_8px)]"
+          >
+            <button
+              className={pipelineCreateButtonClassName}
+              type="button"
+              onClick={() => {
+                setCreatePipelineModalOpen(true);
+                setCreatePipelineId("");
+                setCreatePipelineTitle("");
+                setCreatePipelineCloneEnabled(Boolean(vm.activePipelineId));
+                setCreatePipelineCloneFrom(vm.activePipelineId || vm.pipelineList[0]?.id || "");
+                setCreatePipelineError("");
+              }}
+              disabled={vm.isCreatingPipeline || vm.isDeletingPipeline || vm.isRenamingPipeline}
+            >
+              <PlusIcon className="mr-1.5 h-4 w-4" />
+              {vm.isCreatingPipeline ? "新增中..." : "新增流水线"}
+            </button>
+            <button
+              className={`${pipelineCreateButtonClassName} ml-2`}
+              type="button"
+              onClick={() => setDispatchBoardOpen(true)}
+            >
+              调度面板
+            </button>
+          </div>
+          <PipelineCard
+            sections={vm.pipelineList.map((pipelineItem) => {
+              const pipelineId = pipelineItem.id;
+              const state = vm.pipelineStateById[pipelineId];
+              if (!state) return null;
+              const workflow = state.workflow;
+              const inferredGroups = workflow ? vm.getParallelGroupsForPipeline(pipelineId) : [];
+              return {
+                pipelineId,
+                title: pipelineItem.title,
+                canDelete: vm.pipelineList.length > 1,
+                pipeline: state.pipeline,
+                workflowNodeOrder: state.workflow?.nodes.map((node) => node.id) ?? state.pipeline.map((node) => node.id),
+                parallelGroups: inferredGroups,
+                pluginState: vm.getPipelineRemoteBatchPlugin(pipelineId),
+                schedulerPluginEnabled: vm.getPipelineSchedulerPlugin(pipelineId).enabled,
+                schedulerMode: state.schedulerState?.mode ?? "-",
+                schedulerEnabled: state.schedulerState?.enabled !== false,
+                batchStartBatch: vm.batchStartBatchById[pipelineId],
+                isBatchOperating: vm.isBatchOperating,
+                batchRunStatus: state.batchRunState?.status,
+                batchRunProcessedItems: state.batchRunState?.processedItems,
+                batchRunTotalItems: state.batchRunState?.totalItems,
+                batchRunProcessedBatches: state.batchRunState?.processedBatches,
+                batchRunTotalBatches: state.batchRunState?.totalBatches,
+                batchRunBatchSize: state.batchRunState?.batchSize,
+                batchRunError: state.batchRunState?.error ?? null,
+                isRunning: state.isRunning,
+                hasPipelineExecution: vm.getHasPipelineExecutionForPipeline(pipelineId),
+                isEditing: vm.getIsPipelineEditing(pipelineId),
+              };
+            }).filter((section): section is NonNullable<typeof section> => Boolean(section))}
+            selectedNodeId={vm.selectedNode?.id ?? ""}
+            selectedGroupId={vm.selectedGroup?.id ?? ""}
+            activePipelineId={vm.activePipelineId}
+            onSelectNode={(pipelineId, nodeId) => {
+              vm.selectNodeInPipeline(pipelineId, nodeId);
+              if (nodeId) setDetailCollapsed(false);
+            }}
+            onSelectGroup={(pipelineId, groupId) => {
+              vm.selectGroupInPipeline(pipelineId, groupId);
+              if (groupId) setDetailCollapsed(false);
+            }}
+            onRun={(pipelineId) => void vm.startPipelineRun(pipelineId)}
+            onStop={(pipelineId) => void vm.stopPipelineRun(pipelineId)}
+            deletingEntity={vm.isDeletingNode}
+            savingNodeOrder={vm.isSavingNodeConfig}
+            onToggleEditing={(pipelineId, editing) => vm.setPipelineEditing(pipelineId, editing)}
+            onOpenWorkflowJson={(pipelineId) => {
+              vm.setActivePipelineId(pipelineId);
+              setWorkflowJsonModalOpen(true);
+            }}
+            onOpenPlugins={(pipelineId) => {
+              vm.setActivePipelineId(pipelineId);
+              setPluginModalPipelineId(pipelineId);
+            }}
+            onRenamePipeline={(pipelineId, title) => vm.renamePipeline(pipelineId, title)}
+            onRequestDeletePipeline={(pipelineId) => {
+              setDeletePipelineError("");
+              setDeletePipelineTargetId(pipelineId);
+            }}
+            onRequestDeleteNode={(pipelineId, nodeId) => {
+              vm.setActivePipelineId(pipelineId);
+              vm.setDeleteTargetNodeId(nodeId);
+            }}
+            onRequestDeleteGroup={(pipelineId, groupId) => {
+              vm.setActivePipelineId(pipelineId);
+              vm.setDeleteTargetGroupId(groupId);
+            }}
+            onRequestCreateNode={() => vm.setIsCreateNodeModalOpen(true)}
+            onMoveNode={(pipelineId, nodeId, direction) => {
+              vm.selectNodeInPipeline(pipelineId, nodeId);
+              if (direction === "up") {
+                void vm.moveSelectedNodeUp(nodeId, pipelineId);
+              } else {
+                void vm.moveSelectedNodeDown(nodeId, pipelineId);
+              }
+            }}
+            onReorderNode={(pipelineId, nodeId, targetNodeId, position) => {
+              vm.selectNodeInPipeline(pipelineId, nodeId);
+              void vm.reorderNode(pipelineId, nodeId, targetNodeId, position);
+            }}
+            onChangeBatchStartBatch={(pipelineId, value) => vm.setBatchStartBatch(pipelineId, value)}
+            onStartRemoteKeywordBatchRun={(pipelineId) => void vm.startRemoteKeywordBatchRun(pipelineId)}
+            onToggleScheduler={(pipelineId, enabled) => {
+              void vm.toggleScheduler(enabled, pipelineId);
+            }}
+            onSwitchSchedulerMode={(pipelineId, mode) => {
+              void vm.switchSchedulerMode(mode, pipelineId);
+            }}
+            onManualTick={(pipelineId) => {
+              void vm.manualTick(pipelineId);
+            }}
+            deletingPipeline={vm.isDeletingPipeline}
+            statusTone={statusTone}
+            statusLabel={statusLabel}
+          />
+            </>
+          ) : effectivePageRoute === "agents" ? (
+            <AgentListCard
+              agents={vm.agentCards}
+              onOpenAgentSession={vm.openSessionModalForAgent}
+              onOpenAgentOutput={(agentId) => vm.setAgentOutputModalAgentId(agentId)}
+            />
+          ) : effectivePageRoute === "artifacts" ? (
+            <ArtifactBoard
+              pipelines={vm.pipelineList.map((item) => ({
+                id: item.id,
+                title: item.title,
+              }))}
+              onNavigatePipeline={(pipelineId) => {
+                vm.setActivePipelineId(pipelineId);
+                onNavigateByNav?.("流水线", pipelineId);
+              }}
+            />
+          ) : (
+            <OverviewBoard
+              pipelines={vm.pipelineList.map((pipelineItem) => ({
+                id: pipelineItem.id,
+                title: pipelineItem.title,
+                nodes: vm.pipelineStateById[pipelineItem.id]?.pipeline ?? [],
+                isRunning: vm.pipelineStateById[pipelineItem.id]?.isRunning ?? false,
+              }))}
+              onStartPipeline={async (pipelineId) => {
+                const pluginState = vm.getPipelineRemoteBatchPlugin(pipelineId);
+                if (pluginState.enabled) {
+                  await vm.startRemoteKeywordBatchRun(pipelineId);
+                  return;
+                }
+                await vm.startPipelineRun(pipelineId);
+              }}
+              onNavigatePipeline={(pipelineId) => {
+                vm.setActivePipelineId(pipelineId);
+                onNavigateByNav?.("流水线", pipelineId);
+              }}
+              onOpenAgentSession={vm.openSessionModalForAgent}
+            />
+          )}
+        </section>
+
+        {effectivePageRoute === "pipeline" && !detailCollapsed && vm.selectedNode ? (
+          <div className={detailPanelShellClassName} data-pipeline-detail-panel>
+            <NodeDetailPanel
+            selectedNode={vm.selectedNode}
+            selectedWorkflowNode={vm.selectedWorkflowNode}
+            agentOptions={vm.agents.map((a) => a.id)}
+            dependencyOptions={vm.dependencyOptions}
+            routeTargetOptions={vm.routeTargetOptions}
+            draftTitle={vm.draftTitle}
+            draftAgentId={vm.draftAgentId}
+            draftExecutorSessionId={vm.draftExecutorSessionId}
+            draftInstruction={vm.draftInstruction}
+            draftDependsOn={vm.draftDependsOn}
+            draftAllowReject={vm.draftAllowReject}
+            draftMaxRejectCount={vm.draftMaxRejectCount}
+            draftWorkflowLane={vm.draftWorkflowLane}
+            draftWorkflowRouteAllowed={vm.draftWorkflowRouteAllowed}
+            draftWorkflowRouteTargets={vm.draftWorkflowRouteTargets}
+            isSavingWorkflowConfig={vm.isSavingWorkflowConfig}
+            savingConfig={vm.isSavingNodeConfig}
+            hasPipelineExecution={vm.hasPipelineExecution}
+            onChangeDraftTitle={vm.setDraftTitle}
+            onChangeDraftAgentId={vm.setDraftAgentId}
+            onChangeDraftExecutorSessionId={vm.setDraftExecutorSessionId}
+            onChangeDraftInstruction={vm.setDraftInstruction}
+            sessionOptions={vm.nodeSessionOptions}
+            onChangeDraftDependsOn={vm.setDraftDependsOn}
+            onChangeDraftAllowReject={vm.setDraftAllowReject}
+            onChangeDraftMaxRejectCount={vm.setDraftMaxRejectCount}
+            onChangeDraftWorkflowLane={vm.setDraftWorkflowLane}
+            onChangeDraftWorkflowRouteAllowed={vm.setDraftWorkflowRouteAllowed}
+            onChangeDraftWorkflowRouteTarget={vm.setDraftWorkflowRouteTarget}
+            onBlurSave={vm.saveSelectedNodeConfigOnBlur}
+            onRetry={vm.retryNode}
+            statusTone={statusTone}
+            statusLabel={statusLabel}
+            />
+          </div>
+        ) : effectivePageRoute === "pipeline" && !detailCollapsed && vm.selectedGroup ? (
+          <div className={detailPanelShellClassName} data-pipeline-detail-panel>
+            <GroupDetailPanel
+            selectedGroup={vm.selectedGroup}
+            groupMemberOptions={vm.groupMemberOptions}
+            groupUpstreamOptions={vm.groupUpstreamOptions}
+            draftGroupId={vm.draftGroupId}
+            draftGroupMembers={vm.draftGroupMembers}
+            draftGroupUpstreams={vm.draftGroupUpstreams}
+            draftGroupJoinPolicy={vm.draftGroupJoinPolicy}
+            isSaving={vm.isSavingGroupConfig}
+            onChangeDraftGroupId={vm.setDraftGroupId}
+            onChangeDraftGroupMembers={vm.setDraftGroupMembers}
+            onChangeDraftGroupUpstreams={vm.setDraftGroupUpstreams}
+            onChangeDraftGroupJoinPolicy={vm.setDraftGroupJoinPolicy}
+            onSave={vm.saveSelectedGroupConfig}
+            isDeleting={vm.isDeletingNode}
+            statusTone={statusTone}
+            statusLabel={statusLabel}
+            onDelete={() => vm.setDeleteTargetGroupId(vm.selectedGroup?.id ?? "")}
+            />
+          </div>
+        ) : detailCollapsed ? null : <aside className={detailPanelShellClassName} />}
+        </main>
+      </div>
+
+      <ModalLayer
+        open={createPipelineModalOpen}
+        onClose={() => {
+          blurActiveElement();
+          setCreatePipelineModalOpen(false);
+          resetCreatePipelineDraft();
+        }}
+        panelClassName={smallModalPanelClassName}
+        ariaLabel="创建流水线"
+      >
+          <div className={panelHeaderClassName}>
+            <h2>新增流水线</h2>
+            <button
+              className={drawerCloseClassName}
+              type="button"
+              onClick={() => {
+                blurActiveElement();
+                setCreatePipelineModalOpen(false);
+                resetCreatePipelineDraft();
+              }}
+              aria-label="关闭"
+            >
+              <CloseIcon />
+            </button>
+          </div>
+          <div className={fieldClassName}>
+            <label className={fieldLabelClassName}>流水线 ID</label>
+            <input
+              className={controlSingleLineMonoClassName}
+              value={createPipelineId}
+              onChange={(event) => setCreatePipelineId(event.target.value)}
+              placeholder="例如 C"
+            />
+          </div>
+          <div className={fieldClassName}>
+            <label className={fieldLabelClassName}>流水线标题</label>
+            <input
+              className={controlSingleLineClassName}
+              value={createPipelineTitle}
+              onChange={(event) => setCreatePipelineTitle(event.target.value)}
+              placeholder="例如 流水线 DAG-C"
+            />
+          </div>
+          <div className={fieldClassName}>
+            <label className={fieldLabelClassName}>创建方式</label>
+            <InlineSelect
+              value={createPipelineCloneEnabled ? "clone" : "blank"}
+              options={[
+                { value: "blank", label: "空白创建" },
+                { value: "clone", label: "从现有流水线克隆" },
+              ]}
+              onChange={(next) => {
+                const cloneEnabled = next === "clone";
+                setCreatePipelineCloneEnabled(cloneEnabled);
+                if (cloneEnabled && !createPipelineCloneFrom) {
+                  setCreatePipelineCloneFrom(vm.activePipelineId || vm.pipelineList[0]?.id || "");
+                }
+              }}
+              triggerClassName={controlInputClassName}
+              ariaLabel="选择创建方式"
+            />
+          </div>
+          {createPipelineCloneEnabled ? (
+            <div className={fieldClassName}>
+              <label className={fieldLabelClassName}>克隆来源</label>
+              <InlineSelect
+                value={createPipelineCloneFrom}
+                options={vm.pipelineList.map((item) => ({
+                  value: item.id,
+                  label: `${item.id} | ${item.title}`,
+                }))}
+                onChange={setCreatePipelineCloneFrom}
+                triggerClassName={controlInputClassName}
+                ariaLabel="选择克隆来源"
+              />
+            </div>
+          ) : null}
+          {createPipelineError ? (
+            <p className={`${modalSublineClassName} text-(--bad)`}>{createPipelineError}</p>
+          ) : null}
+          <div className={actionRowClassName}>
+            <button
+              className={actionButtonClassName}
+              type="button"
+              onClick={() => void submitCreatePipeline()}
+              disabled={vm.isCreatingPipeline || (createPipelineCloneEnabled && !createPipelineCloneFrom)}
+            >
+              {vm.isCreatingPipeline ? "新增中..." : "确认新增流水线"}
+            </button>
+          </div>
+      </ModalLayer>
+
+      <ModalLayer
+        open={Boolean(renamePipelineTargetId)}
+        onClose={() => {
+          blurActiveElement();
+          closeRenamePipelineModal();
+        }}
+        panelClassName={smallModalPanelClassName}
+        ariaLabel="重命名流水线"
+      >
+          <div className={panelHeaderClassName}>
+            <h2>修改流水线标题</h2>
+            <button
+              className={drawerCloseClassName}
+              type="button"
+              onClick={() => {
+                blurActiveElement();
+                closeRenamePipelineModal();
+              }}
+              aria-label="关闭"
+            >
+              <CloseIcon />
+            </button>
+          </div>
+          <p className={modalSublineClassName}>
+            当前流水线 <code>{renamePipelineTarget?.id ?? renamePipelineTargetId ?? "-"}</code>
+            {renamePipelineTarget?.title ? `（当前标题：${renamePipelineTarget.title}）` : ""}。
+          </p>
+          <div className={fieldClassName}>
+            <label className={fieldLabelClassName}>新标题</label>
+            <input
+              className={controlSingleLineClassName}
+              value={renamePipelineTitle}
+              onChange={(event) => setRenamePipelineTitle(event.target.value)}
+              placeholder="例如 流水线 DAG-A"
+            />
+          </div>
+          {renamePipelineError ? (
+            <p className={`${modalSublineClassName} text-(--bad)`}>{renamePipelineError}</p>
+          ) : null}
+          <div className={actionRowClassName}>
+            <button
+              className={actionButtonClassName}
+              type="button"
+              onClick={() => void submitRenamePipeline()}
+              disabled={!renamePipelineTargetId || !renamePipelineTitle.trim() || vm.isRenamingPipeline}
+            >
+              {vm.isRenamingPipeline ? "保存中..." : "确认修改标题"}
+            </button>
+          </div>
+      </ModalLayer>
+
+      <ModalLayer
+        open={Boolean(deletePipelineTargetId)}
+        onClose={() => {
+          blurActiveElement();
+          setDeletePipelineError("");
+          setDeletePipelineTargetId(null);
+        }}
+        panelClassName={smallModalPanelClassName}
+        ariaLabel="确认删除流水线"
+      >
+          <div className={panelHeaderClassName}>
+            <h2>确认删除流水线</h2>
+            <button
+              className={drawerCloseClassName}
+              type="button"
+              onClick={() => {
+                blurActiveElement();
+                setDeletePipelineError("");
+                setDeletePipelineTargetId(null);
+              }}
+              aria-label="关闭"
+            >
+              <CloseIcon />
+            </button>
+          </div>
+          <p className={modalSublineClassName}>
+            将删除流水线 <code>{deletePipelineTarget?.id ?? deletePipelineTargetId ?? "-"}</code>
+            {deletePipelineTarget?.title ? `（${deletePipelineTarget.title}）` : ""}。删除后目录会归档到 <code>.data/pipelines/_deleted</code>。
+          </p>
+          {deletePipelineError ? (
+            <p className={`${modalSublineClassName} text-(--bad)`}>{deletePipelineError}</p>
+          ) : null}
+          <div className={actionRowClassName}>
+            <button
+              className={actionButtonClassName}
+              type="button"
+              onClick={() => deletePipelineTargetId && void confirmDeletePipeline(deletePipelineTargetId)}
+              disabled={!deletePipelineTargetId || vm.isDeletingPipeline}
+            >
+              {vm.isDeletingPipeline ? "删除中..." : "确认删除流水线"}
+            </button>
+          </div>
+      </ModalLayer>
+
+      <div
+        className={`${modalMaskBaseClassName} ${vm.isCreateNodeModalOpen ? modalMaskOpenClassName : modalMaskClosedClassName}`}
+        onClick={() => {
+          blurActiveElement();
+          vm.setIsCreateNodeModalOpen(false);
+        }}
+        aria-hidden={!vm.isCreateNodeModalOpen}
+      />
+      <aside
+        className={`${modalFrameBaseClassName} ${vm.isCreateNodeModalOpen ? modalFrameOpenClassName : modalFrameClosedClassName}`}
+        aria-hidden={!vm.isCreateNodeModalOpen}
+        onClick={() => {
+          blurActiveElement();
+          vm.setIsCreateNodeModalOpen(false);
+        }}
+      >
+        <div className={smallModalPanelClassName} onClick={(event) => event.stopPropagation()}>
+          <div className={panelHeaderClassName}>
+            <h2>新增对象</h2>
+            <button
+              className={drawerCloseClassName}
+              type="button"
+              onClick={() => {
+                blurActiveElement();
+                vm.setIsCreateNodeModalOpen(false);
+              }}
+              aria-label="关闭"
+            >
+              <CloseIcon />
+            </button>
+          </div>
+          <div className={fieldClassName}>
+            <label className={fieldLabelClassName}>创建类型</label>
+            <InlineSelect
+              value={vm.draftCreateKind}
+              options={[
+                { value: "node", label: "节点" },
+                { value: "group", label: "并行组" },
+              ]}
+              onChange={(next) => vm.setDraftCreateKind(next as "node" | "group")}
+              triggerClassName={controlInputMonoClassName}
+              ariaLabel="选择创建类型"
+            />
+          </div>
+          {vm.draftCreateKind === "node" ? (
+            <>
+          <div className={fieldClassName}>
+            <label className={fieldLabelClassName}>节点 ID</label>
+            <input
+              className={controlSingleLineMonoClassName}
+              value={vm.draftNewNodeId}
+              onChange={(event) => vm.setDraftNewNodeId(event.target.value)}
+              placeholder="例如 n5"
+            />
+          </div>
+          <div className={fieldClassName}>
+            <label className={fieldLabelClassName}>节点标题</label>
+            <input
+              className={controlSingleLineClassName}
+              value={vm.draftNewNodeTitle}
+              onChange={(event) => vm.setDraftNewNodeTitle(event.target.value)}
+              placeholder="例如 变更汇总"
+            />
+          </div>
+          <div className={fieldClassName}>
+            <label className={fieldLabelClassName}>Agent</label>
+            <InlineSelect
+              value={vm.draftNewNodeAgentId}
+              options={(vm.agents.length ? vm.agents.map((agent) => agent.id) : [vm.draftNewNodeAgentId || "-"]).map(
+                (agentId) => ({
+                  value: agentId,
+                  label: agentId,
+                }),
+              )}
+              onChange={vm.setDraftNewNodeAgentId}
+              triggerClassName={controlInputClassName}
+              ariaLabel="Agent"
+            />
+          </div>
+          <div className={fieldClassName}>
+            <label className={fieldLabelClassName}>节点指令</label>
+            <textarea
+              className={controlTextAreaMonoClassName}
+              value={vm.draftNewNodeInstruction}
+              onChange={(event) => vm.setDraftNewNodeInstruction(event.target.value)}
+              rows={4}
+              placeholder="可留空，后续再编辑"
+            />
+          </div>
+          <div className={fieldClassName}>
+            <label className={fieldLabelClassName}>依赖节点（自动识别上游，可多选）</label>
+            <select
+              className={controlInputMonoClassName}
+              value={vm.draftNewNodeDependsOn}
+              onChange={(event) =>
+                vm.setDraftNewNodeDependsOn(
+                  Array.from(event.target.selectedOptions)
+                    .map((option) => option.value)
+                    .filter(Boolean),
+                )
+              }
+              multiple
+              size={Math.max(3, Math.min(8, vm.newNodeDependencyOptions.length || 3))}
+            >
+              {vm.newNodeDependencyOptions.map((node) => (
+                <option key={node.id} value={node.id}>
+                  {node.id} - {node.title}
+                </option>
+              ))}
+            </select>
+            <small className={`${monoClassName} mt-1.5 block text-xs text-(--muted)`}>按 Ctrl/Command 可多选</small>
+          </div>
+          <button className={actionButtonClassName} type="button" onClick={vm.addTemplateNode} disabled={vm.isAddingNode}>
+            {vm.isAddingNode ? "新增中..." : "确认新增"}
+          </button>
+            </>
+          ) : (
+            <>
+              <div className={fieldClassName}>
+                <label className={fieldLabelClassName}>组 ID</label>
+                <input
+                  className={controlInputMonoClassName}
+                  value={vm.draftNewGroupId}
+                  onChange={(event) => vm.setDraftNewGroupId(event.target.value)}
+                  placeholder="例如 g_yes_parallel"
+                />
+              </div>
+              <div className={fieldClassName}>
+                <label className={fieldLabelClassName}>组内成员</label>
+                <select
+                  className={controlInputMonoClassName}
+                  value={vm.draftNewGroupMembers}
+                  onChange={(event) =>
+                    vm.setDraftNewGroupMembers(
+                      Array.from(event.target.selectedOptions)
+                        .map((option) => option.value)
+                        .filter(Boolean),
+                    )
+                  }
+                  multiple
+                  size={Math.max(3, Math.min(8, vm.newGroupMemberOptions.length || 3))}
+                >
+                  {vm.newGroupMemberOptions.map((node) => (
+                    <option key={node.id} value={node.id}>
+                      {node.id} - {node.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className={fieldClassName}>
+                <label className={fieldLabelClassName}>公共上游</label>
+                <select
+                  className={controlInputMonoClassName}
+                  value={vm.draftNewGroupUpstreams}
+                  onChange={(event) =>
+                    vm.setDraftNewGroupUpstreams(
+                      Array.from(event.target.selectedOptions)
+                        .map((option) => option.value)
+                        .filter(Boolean),
+                    )
+                  }
+                  multiple
+                  size={Math.max(3, Math.min(8, vm.newGroupUpstreamOptions.length || 3))}
+                >
+                  {vm.newGroupUpstreamOptions.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.id} - {item.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className={fieldClassName}>
+                <label className={fieldLabelClassName}>汇聚策略</label>
+                <InlineSelect
+                  value={vm.draftNewGroupJoinPolicy}
+                  options={[
+                    { value: "all", label: "all" },
+                    { value: "any", label: "any" },
+                    { value: "quorum", label: "quorum" },
+                  ]}
+                  onChange={(next) => vm.setDraftNewGroupJoinPolicy(next as "all" | "any" | "quorum")}
+                  triggerClassName={controlInputMonoClassName}
+                  ariaLabel="选择新增并行组汇聚策略"
+                />
+              </div>
+              <button className={actionButtonClassName} type="button" onClick={vm.addParallelGroup} disabled={vm.isAddingNode}>
+                {vm.isAddingNode ? "新增中..." : "确认新增并行组"}
+              </button>
+            </>
+          )}
+        </div>
+      </aside>
+
+      <div
+        className={`${modalMaskBaseClassName} ${Boolean(vm.deleteTargetNodeId || vm.deleteTargetGroupId) ? modalMaskOpenClassName : modalMaskClosedClassName}`}
+        onClick={() => {
+          blurActiveElement();
+          vm.setDeleteTargetNodeId("");
+          vm.setDeleteTargetGroupId("");
+        }}
+        aria-hidden={!vm.deleteTargetNodeId && !vm.deleteTargetGroupId}
+      />
+      <aside
+        className={`${modalFrameBaseClassName} ${vm.deleteTargetNodeId || vm.deleteTargetGroupId ? modalFrameOpenClassName : modalFrameClosedClassName}`}
+        aria-hidden={!vm.deleteTargetNodeId && !vm.deleteTargetGroupId}
+        onClick={() => {
+          blurActiveElement();
+          vm.setDeleteTargetNodeId("");
+          vm.setDeleteTargetGroupId("");
+        }}
+      >
+        <div className={smallModalPanelClassName} onClick={(event) => event.stopPropagation()}>
+          <div className={panelHeaderClassName}>
+            <h2>{vm.deleteTargetGroupId ? "确认删除并行组" : "确认删除节点"}</h2>
+            <button
+              className={drawerCloseClassName}
+              type="button"
+              onClick={() => {
+                blurActiveElement();
+                vm.setDeleteTargetNodeId("");
+                vm.setDeleteTargetGroupId("");
+              }}
+              aria-label="关闭"
+            >
+              <CloseIcon />
+            </button>
+          </div>
+          {vm.deleteTargetGroupId ? (
+            <p className={modalSublineClassName}>
+              将删除并行组 <code>{deleteTargetGroup?.id ?? vm.deleteTargetGroupId}</code>
+              {deleteTargetGroup ? `，组内成员: ${deleteTargetGroup.members.join(", ")}` : ""}。组成员会恢复为普通节点，汇聚边会被清理。
+            </p>
+          ) : (
+            <p className={modalSublineClassName}>
+              将删除节点 <code>{deleteTargetNode?.id ?? vm.deleteTargetNodeId}</code>
+              {deleteTargetNode ? `（${deleteTargetNode.title}）` : ""}，并清理其他节点对它的依赖。此操作不可撤销。
+            </p>
+          )}
+          <button
+            className={actionButtonClassName}
+            type="button"
+            onClick={() =>
+              void (vm.deleteTargetGroupId
+                ? vm.deleteParallelGroupById(vm.deleteTargetGroupId)
+                : vm.deleteTemplateNodeById(vm.deleteTargetNodeId))
+            }
+            disabled={(!vm.deleteTargetNodeId && !vm.deleteTargetGroupId) || vm.isDeletingNode}
+          >
+            {vm.isDeletingNode ? "删除中..." : "确认删除"}
+          </button>
+        </div>
+      </aside>
+
+      <div
+        className={`${modalMaskBaseClassName} ${Boolean(vm.agentOutputModalAgentId) ? modalMaskOpenClassName : modalMaskClosedClassName}`}
+        onClick={() => {
+          blurActiveElement();
+          vm.setAgentOutputModalAgentId("");
+        }}
+        aria-hidden={!vm.agentOutputModalAgentId}
+      />
+      <aside
+        className={`${modalFrameBaseClassName} ${vm.agentOutputModalAgentId ? modalFrameOpenClassName : modalFrameClosedClassName}`}
+        aria-hidden={!vm.agentOutputModalAgentId}
+        onClick={() => {
+          blurActiveElement();
+          vm.setAgentOutputModalAgentId("");
+        }}
+      >
+        <div className={outputModalPanelClassName} onClick={(event) => event.stopPropagation()}>
+          <div className={panelHeaderClassName}>
+            <h2>最终输出内容</h2>
+            <button
+              className={drawerCloseClassName}
+              type="button"
+              onClick={() => {
+                blurActiveElement();
+                vm.setAgentOutputModalAgentId("");
+              }}
+              aria-label="关闭"
+            >
+              <CloseIcon />
+            </button>
+          </div>
+          <div className={`${monoClassName} flex items-center justify-between gap-3 overflow-hidden border border-(--line) bg-[rgba(15,23,29,0.6)] px-2.5 py-2 text-xs text-(--muted)`}>
+            <span>Agent: {outputAgent?.id ?? vm.agentOutputModalAgentId}</span>
+            <span>{outputAgent?.outputRunId ?? "run:unknown"}</span>
+          </div>
+          <div className="min-h-26.25 max-h-[calc(90vh-160px)] overflow-auto border border-(--line) bg-[#0f171d] max-[760px]:h-full max-[760px]:min-h-0 max-[760px]:max-h-none">
+            <pre className="m-0 whitespace-pre-wrap wrap-break-word p-3 font-[JetBrains_Mono,monospace] text-[13px] leading-[1.45] text-(--text)">{outputAgent?.outputContent || "暂无最终输出内容"}</pre>
+          </div>
+        </div>
+      </aside>
+
+      <SessionModal
+        open={vm.sessionModalOpen}
+        selectedAgentId={vm.selectedAgentId}
+        selectedSessionId={vm.selectedSessionId}
+        sessions={vm.filteredSessionsForSelectedAgent}
+        sendMode={vm.sendMode}
+        sessionMessage={vm.sessionMessage}
+        onClose={() => {
+          blurActiveElement();
+          vm.setSessionModalOpen(false);
+        }}
+        onChangeSelectedSessionId={vm.setSelectedSessionId}
+        onChangeSendMode={vm.setSendMode}
+        onChangeMessage={vm.setSessionMessage}
+        onSendMessage={vm.sendSessionMessage}
+      />
+
+      <ModalLayer
+        open={Boolean(pluginModalPipelineId)}
+        onClose={() => {
+          blurActiveElement();
+          setPluginModalPipelineId(null);
+        }}
+        panelClassName={smallModalPanelClassName}
+        ariaLabel="插件配置"
+      >
+        {pluginModalPipelineId ? (
+          <PipelinePluginModal
+            pipelineId={pluginModalPipelineId}
+            pluginState={vm.getPipelinePlugins(pluginModalPipelineId)}
+            onClose={() => {
+              blurActiveElement();
+              setPluginModalPipelineId(null);
+            }}
+            onSave={(plugin) => {
+              void vm.savePipelinePlugins(pluginModalPipelineId, plugin);
+            }}
+          />
+        ) : null}
+      </ModalLayer>
+
+      <ModalLayer
+        open={workflowJsonModalOpen}
+        onClose={() => {
+          blurActiveElement();
+          setWorkflowJsonModalOpen(false);
+        }}
+        panelClassName={workflowModalPanelClassName}
+        ariaLabel="编辑工作流 JSON"
+      >
+          <div className={panelHeaderClassName}>
+            <h2>Workflow JSON（{vm.activePipelineTitle || vm.activePipelineId || "-"}）</h2>
+            <button
+              className={drawerCloseClassName}
+              type="button"
+              onClick={() => {
+                blurActiveElement();
+                setWorkflowJsonModalOpen(false);
+              }}
+              aria-label="关闭"
+            >
+              <CloseIcon />
+            </button>
+          </div>
+          <p className={`${modalSublineClassName} ${monoClassName}`}>{vm.workflow ? `nodes=${vm.workflow.nodes.length}` : "-"}</p>
+          <div className={fieldClassName}>
+            <label className={fieldLabelClassName}>可编辑整份 workflow（含 edges/groups/scheduler）</label>
+            <textarea
+              className={controlTextAreaMonoClassName}
+              rows={18}
+              value={vm.workflowJsonDraft}
+              onChange={(event) => vm.setWorkflowJsonDraft(event.target.value)}
+              placeholder="workflow json"
+            />
+          </div>
+          <div className={actionRowClassName}>
+            <button className={actionButtonClassName} type="button" onClick={() => void vm.saveWorkflowJsonDraft()} disabled={vm.isSavingWorkflowJson}>
+              {vm.isSavingWorkflowJson ? "保存中..." : "保存 Workflow JSON"}
+            </button>
+          </div>
+      </ModalLayer>
+
+      <ModalLayer
+        open={dispatchBoardOpen}
+        onClose={() => {
+          blurActiveElement();
+          setDispatchBoardOpen(false);
+        }}
+        panelClassName="overflow-auto border border-[var(--line)] bg-[linear-gradient(180deg,var(--panel)_0%,var(--panel-2)_100%)] p-0 max-h-[88vh] w-[min(760px,94vw)]"
+        ariaLabel="流水线调度管理"
+      >
+        <div className="flex items-center justify-between px-3 pt-3 pb-2 border-b border-[var(--line)]">
+          <h2 className="text-sm font-semibold text-[var(--text)]">流水线调度管理</h2>
+          <button
+            className={drawerCloseClassName}
+            type="button"
+            onClick={() => {
+              blurActiveElement();
+              setDispatchBoardOpen(false);
+            }}
+            aria-label="关闭"
+          >
+            <CloseIcon />
+          </button>
+        </div>
+        <PipelineDispatchBoard
+          pipelines={vm.pipelineList.map((p) => ({ id: p.id, title: p.title }))}
+        />
+      </ModalLayer>
+    </div>
+  );
+}
