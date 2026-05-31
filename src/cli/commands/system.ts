@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import type { CliCommandHandler, CliRouteDefinition } from "../types";
 
 export const systemSnapshotCommand: CliCommandHandler = async (_input, ctx) => {
@@ -9,12 +10,12 @@ export const systemRoutes: CliRouteDefinition[] = [
   {
     key: "system.snapshot",
     path: ["system", "snapshot"],
-    description: "输出系统全局快照",
+    description: t("system.snapshot.description"),
     handler: systemSnapshotCommand,
     bootstrap: { gateway: "warmup" },
     help: {
       usage: "taskmeld system snapshot [--format <json|md>]",
-      summary: "输出系统全局快照",
+      summary: t("system.snapshot.summary"),
     },
   },
 ];

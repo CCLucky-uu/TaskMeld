@@ -1,4 +1,5 @@
 import { CliError, assertBooleanFlag, assertRequiredArg } from "../errors";
+import { t } from "../i18n";
 import type { CliCommandHandler, CliRouteDefinition } from "../types";
 
 const assertSchedulerMode = (value: string | boolean | undefined): "auto" | "manual" => {
@@ -61,25 +62,25 @@ export const schedulerRoutes: CliRouteDefinition[] = [
   {
     key: "scheduler.toggle",
     path: ["scheduler", "toggle"],
-    description: "启用或停用调度器",
+    description: t("scheduler.toggle.description"),
     handler: schedulerToggleCommand,
     help: {
       usage: "taskmeld scheduler toggle <pipelineId> --enabled <true|false> [--format <json|md>]",
-      args: [{ name: "pipelineId", required: true, description: "流水线 ID" }],
-      options: [{ flags: ["--enabled"], valueName: "true|false", required: true, description: "是否启用调度器" }],
-      notes: ["<pipelineId> 与 --enabled 均为必填控制项。"],
+      args: [{ name: "pipelineId", required: true, description: t("scheduler.toggle.argPipelineId") }],
+      options: [{ flags: ["--enabled"], valueName: "true|false", required: true, description: t("scheduler.toggle.optEnabled") }],
+      notes: [t("scheduler.toggle.note")],
     },
   },
   {
     key: "scheduler.mode",
     path: ["scheduler", "mode"],
-    description: "切换调度器模式",
+    description: t("scheduler.mode.description"),
     handler: schedulerModeCommand,
     help: {
       usage: "taskmeld scheduler mode <pipelineId> --mode <auto|manual> [--format <json|md>]",
-      args: [{ name: "pipelineId", required: true, description: "流水线 ID" }],
-      options: [{ flags: ["--mode"], valueName: "auto|manual", required: true, description: "调度器模式" }],
-      notes: ["<pipelineId> 与 --mode 均为必填控制项。"],
+      args: [{ name: "pipelineId", required: true, description: t("scheduler.mode.argPipelineId") }],
+      options: [{ flags: ["--mode"], valueName: "auto|manual", required: true, description: t("scheduler.mode.optMode") }],
+      notes: [t("scheduler.mode.note")],
     },
   },
 ];

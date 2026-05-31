@@ -1,4 +1,5 @@
 import { CliError, assertRequiredArg } from "../../errors";
+import { t } from "../../i18n";
 import type { CliCommandHandler, CliRouteDefinition } from "../../types";
 import type { CliPipelineResult, CliPipelineResultNode } from "../../types";
 
@@ -186,17 +187,17 @@ export const pipelineResultRoutes: CliRouteDefinition[] = [
   {
     key: "pipeline.result",
     path: ["pipeline", "result"],
-    description: "输出流水线运行结果",
+    description: t("pipeline.result.description"),
     handler: pipelineResultCommand,
     help: {
       usage: "taskmeld pipeline result <pipelineId> [--node <nodeId>] [--logs] [--format <json|md>]",
-      args: [{ name: "pipelineId", required: true, description: "流水线 ID" }],
+      args: [{ name: "pipelineId", required: true, description: t("pipeline.result.argPipelineId") }],
       options: [
-        { flags: ["--node"], valueName: "nodeId", description: "过滤到指定节点" },
-        { flags: ["--logs"], description: "同时展示处理日志" },
-        { flags: ["--format"], valueName: "json|md", description: "输出格式，默认 md" },
+        { flags: ["--node"], valueName: "nodeId", description: t("pipeline.result.optNode") },
+        { flags: ["--logs"], description: t("pipeline.result.optLogs") },
+        { flags: ["--format"], valueName: "json|md", description: t("pipeline.result.optFormat") },
       ],
-      summary: "输出流水线运行后各节点的产物内容",
+      summary: t("pipeline.result.summary"),
     },
   },
 ];
