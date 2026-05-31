@@ -10,5 +10,6 @@
   "agentEnd": "结束工作",
   "agentDetail": "工作细节{{suffix}} ({{count}} 条)",
   "collapsed": "已折叠",
-  "inProgress": "进行中"
+  "inProgress": "进行中",
+  "close": "关闭"
 }

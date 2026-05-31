@@ -147,7 +147,7 @@ export default function App() {
         href="#main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-(--z-tooltip) focus:inline-flex focus:h-10 focus:items-center focus:border focus:border-[var(--live)] focus:bg-[var(--panel)] focus:px-4 focus:text-sm focus:font-medium focus:text-[var(--live)] focus:shadow-lg focus:outline-none"
       >
-        {t("nav.skipToContent")}
+        {t("skipToContent")}
       </a>
       {content}
     </>

@@ -1,4 +1,5 @@
 import { layout, prepare } from "@chenglou/pretext";
+import i18next from "i18next";
 
 const TEXT_FONT = '13px "JetBrains Mono", monospace';
 const TEXT_LINE_HEIGHT = 19;
@@ -27,7 +28,7 @@ export const predictRunLogRowHeight = (text: string, width: number) => {
 };
 
 export const stringifyRunLogDetail = (detail: unknown) => {
-  if (detail === undefined) return "无 detail";
+  if (detail === undefined) return i18next.t("log:noDetail");
   if (typeof detail === "string") return detail;
   try {
     return JSON.stringify(detail, null, 2);

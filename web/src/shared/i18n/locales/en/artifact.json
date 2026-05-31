@@ -30,5 +30,8 @@
   "pipeline": "Pipeline",
   "node": "Node",
   "exportFailed": "Failed to export. Invalid filter conditions.",
-  "dateRangeInvalid": "Invalid date range. Check the start and end dates."
+  "dateRangeInvalid": "Invalid date range. Check the start and end dates.",
+  "recentDays": "Last {{count}} days",
+  "nodeSummary": "{{count}} nodes",
+  "close": "Close"
 }

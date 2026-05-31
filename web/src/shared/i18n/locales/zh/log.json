@@ -18,5 +18,15 @@
   "keywordSearch": "关键字检索",
   "selectToViewDetailCenter": "选择中间日志后查看 detail",
   "runLog": "运行日志",
-  "detail": "详情"
+  "detail": "详情",
+  "levelInfo": "信息",
+  "levelWarn": "警告",
+  "levelError": "错误",
+  "sortNewestFirst": "最新在前",
+  "sortOldestFirst": "最早在前",
+  "noDetail": "无 detail",
+  "close": "关闭",
+  "loadingMore": "加载中…",
+  "loadMore": "加载更多",
+  "renderedStatus": "rendered {{rendered}} / loaded {{loaded}} / total {{total}}"
 }

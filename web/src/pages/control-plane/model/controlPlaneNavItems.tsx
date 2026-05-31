@@ -7,10 +7,10 @@ import WorkflowIcon from "@iconify-react/lucide/workflow";
 import type { NavItem } from "../../../widgets/nav-panel/model/navItem";
 
 export const controlPlaneNavItems: NavItem[] = [
-  { key: "overview", label: "nav.overview", icon: LayoutDashboardIcon },
-  { key: "agents", label: "nav.agents", icon: BotIcon },
-  { key: "pipeline", label: "nav.pipeline", icon: WorkflowIcon },
-  { key: "pipelineRuns", label: "nav.pipelineRuns", icon: HistoryIcon },
-  { key: "artifacts", label: "nav.artifacts", icon: BoxesIcon },
-  { key: "logs", label: "nav.logs", icon: FileTextIcon },
+  { key: "overview", label: "nav:overview", icon: LayoutDashboardIcon },
+  { key: "agents", label: "nav:agents", icon: BotIcon },
+  { key: "pipeline", label: "nav:pipeline", icon: WorkflowIcon },
+  { key: "pipelineRuns", label: "nav:pipelineRuns", icon: HistoryIcon },
+  { key: "artifacts", label: "nav:artifacts", icon: BoxesIcon },
+  { key: "logs", label: "nav:logs", icon: FileTextIcon },
 ];

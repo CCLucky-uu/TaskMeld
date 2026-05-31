@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import i18next from "i18next";
 import {
   fetchStoredArtifactsExport,
   fetchStoredArtifactContent,
@@ -51,7 +52,7 @@ export const useArtifactBoard = (pipelineOptions: ArtifactPipelineOption[]) => {
   const loadArtifacts = async (filters: ArtifactFilterState) => {
     const query = resolveArtifactQuery(filters);
     if (!query) {
-      setError("自定义日期范围无效，请检查开始/结束日期。");
+      setError(i18next.t("artifact:dateRangeInvalid"));
       return;
     }
     setLoading(true);
@@ -96,7 +97,7 @@ export const useArtifactBoard = (pipelineOptions: ArtifactPipelineOption[]) => {
   const exportFilteredArtifacts = async () => {
     const query = resolveArtifactQuery(appliedFilters);
     if (!query) {
-      setError("导出失败：当前筛选条件无效。");
+      setError(i18next.t("artifact:exportFailed"));
       return;
     }
     setExporting(true);

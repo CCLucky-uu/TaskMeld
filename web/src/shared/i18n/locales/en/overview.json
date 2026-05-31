@@ -18,5 +18,12 @@
   "updateTime": "Updated {{time}}",
   "enterPipeline": "View Pipeline",
   "working": "Working...",
-  "startWork": "Start"
+  "startWork": "Start",
+  "statusRunning": "Running",
+  "statusFailed": "Failed",
+  "statusBlocked": "Blocked",
+  "statusWaiting": "Waiting",
+  "statusStopped": "Stopped",
+  "statusSuccess": "Completed",
+  "statusIdle": "Idle"
 }

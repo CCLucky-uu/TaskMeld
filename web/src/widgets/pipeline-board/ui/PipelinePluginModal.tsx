@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { WorkflowPlugins } from "../../../entities/pipeline";
 import { CloseIcon } from "../../../shared/ui";
 import { actionRowClassName, panelHeaderClassName } from "../../../shared/ui/panelClasses";
@@ -28,28 +29,29 @@ export function PipelinePluginModal({
   onClose,
   onSave,
 }: PipelinePluginModalProps) {
+  const { t } = useTranslation(["pipeline", "modal"]);
   const [draft, setDraft] = useState<WorkflowPlugins>(pluginState);
 
   return (
     <div>
       <div className={panelHeaderClassName}>
-        <h2>插件配置（DAG-{pipelineId}）</h2>
+        <h2>{t("pluginConfigTitle", { pipelineId })}</h2>
         <button
           className={drawerCloseClassName}
           type="button"
           onClick={onClose}
-          aria-label="关闭"
+          aria-label={t("modal:close")}
         >
           <CloseIcon />
         </button>
       </div>
       <p className={`${modalSublineClassName} ${monoClassName}`}>
-        所有流水线共享同一套插件能力；这里仅配置当前流水线要不要打开对应插件。
+        {t("pluginSharedNote")}
       </p>
       <label className="flex items-center justify-between gap-3 border-y border-(--line) bg-transparent p-3 text-sm text-(--text)">
         <div className="grid gap-1">
-          <strong>远程关键词池批跑</strong>
-          <span className={`${monoClassName} text-xs text-(--muted)`}>启用后会在 DAG-{pipelineId} 卡片中显示该插件面板。</span>
+          <strong>{t("remoteBatchPlugin")}</strong>
+          <span className={`${monoClassName} text-xs text-(--muted)`}>{t("remoteBatchPluginHint", { pipelineId })}</span>
         </div>
         <input
           className={toggleClassName}
@@ -68,7 +70,7 @@ export function PipelinePluginModal({
       {draft.remoteBatch.enabled ? (
         <div className="grid gap-3 border-b border-(--line) bg-transparent p-3">
           <div className={fieldClassName}>
-            <label className={fieldLabelClassName}>远程关键词池地址</label>
+            <label className={fieldLabelClassName}>{t("remoteUrl")}</label>
             <input
               className={controlInputElevatedMonoClassName}
               value={draft.remoteBatch.url}
@@ -86,7 +88,7 @@ export function PipelinePluginModal({
           </div>
           <div className="grid grid-cols-2 gap-3 max-[760px]:grid-cols-1">
             <div className={fieldClassName}>
-              <label className={fieldLabelClassName}>每批可跑个数</label>
+              <label className={fieldLabelClassName}>{t("batchSize")}</label>
               <input
                 className={controlInputElevatedMonoClassName}
                 value={String(draft.remoteBatch.batchSize)}
@@ -103,7 +105,7 @@ export function PipelinePluginModal({
               />
             </div>
             <div className={fieldClassName}>
-              <label className={fieldLabelClassName}>默认起始批次</label>
+              <label className={fieldLabelClassName}>{t("startBatch")}</label>
               <input
                 className={controlInputElevatedMonoClassName}
                 value={String(draft.remoteBatch.startBatch)}
@@ -121,7 +123,7 @@ export function PipelinePluginModal({
             </div>
           </div>
           <div className={fieldClassName}>
-            <label className={fieldLabelClassName}>跑哪个字段</label>
+            <label className={fieldLabelClassName}>{t("sourceField")}</label>
             <input
               className={controlInputElevatedMonoClassName}
               value={draft.remoteBatch.sourceField}
@@ -133,19 +135,19 @@ export function PipelinePluginModal({
                     sourceField: event.target.value,
                   },
                 }))}
-              placeholder="例如 list30 或 data.list30"
+              placeholder={t("sourceFieldPlaceholder")}
               spellCheck={false}
             />
             <small className={`${monoClassName} mt-1.5 block text-xs text-(--muted)`}>
-              支持点路径；取不到时后端会退回默认字段探测。
+              {t("sourceFieldHint")}
             </small>
           </div>
         </div>
       ) : null}
       <label className="mt-3 flex items-center justify-between gap-3 border-y border-(--line) bg-transparent p-3 text-sm text-(--text)">
         <div className="grid gap-1">
-          <strong>调度器</strong>
-          <span className={`${monoClassName} text-xs text-(--muted)`}>启用后显示调度器卡片，并允许自动/手动调度。</span>
+          <strong>{t("schedulerPlugin")}</strong>
+          <span className={`${monoClassName} text-xs text-(--muted)`}>{t("schedulerPluginHint")}</span>
         </div>
         <input
           className={toggleClassName}
@@ -166,7 +168,7 @@ export function PipelinePluginModal({
           type="button"
           onClick={() => onSave(draft)}
         >
-          保存插件配置
+          {t("savePluginConfig")}
         </button>
       </div>
     </div>

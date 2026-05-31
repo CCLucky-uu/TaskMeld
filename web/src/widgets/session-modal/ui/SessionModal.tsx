@@ -1,4 +1,5 @@
 import { FormEvent, KeyboardEvent as ReactKeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   AgentCoreFileItem,
   fetchAgentCoreFileContent,
@@ -58,6 +59,7 @@ export function SessionModal({
   onChangeMessage,
   onSendMessage,
 }: SessionModalProps) {
+  const { t } = useTranslation("session");
   const monoClassName = "font-[JetBrains_Mono,monospace]";
   const actionButtonClassName =
     "cursor-pointer border border-[var(--live-25)] bg-transparent px-[10px] py-2 font-semibold text-[var(--live)] hover:bg-[rgba(50,215,186,0.1)]";
@@ -351,15 +353,16 @@ export function SessionModal({
   }, [canLoadFiles, selectedAgentId, selectedFileName]);
 
   const filePaneText = useMemo(() => {
-    if (!selectedAgentId) return "未选择智能体";
-    if (coreFilesLoading) return "核心文件加载中...";
-    if (coreFilesError) return `核心文件加载失败: ${coreFilesError}`;
-    if (coreFiles.length === 0) return "该智能体暂无核心文件";
-    if (!selectedFileName) return "请选择左侧文件";
-    if (fileContentLoading) return "文件内容加载中...";
-    if (fileContentError) return `文件加载失败: ${fileContentError}`;
-    return fileContent || "文件为空";
+    if (!selectedAgentId) return t("noAgentSelected");
+    if (coreFilesLoading) return t("coreFilesLoading");
+    if (coreFilesError) return t("coreFilesLoadFailed", { error: coreFilesError });
+    if (coreFiles.length === 0) return t("noCoreFiles");
+    if (!selectedFileName) return t("selectFile");
+    if (fileContentLoading) return t("fileContentLoading");
+    if (fileContentError) return t("fileLoadFailed", { error: fileContentError });
+    return fileContent || t("fileEmpty");
   }, [
+    t,
     selectedAgentId,
     coreFilesLoading,
     coreFilesError,
@@ -423,12 +426,12 @@ export function SessionModal({
     !fileContentError;
 
   const historyStatusText = useMemo(() => {
-    if (!selectedSessionId) return "请选择会话";
-    if (historyLoading) return "会话加载中...";
-    if (historyError) return `会话加载失败: ${historyError}`;
-    if (history.length === 0) return "暂无会话消息";
+    if (!selectedSessionId) return t("selectSession");
+    if (historyLoading) return t("sessionLoading");
+    if (historyError) return t("sessionLoadFailed", { error: historyError });
+    if (history.length === 0) return t("noMessages");
     return "";
-  }, [selectedSessionId, historyLoading, historyError, history.length]);
+  }, [t, selectedSessionId, historyLoading, historyError, history.length]);
 
   const mergedHistory = useMemo(() => mergeHistoryEntries(history), [history]);
 
@@ -502,8 +505,8 @@ export function SessionModal({
       >
         <div className={`${modalPanelBaseClassName} grid h-[min(88vh,calc(100vh-24px))] max-h-[88vh] w-[min(1320px,98vw)] grid-rows-[auto_minmax(0,1fr)] overflow-hidden p-0 max-[760px]:h-screen max-[760px]:max-h-screen max-[760px]:w-screen`} onClick={(event) => event.stopPropagation()}>
           <div className={`${panelHeaderClassName} px-3 pt-3`}>
-            <h2>会话工具</h2>
-            <button className={drawerCloseClassName} type="button" onClick={onClose} aria-label="关闭会话弹窗" title="关闭">
+            <h2>{t("sessionTools")}</h2>
+            <button className={drawerCloseClassName} type="button" onClick={onClose} aria-label={t("closeSessionModal")} title={t("cancel")}>
               <CloseIcon />
             </button>
           </div>
@@ -514,14 +517,14 @@ export function SessionModal({
                 className={`w-full border px-2 py-[7px] text-left transition-[border-color,background-color,color] ${activePanel === "session" ? "border-[var(--live)] bg-[rgba(50,215,186,0.08)] text-[var(--live)]" : "border-[var(--line)] bg-transparent text-[var(--text)] hover:border-[#2a3c4b] hover:bg-[rgba(142,163,179,0.08)]"}`}
                 onClick={() => setActivePanel("session")}
               >
-                会话
+                {t("session")}
               </button>
               <div className="mt-1 px-0.5 py-1 text-xs text-[var(--muted)]">
-                核心文件
+                {t("coreFiles")}
               </div>
               <div className="mt-0.5 grid gap-1.5 pt-2">
-                {coreFilesLoading ? <p>加载中...</p> : null}
-                {!coreFilesLoading && coreFiles.length === 0 ? <p>暂无文件</p> : null}
+                {coreFilesLoading ? <p>{t("loading")}</p> : null}
+                {!coreFilesLoading && coreFiles.length === 0 ? <p>{t("noFiles")}</p> : null}
                 {coreFiles.map((file) => (
                   <button
                     key={file.name}
@@ -546,32 +549,32 @@ export function SessionModal({
                   <div className="px-3 pb-2">
                     <div className="grid gap-[10px] grid-cols-[minmax(0,1fr)_minmax(220px,34%)] max-[760px]:grid-cols-1">
                       <div className="grid gap-1.5">
-                        <label className="block text-xs text-[var(--muted)]">会话 ID</label>
+                        <label className="block text-xs text-[var(--muted)]">{t("sessionId")}</label>
                         <InlineSelect
                           value={selectedSessionId}
                           options={
                             hasSessions
                               ? sessions.map((session) => ({ value: session.id, label: session.id }))
-                              : [{ value: "", label: "暂无可用会话" }]
+                              : [{ value: "", label: t("noSessions") }]
                           }
                           onChange={onChangeSelectedSessionId}
                           triggerClassName={controlInputMonoClassName}
                           disabled={!hasSessions}
-                          ariaLabel="选择会话 ID"
+                          ariaLabel={t("sessionId")}
                         />
                       </div>
                       <div className="grid gap-1.5">
-                        <label className="block text-xs text-[var(--muted)]">发送模式</label>
+                        <label className="block text-xs text-[var(--muted)]">{t("sendMode")}</label>
                         <InlineSelect
                           value={sendMode}
                           options={[
-                            { value: "auto", label: "自动选择（推荐）" },
-                            { value: "chat", label: "仅 chat.send" },
-                            { value: "sessions", label: "仅 sessions.send" },
+                            { value: "auto", label: t("auto") },
+                            { value: "chat", label: t("chatOnly") },
+                            { value: "sessions", label: t("sessionsOnly") },
                           ]}
                           onChange={(next) => onChangeSendMode(next as SendMode)}
                           triggerClassName={controlInputMonoClassName}
-                          ariaLabel="选择发送模式"
+                          ariaLabel={t("sendMode")}
                         />
                       </div>
                     </div>
@@ -609,7 +612,7 @@ export function SessionModal({
                     </div>
                     {!historyStatusText && showScrollToBottom ? (
                       <button className="absolute bottom-3 left-1/2 z-[2] -translate-x-1/2 cursor-pointer border border-[var(--line)] bg-[rgba(15,23,29,0.92)] px-[10px] py-1 text-xs text-[var(--text)] hover:border-[var(--live)] hover:text-[var(--live)]" type="button" onClick={() => scrollHistoryToBottom("smooth")}>
-                        回到底部
+                        {t("scrollToBottom")}
                       </button>
                     ) : null}
                   </div>
@@ -621,11 +624,11 @@ export function SessionModal({
                         onChange={(e) => onChangeMessage(e.target.value)}
                         onKeyDown={handleComposerKeyDown}
                         rows={3}
-                        placeholder={hasSessions ? "输入发送给会话的文本" : "请先在系统中创建会话"}
+                        placeholder={hasSessions ? t("inputPlaceholder") : t("inputPlaceholderNoSession")}
                         className={`${controlTextAreaMonoClassName} block min-h-[86px] max-h-[220px] resize-none pb-8 pr-11`}
                       />
                       <button className={`${actionButtonClassName} absolute right-[10px] bottom-[10px] m-0 inline-flex h-7 w-7 min-w-7 items-center justify-center p-0`} type="submit" disabled={!hasSessions || !selectedSessionId}>
-                        <span className="absolute h-px w-px overflow-hidden whitespace-nowrap border-0 p-0 [-webkit-clip-path:inset(50%)] [clip:rect(0,0,0,0)]">发送消息</span>
+                        <span className="absolute h-px w-px overflow-hidden whitespace-nowrap border-0 p-0 [-webkit-clip-path:inset(50%)] [clip:rect(0,0,0,0)]">{t("sendMessage")}</span>
                         <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false">
                           <path
                             d="M4 12h12m0 0-4-4m4 4-4 4M4 5v6"

@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { TimelineItem } from "../../../entities/timeline";
 import { CloseIcon } from "../../../shared/ui";
 import { panelHeaderClassName } from "../../../shared/ui/panelClasses";
@@ -78,8 +80,9 @@ const stringifyTimelineDetail = (item: Pick<TimelineItem, "text" | "detail">) =>
 const buildCollapsedEntry = (
   agentId: string,
   items: TimelineItem[],
-  suffix: string,
+  suffixKey: string,
   idSuffix: string,
+  t: TFunction<"timeline">,
 ): CollapsedTimelineEntry => ({
   id: `collapsed:${agentId}:${idSuffix}`,
   ts: items[0]?.ts ?? "-",
@@ -88,7 +91,7 @@ const buildCollapsedEntry = (
     : items.some((entry) => entry.level === "warn")
       ? "warn"
       : "info",
-  text: `Agent ${agentId} 工作细节${suffix} (${items.length} 条)`,
+  text: t("agentDetail", { suffix: t(suffixKey), count: items.length }),
   detail: items.map((entry) => `[${entry.ts}] ${entry.text}\n${stringifyTimelineDetail(entry)}`).join("\n\n"),
   kind: "collapsed",
 });
@@ -164,13 +167,13 @@ const getTimelineAgentMeta = (item: TimelineItem): TimelineAgentMeta => {
   return { agentId, runId, kind: "detail" };
 };
 
-const buildLifecycleDisplayInfo = (item: TimelineItem): DisplayLifecycleInfo => {
+const buildLifecycleDisplayInfo = (item: TimelineItem, t: TFunction<"timeline">): DisplayLifecycleInfo => {
   const meta = getTimelineAgentMeta(item);
   if (!meta.agentId || (meta.kind !== "start" && meta.kind !== "end")) {
     return null;
   }
 
-  const lifecycleLabel = meta.kind === "start" ? "开始工作" : "结束工作";
+  const lifecycleLabel = t(meta.kind === "start" ? "agentStart" : "agentEnd");
   const detailSource = isRecord(item.detail) ? getString(item.detail.source) : null;
   const text = AGENT_START_PATTERN.test(item.text) || AGENT_END_PATTERN.test(item.text)
     ? item.text
@@ -199,7 +202,7 @@ const isSameAgentRun = (meta: TimelineAgentMeta, agentId: string, runId: string 
   return meta.runId === runId;
 };
 
-const buildDisplayTimeline = (timeline: TimelineItem[]): DisplayTimelineEntry[] => {
+const buildDisplayTimeline = (timeline: TimelineItem[], t: TFunction<"timeline">): DisplayTimelineEntry[] => {
   const chronological = [...timeline].reverse();
   const hiddenIds = new Set<string>();
   const startIndexesByAgentRun = new Map<string, number[]>();
@@ -242,7 +245,7 @@ const buildDisplayTimeline = (timeline: TimelineItem[]): DisplayTimelineEntry[] 
     }
     collapsedByStartIndex.set(
       startIndex,
-      buildCollapsedEntry(agentId, hiddenItems, "已折叠", item.id),
+      buildCollapsedEntry(agentId, hiddenItems, "collapsed", item.id, t),
     );
   }
 
@@ -265,7 +268,7 @@ const buildDisplayTimeline = (timeline: TimelineItem[]): DisplayTimelineEntry[] 
       const lastHidden = hiddenItems[hiddenItems.length - 1];
       collapsedByStartIndex.set(
         startIndex,
-        buildCollapsedEntry(agentId, hiddenItems, "进行中", `open:${lastHidden.id}`),
+        buildCollapsedEntry(agentId, hiddenItems, "inProgress", `open:${lastHidden.id}`, t),
       );
     }
   }
@@ -273,7 +276,7 @@ const buildDisplayTimeline = (timeline: TimelineItem[]): DisplayTimelineEntry[] 
   const displayChronological: DisplayTimelineEntry[] = [];
   for (let index = 0; index < chronological.length; index += 1) {
     const item = chronological[index];
-    const lifecycleDisplay = buildLifecycleDisplayInfo(item);
+    const lifecycleDisplay = buildLifecycleDisplayInfo(item, t);
     if (!hiddenIds.has(item.id)) {
       if (lifecycleDisplay) {
         if (!lifecycleDedupeKeys.has(lifecycleDisplay.dedupeKey)) {
@@ -294,7 +297,8 @@ const buildDisplayTimeline = (timeline: TimelineItem[]): DisplayTimelineEntry[] 
 };
 
 export function TimelineCard({ timeline, onOpenRunLog }: TimelineCardProps) {
-  const displayTimeline = useMemo(() => buildDisplayTimeline(timeline), [timeline]);
+  const { t } = useTranslation("timeline");
+  const displayTimeline = useMemo(() => buildDisplayTimeline(timeline, t), [timeline, t]);
   const [selectedTimelineId, setSelectedTimelineId] = useState("");
   const selectedTimeline = useMemo(
     () => displayTimeline.find((item) => item.id === selectedTimelineId) ?? null,
@@ -327,12 +331,12 @@ export function TimelineCard({ timeline, onOpenRunLog }: TimelineCardProps) {
     <>
       <section data-runtime-card className="grid min-w-0 min-h-0 grid-rows-[auto_1fr]">
         <div className={panelHeaderClassName}>
-          <h2>实时时间线</h2>
+          <h2>{t("timeline")}</h2>
           <div className="flex flex-wrap items-center gap-2.5">
-            <span className={monoClassName}>显示 {displayTimeline.length} 条 / 原始 {timeline.length} 条</span>
+            <span className={monoClassName}>{t("displayCount", { displayed: displayTimeline.length, total: timeline.length })}</span>
             {onOpenRunLog ? (
               <button className={actionButtonClassName} type="button" onClick={onOpenRunLog}>
-                查看完整日志
+                {t("viewFullLog")}
               </button>
             ) : null}
           </div>
@@ -364,8 +368,8 @@ export function TimelineCard({ timeline, onOpenRunLog }: TimelineCardProps) {
       >
         <div className={`${modalPanelBaseClassName} grid w-[min(760px,94vw)] gap-2.5 max-[760px]:h-screen max-[760px]:max-h-screen max-[760px]:w-screen`} onClick={(event) => event.stopPropagation()}>
           <div className={panelHeaderClassName}>
-            <h2>事件详情</h2>
-            <button className={drawerCloseClassName} type="button" onClick={() => setSelectedTimelineId("")} aria-label="关闭">
+            <h2>{t("eventDetail")}</h2>
+            <button className={drawerCloseClassName} type="button" onClick={() => setSelectedTimelineId("")} aria-label={t("close")}>
               <CloseIcon />
             </button>
           </div>
@@ -374,7 +378,7 @@ export function TimelineCard({ timeline, onOpenRunLog }: TimelineCardProps) {
               <div className={`${monoClassName} flex items-center justify-between gap-2.5 border border-(--line) px-2.5 py-2 text-xs`}>
                 <span>{selectedTimeline.ts}</span>
                 <span className={`${levelTagBaseClassName} ${levelTagToneClassName[selectedTimeline.level]}`}>
-                  {selectedTimeline.level === "error" ? "错误" : selectedTimeline.level === "warn" ? "警告" : "信息"}
+                  {selectedTimeline.level === "error" ? t("error") : selectedTimeline.level === "warn" ? t("warning") : t("info")}
                 </span>
               </div>
               <div className="max-h-[min(60vh,540px)] overflow-auto border border-(--line) bg-[#0f171d] max-[760px]:h-full max-[760px]:max-h-none">

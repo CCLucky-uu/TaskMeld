@@ -41,5 +41,6 @@
   "sourceFieldHint": "支持点路径；取不到时后端会退回默认字段探测。",
   "schedulerPlugin": "调度器",
   "schedulerPluginHint": "启用后显示调度器卡片，并允许自动/手动调度。",
-  "savePluginConfig": "保存插件配置"
+  "savePluginConfig": "保存插件配置",
+  "schedulerPanel": "调度面板"
 }

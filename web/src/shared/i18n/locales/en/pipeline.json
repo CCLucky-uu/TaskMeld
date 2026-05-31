@@ -41,5 +41,6 @@
   "sourceFieldHint": "Supports dot paths; falls back to default field detection if not found.",
   "schedulerPlugin": "Scheduler",
   "schedulerPluginHint": "When enabled, shows the scheduler card and allows auto/manual scheduling.",
-  "savePluginConfig": "Save Plugin Config"
+  "savePluginConfig": "Save Plugin Config",
+  "schedulerPanel": "Scheduler Panel"
 }

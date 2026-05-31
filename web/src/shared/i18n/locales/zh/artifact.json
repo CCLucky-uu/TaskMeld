@@ -30,5 +30,8 @@
   "pipeline": "流水线",
   "node": "节点",
   "exportFailed": "导出失败：当前筛选条件无效。",
-  "dateRangeInvalid": "自定义日期范围无效，请检查开始/结束日期。"
+  "dateRangeInvalid": "自定义日期范围无效，请检查开始/结束日期。",
+  "recentDays": "近{{count}}天",
+  "nodeSummary": "等{{count}}个",
+  "close": "关闭"
 }

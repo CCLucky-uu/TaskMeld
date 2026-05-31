@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { InlineSelect } from "../../../shared/ui";
 import {
   detailPanelActionRowClassName,
@@ -84,6 +85,7 @@ export function GroupDetailPanel({
   onSave,
   onDelete,
 }: GroupDetailPanelProps) {
+  const { t } = useTranslation("node-detail");
   const toggleValue = (current: string[], id: string, checked: boolean, onChange: (v: string[]) => void) => {
     const next = checked ? [...new Set([...current, id])] : current.filter((item) => item !== id);
     onChange(next);
@@ -92,27 +94,27 @@ export function GroupDetailPanel({
   return (
     <aside className={detailPanelClassName}>
       <div className={detailPanelHeadClassName}>
-        <h2 className={detailPanelTitleClassName}>并行组详情</h2>
+        <h2 className={detailPanelTitleClassName}>{t("groupDetail")}</h2>
         <span className={`${statusTagBaseClassName} ${statusTagToneClassName[(selectedGroup ? statusTone[selectedGroup.status] ?? "muted" : "muted") as keyof typeof statusTagToneClassName]}`}>
           {selectedGroup ? statusLabel[selectedGroup.status] ?? selectedGroup.status : "-"}
         </span>
       </div>
       <div className={fieldClassName}>
-        <label className={fieldLabelClassName}>运行时间</label>
+        <label className={fieldLabelClassName}>{t("runtime")}</label>
         <code className={fieldCodeClassName}>{selectedGroup ? `${selectedGroup.startedAt ?? "-"} -> ${selectedGroup.finishedAt ?? "-"}` : "-"}</code>
       </div>
       <div className={fieldClassName}>
-        <label className={fieldLabelClassName}>组 ID</label>
+        <label className={fieldLabelClassName}>{t("groupId")}</label>
         <input
           className={controlInputMonoClassName}
           value={draftGroupId}
           onChange={(event) => onChangeDraftGroupId(event.target.value)}
           disabled={!selectedGroup}
-          placeholder="例如 g_yes_parallel"
+          placeholder={t("groupIdPlaceholder")}
         />
       </div>
       <div className={fieldClassName}>
-        <label className={fieldLabelClassName}>组内成员</label>
+        <label className={fieldLabelClassName}>{t("members")}</label>
         <div className={groupCheckboxListClassName}>
           {groupMemberOptions.length ? (
             groupMemberOptions.map((node) => (
@@ -128,13 +130,13 @@ export function GroupDetailPanel({
               </label>
             ))
           ) : (
-            <p className={groupEmptyClassName}>暂无可选组成员</p>
+            <p className={groupEmptyClassName}>{t("noMembers")}</p>
           )}
         </div>
-        <small className={`${monoClassName} mt-1.5 block text-xs text-(--muted)`}>直接勾选/取消，不再依赖 Ctrl 多选</small>
+        <small className={`${monoClassName} mt-1.5 block text-xs text-(--muted)`}>{t("selectMembers")}</small>
       </div>
       <div className={fieldClassName}>
-        <label className={fieldLabelClassName}>公共上游</label>
+        <label className={fieldLabelClassName}>{t("commonUpstream")}</label>
         <div className={groupCheckboxListClassName}>
           {groupUpstreamOptions.length ? (
             groupUpstreamOptions.map((item) => (
@@ -150,12 +152,12 @@ export function GroupDetailPanel({
               </label>
             ))
           ) : (
-            <p className={groupEmptyClassName}>暂无可选公共上游</p>
+            <p className={groupEmptyClassName}>{t("noUpstream")}</p>
           )}
         </div>
       </div>
       <div className={fieldClassName}>
-        <label className={fieldLabelClassName}>汇聚策略</label>
+        <label className={fieldLabelClassName}>{t("joinPolicy")}</label>
         <InlineSelect
           value={draftGroupJoinPolicy}
           options={[
@@ -166,50 +168,50 @@ export function GroupDetailPanel({
           onChange={(next) => onChangeDraftGroupJoinPolicy(next as "all" | "any" | "quorum")}
           triggerClassName={controlInputClassName}
           disabled={!selectedGroup}
-          ariaLabel="选择并行组汇聚策略"
+          ariaLabel={t("selectJoinPolicy")}
         />
       </div>
       <div className={fieldClassName}>
-        <label className={fieldLabelClassName}>成员运行态</label>
+        <label className={fieldLabelClassName}>{t("memberRunStates")}</label>
         <code className={fieldCodeClassName}>
           {selectedGroup?.memberRuns.length
             ? selectedGroup.memberRuns
                 .map((member) => `${member.id} | ${member.title} | ${statusLabel[member.status] ?? member.status} | agent:${member.executor.agentId} | artifacts=${member.artifacts.length}`)
                 .join("\n")
-            : "空"}
+            : "-"}
         </code>
       </div>
       <div className={fieldClassName}>
-        <label className={fieldLabelClassName}>组 Item 运行</label>
+        <label className={fieldLabelClassName}>{t("groupItemRun")}</label>
         <code className={fieldCodeClassName}>
           {selectedGroup?.itemRuns.length
             ? selectedGroup.itemRuns
                 .map((item) => `${item.itemKey} | ${statusLabel[item.status] ?? item.status} | attempt=${item.attempt} | ${item.startedAt ?? "-"} -> ${item.finishedAt ?? "-"}${item.lastError ? ` | error=${item.lastError}` : ""}`)
                 .join("\n")
-            : "空"}
+            : "-"}
         </code>
       </div>
       <div className={fieldClassName}>
-        <label className={fieldLabelClassName}>组产物</label>
+        <label className={fieldLabelClassName}>{t("groupArtifacts")}</label>
         <code className={fieldCodeClassName}>
           {selectedGroup?.artifacts.length
             ? selectedGroup.artifacts
                 .map((artifact) => `${artifact.type}@v${artifact.schemaVersion} ${artifact.path} (${artifact.hash})`)
                 .join("\n")
-            : "空"}
+            : "-"}
         </code>
       </div>
       <div className={fieldClassName}>
-        <label className={fieldLabelClassName}>最近错误</label>
-        <code className={fieldCodeClassName}>{selectedGroup?.lastError || "空"}</code>
+        <label className={fieldLabelClassName}>{t("lastError")}</label>
+        <code className={fieldCodeClassName}>{selectedGroup?.lastError || "-"}</code>
       </div>
-      <small className={`${monoClassName} block text-xs text-(--muted)`}>{isSaving ? "并行组保存中..." : "并行组字段需手动保存"}</small>
+      <small className={`${monoClassName} block text-xs text-(--muted)`}>{isSaving ? t("groupSaving") : t("groupSaveHint")}</small>
       <div className={detailPanelActionRowClassName}>
         <button className={primaryActionButtonClassName} type="button" onClick={onSave} disabled={!selectedGroup || isSaving || isDeleting}>
-          保存并行组配置
+          {t("saveGroupConfig")}
         </button>
         <button className={dangerActionButtonClassName} type="button" onClick={onDelete} disabled={!selectedGroup || isSaving || isDeleting}>
-          {isDeleting ? "删除中..." : "删除并行组"}
+          {isDeleting ? t("deleting") : t("deleteGroup")}
         </button>
       </div>
     </aside>

@@ -25,7 +25,7 @@ export function NavPanel({
   onCloseDrawer,
   variant = "inline",
 }: NavPanelProps) {
-  const { t } = useTranslation();
+  const { t } = useTranslation("nav");
   const isOverlay = variant === "overlay";
   // 桌面端：collapsed 控制宽/窄；移动端浮层：始终展示完整内容，collapsed 控制滑入/滑出
   const showLabels = isOverlay ? true : !collapsed;
@@ -53,8 +53,8 @@ export function NavPanel({
           // 移动端浮层点击后关闭抽屉
           onCloseDrawer?.();
         }}
-        aria-label={t('nav.backToHome')}
-        title={t('nav.backToHome')}
+        aria-label={t('backToHome')}
+        title={t('backToHome')}
       >
         <TaskMeldIcon className="h-7 w-7 shrink-0 text-(--live)" />
         {showLabels ? (

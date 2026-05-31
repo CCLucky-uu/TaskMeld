@@ -10,5 +10,6 @@
   "agentEnd": "Finished",
   "agentDetail": "Details{{suffix}} ({{count}} items)",
   "collapsed": "Collapsed",
-  "inProgress": "In progress"
+  "inProgress": "In progress",
+  "close": "Close"
 }

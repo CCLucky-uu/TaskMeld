@@ -18,5 +18,15 @@
   "keywordSearch": "Keyword search",
   "selectToViewDetailCenter": "Select an entry from the list to view details",
   "runLog": "Run Log",
-  "detail": "Details"
+  "detail": "Details",
+  "levelInfo": "Info",
+  "levelWarn": "Warn",
+  "levelError": "Error",
+  "sortNewestFirst": "Latest First",
+  "sortOldestFirst": "Earliest First",
+  "noDetail": "No detail",
+  "close": "Close",
+  "loadingMore": "Loading...",
+  "loadMore": "Load More",
+  "renderedStatus": "rendered {{rendered}} / loaded {{loaded}} / total {{total}}"
 }
