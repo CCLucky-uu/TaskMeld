@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { AgentListCard } from "../../../widgets/agent-list/ui/AgentListCard";
 import { NavPanel } from "../../../widgets/nav-panel/ui/NavPanel";
 import { GroupDetailPanel, NodeDetailPanel } from "../../../widgets/node-detail";
@@ -32,6 +33,7 @@ import {
 } from "../../../shared/ui/surfaceClassNames";
 import { controlPlaneNavItems } from "../model/controlPlaneNavItems";
 import { useControlPlanePage } from "../model/useControlPlanePage";
+import type { NavKey } from "../../../widgets/nav-panel/model/navItem";
 import PlusIcon from "@iconify-react/lucide/plus";
 const smallModalPanelClassName = `${modalPanelBaseClassName} w-[min(560px,94vw)]`;
 const outputModalPanelClassName =
@@ -147,32 +149,33 @@ function ModalLayer({ open, onClose, panelClassName, ariaLabel, children }: Moda
 
 type ControlPlanePageProps = {
   pageRoute?: "home" | "pipeline" | "logs" | "agents" | "artifacts";
-  initialActive?: string;
-  onNavigateByNav?: (label: string, pipelineId?: string) => void;
+  initialActive?: NavKey;
+  onNavigateByNav?: (label: NavKey, pipelineId?: string) => void;
   onNavigateHome?: () => void;
   focusPipelineId?: string;
 };
 
 export function ControlPlanePage({
   pageRoute = "home",
-  initialActive = "总览",
+  initialActive = "overview",
   onNavigateByNav,
   onNavigateHome,
   focusPipelineId,
 }: ControlPlanePageProps) {
+  const { t } = useTranslation("nav");
   const vm = useControlPlanePage();
   const effectivePageRoute: "home" | "pipeline" | "logs" | "agents" | "artifacts" = pageRoute;
   const isPipelineRoute = effectivePageRoute === "pipeline";
   const routeText =
     effectivePageRoute === "pipeline"
-      ? "流水线"
+      ? t("nav.pipeline")
       : effectivePageRoute === "logs"
-        ? "日志"
+        ? t("nav.logs")
         : effectivePageRoute === "agents"
-          ? "智能体"
+          ? t("nav.agents")
           : effectivePageRoute === "artifacts"
-            ? "产物"
-          : "总览";
+            ? t("nav.artifacts")
+          : t("nav.overview");
   const isMobile = useMediaQuery("(max-width: 767px)");
   const [navCollapsed, setNavCollapsed] = useState(false);
   // 从桌面端缩小窗口到移动端时，同步关闭抽屉避免中间帧闪烁
@@ -616,7 +619,7 @@ export function ControlPlanePage({
               }))}
               onNavigatePipeline={(pipelineId) => {
                 vm.setActivePipelineId(pipelineId);
-                onNavigateByNav?.("流水线", pipelineId);
+                onNavigateByNav?.("pipeline", pipelineId);
               }}
             />
           ) : (
@@ -637,7 +640,7 @@ export function ControlPlanePage({
               }}
               onNavigatePipeline={(pipelineId) => {
                 vm.setActivePipelineId(pipelineId);
-                onNavigateByNav?.("流水线", pipelineId);
+                onNavigateByNav?.("pipeline", pipelineId);
               }}
               onOpenAgentSession={vm.openSessionModalForAgent}
             />

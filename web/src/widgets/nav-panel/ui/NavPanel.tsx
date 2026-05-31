@@ -1,10 +1,11 @@
+import { useTranslation } from "react-i18next";
 import { TaskMeldIcon } from "../../../shared/ui";
-import type { NavItem } from "../model/navItem";
+import type { NavItem, NavKey } from "../model/navItem";
 
 type NavPanelProps = {
   navItems: NavItem[];
-  active: string;
-  onChangeActive: (item: string) => void;
+  active: NavKey;
+  onChangeActive: (item: NavKey) => void;
   onNavigateHome?: () => void;
   protocol: number | null;
   scopes: string[];
@@ -24,6 +25,7 @@ export function NavPanel({
   onCloseDrawer,
   variant = "inline",
 }: NavPanelProps) {
+  const { t } = useTranslation();
   const isOverlay = variant === "overlay";
   // 桌面端：collapsed 控制宽/窄；移动端浮层：始终展示完整内容，collapsed 控制滑入/滑出
   const showLabels = isOverlay ? true : !collapsed;
@@ -46,13 +48,13 @@ export function NavPanel({
           if (onNavigateHome) {
             onNavigateHome();
           } else {
-            onChangeActive("总览");
+            onChangeActive("overview");
           }
           // 移动端浮层点击后关闭抽屉
           onCloseDrawer?.();
         }}
-        aria-label="返回主页"
-        title="返回主页"
+        aria-label={t('nav.backToHome')}
+        title={t('nav.backToHome')}
       >
         <TaskMeldIcon className="h-7 w-7 shrink-0 text-(--live)" />
         {showLabels ? (
@@ -61,16 +63,16 @@ export function NavPanel({
           </strong>
         ) : null}
       </button>
-      {navItems.map(({ label, icon: Icon }) => (
-        <div key={label}>
+      {navItems.map(({ key, label, icon: Icon }) => (
+        <div key={key}>
           <button
             className={`w-full cursor-pointer border-0 py-2.5 min-h-[44px] font-medium transition-[background-color,color,box-shadow] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--live)] focus-visible:outline-offset-[-2px] ${showCentered ? "px-0 text-center" : "px-3 text-left"} ${
-              active === label
+              active === key
                 ? "bg-[rgba(50,215,186,0.12)] text-(--live) shadow-[inset_3px_0_0_0_var(--live)]"
                 : "bg-transparent text-(--muted) hover:bg-[rgba(142,163,179,0.08)] hover:text-(--text)"
             }`}
             onClick={() => {
-              onChangeActive(label);
+              onChangeActive(key);
               // 移动端浮层点击导航项后关闭抽屉
               onCloseDrawer?.();
             }}
@@ -78,7 +80,7 @@ export function NavPanel({
             {/* 图标和文案保持同一点击热区，提升侧边导航扫描效率。 */}
             <span className={`flex items-center ${showCentered ? "justify-center" : "gap-2.5"}`}>
               <Icon width="20" height="20" className="shrink-0" />
-              {showLabels ? <span>{label}</span> : null}
+              {showLabels ? <span>{t(label)}</span> : null}
             </span>
           </button>
         </div>

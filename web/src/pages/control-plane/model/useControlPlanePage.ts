@@ -33,6 +33,7 @@ import {
 } from "../../../entities/pipeline";
 import { fetchSessions, SessionItem } from "../../../entities/session";
 import { TimelineItem } from "../../../entities/timeline";
+import { NavKey } from "../../../widgets/nav-panel/model/navItem";
 import { onWsEvent } from "../../../shared/ws-client";
 import { dispatchGatewayWsEvent } from "../../../shared/realtime/gateway-events";
 import { useNodeRetryFeature } from "../../../features/node-retry";
@@ -164,7 +165,7 @@ const collectVisibleNodeIdsForBranch = (
 };
 
 export function useControlPlanePage() {
-  const [active, setActive] = useState("总览");
+  const [active, setActive] = useState<NavKey>("overview");
   const [activePipelineId, setActivePipelineId] = useState<PipelineId>("");
   const [sessionModalOpen, setSessionModalOpen] = useState(false);
   const [selectedAgentId, setSelectedAgentId] = useState("");

@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ControlPlanePage } from "../pages/control-plane/ui/ControlPlanePage";
+import type { NavKey } from "../widgets/nav-panel/model/navItem";
 
 const PIPELINE_ROUTE_PATH = "/pipeline";
 const LOG_ROUTE_PATH = "/logs";
@@ -20,6 +22,7 @@ const normalizePathname = (pathname: string): string => {
 };
 
 export default function App() {
+  const { t } = useTranslation("nav");
   const [currentLocation, setCurrentLocation] = useState(() => ({
     path: normalizePathname(window.location.pathname),
     search: window.location.search,
@@ -49,27 +52,27 @@ export default function App() {
       : "";
 
   const handleNavigateByNav = useCallback(
-    (label: string, pipelineId?: string) => {
-      if (label === "总览") {
+    (label: NavKey, pipelineId?: string) => {
+      if (label === "overview") {
         navigate(OVERVIEW_ROUTE_PATH);
         return;
       }
-      if (label === "流水线") {
+      if (label === "pipeline") {
         navigate(
           PIPELINE_ROUTE_PATH,
           pipelineId?.trim() ? `pipeline=${encodeURIComponent(pipelineId.trim())}` : "",
         );
         return;
       }
-      if (label === "智能体") {
+      if (label === "agents") {
         navigate(AGENTS_ROUTE_PATH);
         return;
       }
-      if (label === "产物") {
+      if (label === "artifacts") {
         navigate(ARTIFACTS_ROUTE_PATH);
         return;
       }
-      if (label === "日志") {
+      if (label === "logs") {
         navigate(LOG_ROUTE_PATH);
         return;
       }
@@ -84,7 +87,7 @@ export default function App() {
     content = (
       <ControlPlanePage
         pageRoute="pipeline"
-        initialActive="流水线"
+        initialActive="pipeline"
         onNavigateByNav={handleNavigateByNav}
         onNavigateHome={() => navigate(LANDING_ROUTE_PATH)}
         focusPipelineId={focusPipelineId || undefined}
@@ -94,7 +97,7 @@ export default function App() {
     content = (
       <ControlPlanePage
         pageRoute="logs"
-        initialActive="日志"
+        initialActive="logs"
         onNavigateByNav={handleNavigateByNav}
         onNavigateHome={() => navigate(LANDING_ROUTE_PATH)}
       />
@@ -103,7 +106,7 @@ export default function App() {
     content = (
       <ControlPlanePage
         pageRoute="agents"
-        initialActive="智能体"
+        initialActive="agents"
         onNavigateByNav={handleNavigateByNav}
         onNavigateHome={() => navigate(LANDING_ROUTE_PATH)}
       />
@@ -112,7 +115,7 @@ export default function App() {
     content = (
       <ControlPlanePage
         pageRoute="artifacts"
-        initialActive="产物"
+        initialActive="artifacts"
         onNavigateByNav={handleNavigateByNav}
         onNavigateHome={() => navigate(LANDING_ROUTE_PATH)}
       />
@@ -121,7 +124,7 @@ export default function App() {
     content = (
       <ControlPlanePage
         pageRoute="home"
-        initialActive="总览"
+        initialActive="overview"
         onNavigateByNav={handleNavigateByNav}
         onNavigateHome={() => navigate(LANDING_ROUTE_PATH)}
       />
@@ -130,7 +133,7 @@ export default function App() {
     content = (
       <ControlPlanePage
         pageRoute="home"
-        initialActive="总览"
+        initialActive="overview"
         onNavigateByNav={handleNavigateByNav}
         onNavigateHome={() => navigate(OVERVIEW_ROUTE_PATH)}
       />
@@ -144,7 +147,7 @@ export default function App() {
         href="#main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-(--z-tooltip) focus:inline-flex focus:h-10 focus:items-center focus:border focus:border-[var(--live)] focus:bg-[var(--panel)] focus:px-4 focus:text-sm focus:font-medium focus:text-[var(--live)] focus:shadow-lg focus:outline-none"
       >
-        跳到主内容
+        {t("nav.skipToContent")}
       </a>
       {content}
     </>
