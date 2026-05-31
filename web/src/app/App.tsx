@@ -8,6 +8,7 @@ const LOG_ROUTE_PATH = "/logs";
 const AGENTS_ROUTE_PATH = "/agents";
 const ARTIFACTS_ROUTE_PATH = "/artifacts";
 const OVERVIEW_ROUTE_PATH = "/overview";
+const SETTINGS_ROUTE_PATH = "/settings";
 const LANDING_ROUTE_PATH = "/";
 
 const normalizePathname = (pathname: string): string => {
@@ -18,6 +19,7 @@ const normalizePathname = (pathname: string): string => {
   if (normalized.startsWith(PIPELINE_ROUTE_PATH)) return PIPELINE_ROUTE_PATH;
   if (normalized.startsWith(ARTIFACTS_ROUTE_PATH)) return ARTIFACTS_ROUTE_PATH;
   if (normalized.startsWith(LOG_ROUTE_PATH)) return LOG_ROUTE_PATH;
+  if (normalized.startsWith(SETTINGS_ROUTE_PATH)) return SETTINGS_ROUTE_PATH;
   return LANDING_ROUTE_PATH;
 };
 
@@ -76,6 +78,10 @@ export default function App() {
         navigate(LOG_ROUTE_PATH);
         return;
       }
+      if (label === "settings") {
+        navigate(SETTINGS_ROUTE_PATH);
+        return;
+      }
       navigate(OVERVIEW_ROUTE_PATH);
     },
     [navigate],
@@ -125,6 +131,15 @@ export default function App() {
       <ControlPlanePage
         pageRoute="home"
         initialActive="overview"
+        onNavigateByNav={handleNavigateByNav}
+        onNavigateHome={() => navigate(LANDING_ROUTE_PATH)}
+      />
+    );
+  } else if (currentLocation.path === SETTINGS_ROUTE_PATH) {
+    content = (
+      <ControlPlanePage
+        pageRoute="settings"
+        initialActive="settings"
         onNavigateByNav={handleNavigateByNav}
         onNavigateHome={() => navigate(LANDING_ROUTE_PATH)}
       />

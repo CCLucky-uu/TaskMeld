@@ -36,9 +36,74 @@ const fieldPrompt = (rl: ReturnType<typeof createInterface>, label: string, hint
   });
 };
 
+const selectPrompt = (label: string, options: { value: string; label: string }[]): Promise<string> => {
+  return new Promise((resolve) => {
+    let selected = 0;
+
+    process.stdout.write(`  ${c.bold}${c.white}${label}${c.reset}\n\n`);
+
+    const render = () => {
+      for (let i = 0; i < options.length; i++) {
+        const opt = options[i];
+        if (i === selected) {
+          process.stdout.write(`    ${c.bgCyan}${c.black}${c.bold} ${opt.label} ${c.reset}\n`);
+        } else {
+          process.stdout.write(`    ${c.dim}${opt.label}${c.reset}\n`);
+        }
+      }
+    };
+
+    render();
+
+    const onData = (key: Buffer) => {
+      const str = key.toString();
+      // up arrow or k
+      if (str === "\x1b[A" || str === "k") {
+        selected = selected > 0 ? selected - 1 : options.length - 1;
+      // down arrow or j
+      } else if (str === "\x1b[B" || str === "j") {
+        selected = selected < options.length - 1 ? selected + 1 : 0;
+      // enter
+      } else if (str === "\r" || str === "\n") {
+        cleanup();
+        process.stdout.write("\n");
+        resolve(options[selected].value);
+        return;
+      // ctrl+c
+      } else if (str === "\x03") {
+        cleanup();
+        process.stdout.write("\n");
+        process.exit(0);
+      } else {
+        return;
+      }
+
+      // move cursor up to re-render
+      process.stdout.write(`\x1b[${options.length}A`);
+      process.stdout.write("\x1b[J");
+      render();
+    };
+
+    const cleanup = () => {
+      process.stdin.removeListener("data", onData);
+      if (process.stdin.isTTY) {
+        process.stdin.setRawMode(false);
+      }
+      process.stdin.pause();
+    };
+
+    if (process.stdin.isTTY) {
+      process.stdin.setRawMode(true);
+    }
+    process.stdin.resume();
+    process.stdin.on("data", onData);
+  });
+};
+
 type UserGatewayConfig = {
   gatewayUrl?: string;
   gatewayToken?: string;
+  locale?: string;
 };
 
 const readConfig = async (): Promise<UserGatewayConfig> => {
@@ -69,6 +134,14 @@ export const initCommand: CliCommandHandler = async (input) => {
     console.log("");
     console.log(`  ${c.dim}Configure your OpenClaw Gateway connection to get started.${c.reset}`);
     console.log(`  ${c.dim}Config  ${userConfigPath}${c.reset}`);
+
+    // Language selection — uses raw stdin, must complete before creating readline interface
+    hr();
+    const locale = await selectPrompt("Language / 语言", [
+      { value: "en", label: "English" },
+      { value: "zh", label: "中文" },
+    ]);
+    await writeConfig({ locale });
 
     const rl = createInterface({
       input: process.stdin,

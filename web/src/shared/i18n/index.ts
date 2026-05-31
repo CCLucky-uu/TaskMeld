@@ -15,6 +15,7 @@ import zhNodeDetail from "./locales/zh/node-detail.json";
 import zhDispatch from "./locales/zh/dispatch.json";
 import zhModal from "./locales/zh/modal.json";
 import zhPipeline from "./locales/zh/pipeline.json";
+import zhSettings from "./locales/zh/settings.json";
 
 import enCommon from "./locales/en/common.json";
 import enNav from "./locales/en/nav.json";
@@ -29,8 +30,9 @@ import enNodeDetail from "./locales/en/node-detail.json";
 import enDispatch from "./locales/en/dispatch.json";
 import enModal from "./locales/en/modal.json";
 import enPipeline from "./locales/en/pipeline.json";
+import enSettings from "./locales/en/settings.json";
 
-export const defaultLocale = "zh";
+export const defaultLocale = "en";
 export const supportedLocales = ["zh", "en"] as const;
 
 const resources = {
@@ -48,6 +50,7 @@ const resources = {
     dispatch: zhDispatch,
     modal: zhModal,
     pipeline: zhPipeline,
+    settings: zhSettings,
   },
   en: {
     common: enCommon,
@@ -63,6 +66,7 @@ const resources = {
     dispatch: enDispatch,
     modal: enModal,
     pipeline: enPipeline,
+    settings: enSettings,
   },
 };
 

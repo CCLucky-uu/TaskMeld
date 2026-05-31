@@ -11,6 +11,7 @@ import { RunLogPage } from "../../../widgets/run-log-viewer";
 import { TopBar } from "../../../widgets/top-bar/ui/TopBar";
 import { OverviewBoard } from "../../../widgets/overview-board/ui/OverviewBoard";
 import { ArtifactBoard } from "../../../widgets/artifact-board";
+import { SettingsBoard } from "../../../widgets/settings-board/ui/SettingsBoard";
 import { CloseIcon, InlineSelect } from "../../../shared/ui";
 import { useMediaQuery } from "../../../shared/lib/useMediaQuery";
 import { actionRowClassName, panelHeaderClassName } from "../../../shared/ui/panelClasses";
@@ -148,7 +149,7 @@ function ModalLayer({ open, onClose, panelClassName, ariaLabel, children }: Moda
 }
 
 type ControlPlanePageProps = {
-  pageRoute?: "home" | "pipeline" | "logs" | "agents" | "artifacts";
+  pageRoute?: "home" | "pipeline" | "logs" | "agents" | "artifacts" | "settings";
   initialActive?: NavKey;
   onNavigateByNav?: (label: NavKey, pipelineId?: string) => void;
   onNavigateHome?: () => void;
@@ -162,13 +163,13 @@ export function ControlPlanePage({
   onNavigateHome,
   focusPipelineId,
 }: ControlPlanePageProps) {
-  const { t } = useTranslation(["modal", "common", "nav"]);
+  const { t } = useTranslation(["modal", "common", "nav", "settings"]);
   const translatedStatusTone = statusTone;
   const translatedStatusLabel = Object.fromEntries(
     Object.entries(statusLabel).map(([key, val]) => [key, t(`common:status.${val}`)]),
   );
   const vm = useControlPlanePage();
-  const effectivePageRoute: "home" | "pipeline" | "logs" | "agents" | "artifacts" = pageRoute;
+  const effectivePageRoute: "home" | "pipeline" | "logs" | "agents" | "artifacts" | "settings" = pageRoute;
   const isPipelineRoute = effectivePageRoute === "pipeline";
   const routeText =
     effectivePageRoute === "pipeline"
@@ -179,6 +180,8 @@ export function ControlPlanePage({
           ? t("nav:agents")
           : effectivePageRoute === "artifacts"
             ? t("nav:artifacts")
+          : effectivePageRoute === "settings"
+            ? t("nav:settings")
           : t("nav:overview");
   const isMobile = useMediaQuery("(max-width: 767px)");
   const [navCollapsed, setNavCollapsed] = useState(false);
@@ -221,10 +224,14 @@ export function ControlPlanePage({
         : "grid-cols-[minmax(0,1fr)_300px]",
   ].join(" ");
   const centerColumnClassName = [
-    `flex min-h-0 min-w-0 flex-col overflow-x-hidden ${
-      effectivePageRoute === "agents" || effectivePageRoute === "pipeline" || effectivePageRoute === "artifacts"
-        ? "overflow-y-hidden"
-        : "overflow-y-auto"
+    `flex min-h-0 min-w-0 flex-col ${
+      effectivePageRoute === "settings"
+        ? "overflow-visible"
+        : `overflow-x-hidden ${
+            effectivePageRoute === "agents" || effectivePageRoute === "pipeline" || effectivePageRoute === "artifacts"
+              ? "overflow-y-hidden"
+              : "overflow-y-auto"
+          }`
     } border-r border-[var(--line)]`,
     "[&>[data-center-card]]:min-h-0 [&>[data-center-card]]:min-w-0 [&>[data-center-card]]:shrink-0 [&>[data-center-card]]:border-b [&>[data-center-card]]:border-[var(--line)]",
     "[&>[data-pipeline-card]]:shrink [&>[data-pipeline-card]]:flex-1 [&>[data-pipeline-card]]:overflow-y-auto",
@@ -626,6 +633,8 @@ export function ControlPlanePage({
                 onNavigateByNav?.("pipeline", pipelineId);
               }}
             />
+          ) : effectivePageRoute === "settings" ? (
+            <SettingsBoard />
           ) : (
             <OverviewBoard
               pipelines={vm.pipelineList.map((pipelineItem) => ({
