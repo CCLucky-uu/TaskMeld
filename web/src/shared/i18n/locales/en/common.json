@@ -61,7 +61,9 @@
     "no": "No",
     "enabled": "Enabled",
     "disabled": "Disabled",
-    "searchPlaceholder": "Search..."
+    "searchPlaceholder": "Search...",
+    "expandCodeBlock": "Expand code block",
+    "collapseCodeBlock": "Collapse code block"
   },
   "time": {
     "today": "Today",

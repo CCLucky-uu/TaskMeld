@@ -832,7 +832,7 @@ export function ControlPlanePage({
           </div>
           <p className={modalSublineClassName}>
             {t("modal:currentPipeline")} <code>{renamePipelineTarget?.id ?? renamePipelineTargetId ?? "-"}</code>
-            {renamePipelineTarget?.title ? `（${t("modal:currentTitle")}：${renamePipelineTarget.title}）` : ""}。
+            {renamePipelineTarget?.title ? ` (${t("modal:currentTitle")}: ${renamePipelineTarget.title})` : ""}.
           </p>
           <div className={fieldClassName}>
             <label className={fieldLabelClassName}>{t("modal:fieldLabel.newTitle")}</label>
@@ -885,7 +885,7 @@ export function ControlPlanePage({
           </div>
           <p className={modalSublineClassName}>
             {t("modal:deleteConfirm")} <code>{deletePipelineTarget?.id ?? deletePipelineTargetId ?? "-"}</code>
-            {deletePipelineTarget?.title ? `（${deletePipelineTarget.title}）` : ""}。{t("modal:archiveNote")} <code>.data/pipelines/_deleted</code>。
+            {deletePipelineTarget?.title ? ` (${deletePipelineTarget.title})` : ""}. {t("modal:archiveNote")} <code>.data/pipelines/_deleted</code>.
           </p>
           {deletePipelineError ? (
             <p className={`${modalSublineClassName} text-(--bad)`}>{deletePipelineError}</p>
@@ -1137,7 +1137,7 @@ export function ControlPlanePage({
           ) : (
             <p className={modalSublineClassName}>
               {t("modal:deleteNodeConfirm")} <code>{deleteTargetNode?.id ?? vm.deleteTargetNodeId}</code>
-              {deleteTargetNode ? `（${deleteTargetNode.title}）` : ""}{t("modal:deleteNodeNote")}
+              {deleteTargetNode ? ` (${deleteTargetNode.title})` : ""}{t("modal:deleteNodeNote")}
             </p>
           )}
           <button
@@ -1247,7 +1247,7 @@ export function ControlPlanePage({
         ariaLabel={t("modal:editWorkflowJson")}
       >
           <div className={panelHeaderClassName}>
-            <h2>Workflow JSON（{vm.activePipelineTitle || vm.activePipelineId || "-"}）</h2>
+            <h2>Workflow JSON ({vm.activePipelineTitle || vm.activePipelineId || "-"})</h2>
             <button
               className={drawerCloseClassName}
               type="button"

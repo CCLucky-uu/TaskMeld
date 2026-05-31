@@ -61,7 +61,9 @@
     "no": "否",
     "enabled": "启用",
     "disabled": "停用",
-    "searchPlaceholder": "搜索..."
+    "searchPlaceholder": "搜索...",
+    "expandCodeBlock": "展开代码块",
+    "collapseCodeBlock": "折叠代码块"
   },
   "time": {
     "today": "今天",

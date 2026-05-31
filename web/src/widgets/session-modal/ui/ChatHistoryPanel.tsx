@@ -215,7 +215,7 @@ export const ChatHistoryPanel = memo(function ChatHistoryPanel({
               <span>{item.role}</span>
               <div className="inline-flex items-center gap-2">
                 {modelTag ? <span>{modelTag}</span> : null}
-                <span>{item.ts ? new Date(item.ts).toLocaleString("zh-CN", { hour12: false }) : "-"}</span>
+                <span>{item.ts ? new Date(item.ts).toLocaleString(undefined, { hour12: false }) : "-"}</span>
               </div>
             </header>
             {useMarkdownBubble ? (

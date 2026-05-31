@@ -437,7 +437,7 @@ export function SessionModal({
 
   const selectedFileMeta = coreFiles.find((item) => item.name === selectedFileName) ?? null;
   const updatedAtText = selectedFileMeta?.updatedAt
-    ? new Date(selectedFileMeta.updatedAt).toLocaleString("zh-CN", { hour12: false })
+    ? new Date(selectedFileMeta.updatedAt).toLocaleString(undefined, { hour12: false })
     : "-";
 
   const toggleToolCollapsed = useCallback((key: string) => {

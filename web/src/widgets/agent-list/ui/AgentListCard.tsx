@@ -145,7 +145,7 @@ export function AgentListCard({ agents, onOpenAgentSession, onOpenAgentOutput }:
                 </div>
                 <div className="mt-auto grid gap-2 border-t border-(--line) pt-2">
                   <small className={`${monoClassName} self-end text-xs leading-[1.2] text-[var(--muted)]`}>
-                  {agent.lastActiveAt ? new Date(agent.lastActiveAt).toLocaleString("zh-CN", { hour12: false }) : "-"}
+                  {agent.lastActiveAt ? new Date(agent.lastActiveAt).toLocaleString(undefined, { hour12: false }) : "-"}
                   </small>
                   <div className="flex items-center justify-end gap-2">
                     <button
@@ -201,7 +201,7 @@ export function AgentListCard({ agents, onOpenAgentSession, onOpenAgentOutput }:
                   <p className="m-0 truncate text-xs text-(--muted)">{agent.outputPreview || t('noOutput')}</p>
                   <p className="m-0 truncate text-xs text-(--muted)">{agent.eventPreview || t('noEvent')}</p>
                   <p className={`${monoClassName} m-0 text-xs text-(--muted)`}>
-                    {agent.lastActiveAt ? new Date(agent.lastActiveAt).toLocaleString("zh-CN", { hour12: false }) : "-"}
+                    {agent.lastActiveAt ? new Date(agent.lastActiveAt).toLocaleString(undefined, { hour12: false }) : "-"}
                   </p>
                   <div className="flex items-center justify-end gap-2">
                     <button
