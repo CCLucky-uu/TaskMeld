@@ -13,10 +13,10 @@ This project is a pipeline-based agent collaboration execution platform. The bac
 └───────────────────────────┬─────────────────────────────────┘
                             │
 ┌───────────────────────────▼─────────────────────────────────┐
-│                    HTTP/WS Transport Layer                    │
+│                    WebSocket Transport Layer                  │
 │  ┌──────────────────┐  ┌──────────────────┐                 │
-│  │   server module   │  │  transport module │                 │
-│  │  HTTP API + routes│  │  WebSocket broadcast│               │
+│  │  server module    │  │ transport module  │                 │
+│  │ HTTP (health+SPA) │  │ WS RPC + broadcast│                 │
 │  └────────┬─────────┘  └────────┬─────────┘                 │
 │           │                     │                            │
 └───────────┼─────────────────────┼────────────────────────────┘
@@ -65,7 +65,7 @@ This project is a pipeline-based agent collaboration execution platform. The bac
 
 ### Data Flow Overview
 
-1. **Inbound request flow**: CLI / Web frontend → HTTP API (server) → Service layer (services) → PipelineRegistry → PipelineRuntime → Pipeline engine
+1. **Inbound request flow**: CLI / Web frontend → WebSocket RPC (transport) → Service layer (services) → PipelineRegistry → PipelineRuntime → Pipeline engine
 2. **Outbound event flow**: Pipeline engine → PipelineRuntime → PipelineRegistry → WebSocket Broker (transport) → Web frontend
 3. **External agent communication**: PipelineRuntime → GatewayClient → Remote agent gateway (WebSocket)
 4. **Persistence flow**: Pipeline engine → RuntimeStore (run-state.json) / TimelineLogStore (timeline.log) / ArtifactDirs (artifact files)
@@ -76,104 +76,29 @@ This project is a pipeline-based agent collaboration execution platform. The bac
 
 ---
 
-### 2.1 server Module — HTTP API Layer
+### 2.1 server Module — HTTP Server
 
 **Path**: `src/server/`
 
-**File listing**:
+**Responsibility**: Minimal HTTP server for health checks (CLI lifecycle detection) and static file serving (Web SPA).
 
-| File | Responsibility |
+**File**: `http-handler.ts`
+
+| Function | Description |
 |------|------|
-| `types.ts` | Core type definitions: `ApiHandlerContext`, `RequestContext`, `RouteHandler`, `Router` interface |
-| `router.ts` | Trie-based HTTP router implementation |
-| `middleware.ts` | Middleware composer + CORS + error catching middleware |
-| `http-utils.ts` | JSON request body parsing / JSON response sending utilities |
-| `api-handler.ts` | Top-level API handler, assembles routes, middleware, service dependencies |
-| `routes/health.ts` | Health check endpoint |
-| `routes/gateway.ts` | Gateway status query |
-| `routes/timeline.ts` | Timeline query |
-| `routes/logs.ts` | Runtime log query |
-| `routes/artifacts.ts` | Artifact listing/content/export |
-| `routes/agents.ts` | Agent listing + file management |
-| `routes/sessions.ts` | Session listing/history/message sending |
-| `routes/pipelines.ts` | Pipeline CRUD |
-| `routes/pipeline-workflow.ts` | Workflow/template/plugin read/write |
-| `routes/pipeline-runtime.ts` | Pipeline run control (start/stop/retry) |
-| `routes/pipeline-batch.ts` | Batch run management (local/remote) |
-| `routes/pipeline-scheduler.ts` | Scheduler toggle/mode/manual tick |
-| `routes/pipeline-identity.ts` | Run identity resolution (runId/batchRunId) |
+| `createApiHandler(options)` | Creates HTTP request handler |
+| `serveStatic(req, res)` | Serves static files from `web/dist/` with SPA fallback |
 
-#### Router Design
-
-Trie-based route matcher:
-
-```typescript
-interface Router {
-  register(method: string, path: string, handler: RouteHandler): void;
-  match(method: string, pathname: string): { handler: RouteHandler; params: Record<string, string> } | null;
-}
-```
-
-Supports three types of path segments:
-- **Static segments**: `/api/health` exact match
-- **Parameter segments**: `/api/pipelines/:pipelineId` extracts named parameters
-- **Wildcard segments**: `/api/agents/:agentId/files/*name` matches remaining path
-
-#### API Endpoint Overview
+**HTTP Endpoints**:
 
 | Method | Path | Description |
 |------|------|------|
-| `GET` | `/api/health` | Service health check, returns serverId/pid/port |
-| `GET` | `/api/gateway/status` | Gateway connection status, hello, lastFrame |
-| `GET` | `/api/timeline` | Merged timeline across all pipelines |
-| `GET` | `/api/logs/runs` | Runtime log directory listing |
-| `GET` | `/api/logs/runs/:runId/timeline` | Paginated runtime log query (supports level/keyword/order) |
-| `GET` | `/api/logs/runs/:runId/timeline/raw` | Raw NDJSON log file stream |
-| `GET` | `/api/artifacts` | Artifact listing (supports pipelineId/nodeId/date filtering) |
-| `GET` | `/api/artifacts/content` | Single artifact content read |
-| `GET` | `/api/artifacts/export` | Aggregated artifact content export (date→pipeline→node→content) |
-| `GET` | `/api/agents` | Agent listing (with last activity time) |
-| `GET` | `/api/agents/:agentId/files` | Agent file listing |
-| `GET` | `/api/agents/:agentId/files/*name` | Agent file content read |
-| `POST` | `/api/agents/:agentId/files/*name` | Agent file write |
-| `GET` | `/api/sessions` | Session listing (includes model info) |
-| `GET` | `/api/sessions/:sessionId/history` | Session history |
-| `POST` | `/api/sessions` | Create session |
-| `POST` | `/api/sessions/:sessionId/send` | Send session message (auto/chat/sessions modes) |
-| `GET` | `/api/pipelines` | Pipeline listing |
-| `POST` | `/api/pipelines` | Create pipeline (supports cloneFrom) |
-| `PATCH` | `/api/pipelines/:pipelineId` | Rename pipeline |
-| `DELETE` | `/api/pipelines/:pipelineId` | Delete pipeline (archive to _deleted directory) |
-| `GET` | `/api/pipelines/:pipelineId/template` | Template nodes |
-| `GET` | `/api/pipelines/:pipelineId/workflow` | Workflow definition |
-| `POST` | `/api/pipelines/:pipelineId/workflow` | Save workflow definition (with validation) |
-| `GET` | `/api/pipelines/:pipelineId/plugins` | Plugin configuration |
-| `POST` | `/api/pipelines/:pipelineId/plugins` | Update plugin configuration (remoteBatch/scheduler) |
-| `GET` | `/api/pipelines/:pipelineId/current` | Current run snapshot |
-| `GET` | `/api/pipelines/:pipelineId/status` | Pipeline run status |
-| `POST` | `/api/pipelines/:pipelineId/run` | Start run (including remote batch run) |
-| `POST` | `/api/pipelines/:pipelineId/stop` | Stop batch run |
-| `GET` | `/api/pipelines/:pipelineId/executor-bindings` | Executor session bindings |
-| `POST` | `/api/pipelines/:pipelineId/nodes/:nodeId/retry` | Retry node |
-| `GET` | `/api/pipelines/:pipelineId/items` | Item Run listing |
-| `GET` | `/api/pipelines/:pipelineId/batch-run/status` | Batch Run status |
-| `POST` | `/api/pipelines/:pipelineId/batch-run/start` | Start local batch run |
-| `POST` | `/api/pipelines/:pipelineId/batch-run/start-remote` | Start remote batch run |
-| `POST` | `/api/pipelines/:pipelineId/batch-run/stop` | Stop batch run |
-| `POST` | `/api/pipelines/:pipelineId/scheduler/toggle` | Toggle scheduler on/off |
-| `POST` | `/api/pipelines/:pipelineId/scheduler/mode` | Set scheduler mode (auto/manual) |
-| `POST` | `/api/pipelines/:pipelineId/tick` | Manually trigger a scheduler tick |
+| `GET` | `/api/health` | Health check (returns serverId/pid/port) |
+| `OPTIONS` | `*` | CORS preflight |
+| `GET` | `*` | Static file serving (SPA fallback to index.html) |
 
-#### Request Handling Flow
-
-1. `createApiHandler(options)` creates the request handler
-2. All route modules register with the Router instance returned by `createRouter()`
-3. Middleware chain: `errorMiddleware` → `corsMiddleware` → route handler
-4. When each request arrives:
-   - Match route, extract params
-   - Build `RequestContext` (includes services, sendJson, readBody, getPipelineScope)
-   - Inject `PipelineScopedContext` (only when the route includes the `:pipelineId` parameter)
-   - Execute route handler through the middleware chain
+> [!NOTE]
+> All business API endpoints have been migrated to WebSocket RPC. See `src/transport/ws-methods/` for the WS method registry.
 
 ---
 
@@ -482,11 +407,13 @@ The read-only / writable separation ensures that CLI read-only commands cannot a
 
 ---
 
-### 2.4 transport Module — WebSocket Broadcast
+### 2.4 transport Module — WebSocket Transport
 
-**Path**: `src/transport/ws-broker.ts`
+**Path**: `src/transport/`
 
-WebSocket broadcast mechanism based on the `ws` library:
+Unified WebSocket transport layer handling both broadcast events and RPC requests.
+
+#### ws-broker.ts — WebSocket Broadcast
 
 ```typescript
 type WsBroker = {
@@ -500,6 +427,30 @@ type WsBroker = {
 2. Mounts WebSocket Server on the HTTP Server (`/api/ws`)
 3. When a new connection is established, immediately sends `{ type: "bootstrap", payload: ... }` (full state snapshot)
 4. Subsequent incremental events are pushed via `broadcast()`
+
+#### ws-handler.ts — WebSocket RPC Handler
+
+Handles incoming RPC requests from clients. Dispatches to registered WS methods.
+
+#### ws-methods/ — WS Method Registry
+
+All business API endpoints are now WebSocket RPC methods:
+
+| Module | Methods | Description |
+|------|------|------|
+| `agents.ts` | `agent.list`, `agent.files.list`, `agent.files.get`, `agent.files.set` | Agent management |
+| `sessions.ts` | `session.list`, `session.create`, `session.history`, `session.send` | Session management |
+| `pipelines.ts` | `pipeline.list`, `pipeline.create`, `pipeline.delete`, `pipeline.rename` | Pipeline CRUD |
+| `pipeline-runtime.ts` | `pipeline.current`, `pipeline.run`, `pipeline.stop`, `pipeline.status`, `pipeline.items`, `pipeline.node.retry`, `pipeline.executorBindings`, `pipeline.tick` | Pipeline execution |
+| `pipeline-workflow.ts` | `pipeline.workflow.get`, `pipeline.workflow.save`, `pipeline.template`, `pipeline.plugins.get`, `pipeline.plugins.save` | Workflow management |
+| `pipeline-batch.ts` | `pipeline.batchRun.status`, `pipeline.batchRun.start`, `pipeline.batchRun.startRemote`, `pipeline.batchRun.stop` | Batch run |
+| `pipeline-scheduler.ts` | `pipeline.scheduler.toggle`, `pipeline.scheduler.mode` | Scheduler |
+| `pipeline-links.ts` | `pipeline.link.list`, `pipeline.link.create`, `pipeline.link.update`, `pipeline.link.delete` | Cross-pipeline links |
+| `pipeline-queue.ts` | `pipeline.queue.list`, `pipeline.queue.retry`, `pipeline.queue.cancel`, `pipeline.queue.drain` | Inbound queue |
+| `artifacts.ts` | `artifact.list`, `artifact.content`, `artifact.export` | Artifact storage |
+| `timeline.ts` | `timeline.list` | Timeline |
+| `logs.ts` | `log.timeline`, `log.runs.list` | Runtime logs |
+| `gateway.ts` | `gateway.status` | Gateway status |
 
 **Broadcast event types**:
 - `bootstrap` — Full state push (on new connection / pipeline change)
@@ -677,14 +628,21 @@ type AppContext = {
 - `OPENCLAW_PIPELINE_ITEMS` — Default itemKey list (default `global`)
 - `API_PORT` / `API_HOST` / `WEB_ORIGIN` — Server configuration
 - `PIPELINE_NODE_EXECUTION_TIMEOUT_MS` — Node execution timeout (default 15 minutes)
+- `TASKMELD_DATA_DIR` — Override default data directory
 
-**Persisted files**:
-- `~/.taskmeld/pipelines/index.json` — Pipeline definition index
-- `~/.taskmeld/pipelines/<id>/workflow.json` — Workflow definition
-- `~/.taskmeld/pipelines/<id>/run-state.json` — Runtime state snapshot
-- `~/.taskmeld/pipelines/<id>/artifacts/` — Artifact directory
-- `~/.taskmeld/pipelines/_deleted/` — Deleted pipeline archive
-- `~/.taskmeld/logs/runs/<runId>/timeline.log` — Runtime log (NDJSON)
+**Data directory isolation**:
+- **Production** (CLI): `~/.taskmeld/`
+- **Development** (`npm run dev`): `<project>/.data/` (auto-detected via `tsx` in argv)
+- **Testing** (`npm test`): `<project>/.data/` (auto-detected via test path in argv)
+- Override: Set `TASKMELD_DATA_DIR` environment variable
+
+**Persisted files** (relative to data dir):
+- `pipelines/index.json` — Pipeline definition index
+- `pipelines/<id>/workflow.json` — Workflow definition
+- `pipelines/<id>/run-state.json` — Runtime state snapshot
+- `pipelines/<id>/artifacts/` — Artifact directory
+- `pipelines/_deleted/` — Deleted pipeline archive
+- `logs/runs/<runId>/timeline.log` — Runtime log (NDJSON)
 
 ---
 

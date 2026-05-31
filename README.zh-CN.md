@@ -76,7 +76,7 @@ taskmeld pipeline watch <pipelineId>
 
 - **DAG 流水线引擎** — 节点依赖图、并行组、路由分支、节点级重试、状态持久化
 - **CLI 工具** — 全生命周期管理：list, run, status, stop, retry, watch（WebSocket 流式监听）
-- **HTTP + WebSocket API** — REST 端点用于控制面，WS 广播用于实时可观测性
+- **WebSocket API** — 统一 WS 传输层，用于控制面和实时可观测性
 - **Web 控制台** — React 19 仪表盘，含 DAG 可视化、Agent 会话、产物浏览器、日志查看器
 - **Gateway 集成** — WebSocket 客户端，对接 OpenClaw Gateway 鉴权、事件中继与 Agent 会话委托
 - **文件持久化** — 所有状态以 JSON 和日志文件默认存储在 `~/.taskmeld/` 下，可用 `TASKMELD_DATA_DIR` 覆盖，无需外部数据库
@@ -88,7 +88,7 @@ taskmeld pipeline watch <pipelineId>
 ```
 CLI (taskmeld)  ·  Web 控制台 (React)
         │                │
-   HTTP API ─────── WS Broker
+   WS RPC ─────── WS Broker
         │                │
      App Assembly (注册表 + 运行时)
               │
@@ -101,8 +101,8 @@ CLI (taskmeld)  ·  Web 控制台 (React)
 |------|------|
 | `src/cli/` | CLI 入口、路由、输出渲染 |
 | `src/pipeline/` | 流水线引擎（运行时、调度器、执行、DAG） |
-| `src/server/` | HTTP API 服务 + 路由模块 |
-| `src/transport/` | WebSocket 广播 |
+| `src/server/` | HTTP 服务（健康检查 + 静态文件） |
+| `src/transport/` | WebSocket 传输层（广播 + RPC 方法） |
 | `src/gateway/` | 外部 Gateway WebSocket 客户端 |
 | `src/services/` | 服务层（读写 facade） |
 | `src/app/` | 应用装配（注册表、运行时、上下文） |

@@ -21,7 +21,7 @@ The Web frontend is a React-based console application providing pipeline orchest
 | CSS | Tailwind CSS 4.2 (via @tailwindcss/vite plugin) |
 | Icons | @iconify-react (Lucide icon set) |
 | Markdown rendering | react-markdown + remark-gfm + rehype-sanitize |
-| Server communication | fetch (HTTP REST) + WebSocket |
+| Server communication | WebSocket (RPC + event subscription) |
 | Module system | ES Module (`"type": "module"`) |
 
 ---
@@ -69,18 +69,16 @@ web/src/
     session-send/             # Session message sending feature
 
   entities/                   # Domain models & API
-    gateway/                  # Gateway (status, API)
-    agent/                    # Agent (types, API, data mapping)
-    session/                  # Session (types, API, data mapping, history parsing)
-    pipeline/                 # Pipeline (types, API, error parsing)
-    timeline/                 # Timeline (types, API)
-    artifact/                 # Artifact storage (types, API)
-    run-log/                  # Runtime logs (types, API)
+    gateway/                  # Gateway (status, service)
+    agent/                    # Agent (types, service, data mapping)
+    session/                  # Session (types, service, data mapping, history parsing)
+    pipeline/                 # Pipeline (types, service, error parsing)
+    timeline/                 # Timeline (types, service)
+    artifact/                 # Artifact storage (types, service)
+    run-log/                  # Runtime logs (types, service)
 
   shared/                     # Shared capabilities
-    api/                      # HTTP client & WebSocket connection
-      client.ts               # fetch wrapper + ApiError class
-      ws.ts                   # Gateway WebSocket connection management
+    ws-client.ts              # WebSocket client (RPC request, event subscription, ApiError)
     realtime/                 # Real-time event parsing & dispatch
       gateway-events.ts       # Event type definitions & parsing & dispatch
     lib/                      # Utility functions
@@ -254,76 +252,26 @@ Gateway WebSocket connection
 
 ## Backend Communication
 
-### HTTP REST API
+### WebSocket RPC
 
-All HTTP requests are sent via the `requestJson<T>()` function in `shared/api/client.ts`. The API base path defaults to a same-origin relative path, with an optional `VITE_API_BASE` environment variable override.
+All backend communication uses WebSocket RPC via the `wsRequest<T>()` function in `shared/ws-client.ts`. The connection is established automatically on first request and supports auto-reconnect.
 
-**API endpoint listing:**
+**RPC request flow:**
+```
+wsRequest(method, params) → connect() → ws.send({ type: "req", id, method, params })
+  → wait for response frame with matching id
+    → resolve/reject based on frame.ok
+```
 
-#### Pipelines (`entities/pipeline/api.ts`)
-| Method | Path | Description |
-| --- | --- | --- |
-| GET | `/api/pipelines` | Get pipeline list |
-| POST | `/api/pipelines` | Create pipeline |
-| DELETE | `/api/pipelines/:id` | Delete pipeline (archive) |
-| PATCH | `/api/pipelines/:id` | Rename pipeline |
-| GET | `/api/pipelines/:id/current` | Get current run state |
-| GET | `/api/pipelines/:id/workflow` | Get workflow definition |
-| POST | `/api/pipelines/:id/workflow` | Save workflow definition |
-| GET | `/api/pipelines/:id/template` | Get template nodes |
-| GET | `/api/pipelines/:id/items` | Get node item runs |
-| POST | `/api/pipelines/:id/run` | Start pipeline run |
-| GET | `/api/pipelines/:id/batch-run/status` | Get batch run status |
-| POST | `/api/pipelines/:id/batch-run/start-remote` | Start remote batch run |
-| POST | `/api/pipelines/:id/batch-run/stop` | Stop batch run |
-| POST | `/api/pipelines/:id/nodes/:nodeId/retry` | Retry node |
-| POST | `/api/pipelines/:id/scheduler/toggle` | Toggle scheduler on/off |
-| POST | `/api/pipelines/:id/scheduler/mode` | Set scheduler mode |
-| POST | `/api/pipelines/:id/tick` | Manually trigger scheduler tick |
-| GET | `/api/pipelines/:id/executor-bindings` | Get executor bindings |
-
-#### Agents (`entities/agent/api.ts`)
-| Method | Path | Description |
-| --- | --- | --- |
-| GET | `/api/agents` | Get agent list |
-| GET | `/api/agents/:id/files` | Get agent core file list |
-| GET | `/api/agents/:id/files/:name` | Get core file content |
-| POST | `/api/agents/:id/files/:name` | Save core file content |
-
-#### Sessions (`entities/session/api.ts`)
-| Method | Path | Description |
-| --- | --- | --- |
-| GET | `/api/sessions` | Get session list |
-| POST | `/api/sessions` | Create session |
-| POST | `/api/sessions/:id/send` | Send message |
-| GET | `/api/sessions/:id/history` | Get session history |
-
-#### Timeline (`entities/timeline/api.ts`)
-| Method | Path | Description |
-| --- | --- | --- |
-| GET | `/api/timeline` | Get timeline events |
-
-#### Gateway (`entities/gateway/api.ts`)
-| Method | Path | Description |
-| --- | --- | --- |
-| GET | `/api/gateway/status` | Get gateway status |
-
-#### Artifacts (`entities/artifact/api.ts`)
-| Method | Path | Description |
-| --- | --- | --- |
-| GET | `/api/artifacts` | Query artifact list (supports pipelineId/nodeId/dateFrom/dateTo/limit filtering) |
-| GET | `/api/artifacts/content` | Get artifact content |
-| GET | `/api/artifacts/export` | Export artifact data |
-
-#### Logs (`entities/run-log/api.ts`)
-| Method | Path | Description |
-| --- | --- | --- |
-| GET | `/api/logs/runs/:runId/timeline` | Get runtime logs (paginated/filtered) |
-| GET | `/api/logs/runs` | Get available run ID list |
+**Event subscription:**
+```
+onWsEvent(handler) → register handler for gateway events
+  → ws.onmessage parses frames, dispatches GatewayWsEvent to handlers
+```
 
 ### WebSocket Real-time Communication
 
-WebSocket connections are established via `shared/api/ws.ts`, connecting to the `/api/ws` endpoint.
+WebSocket connections are established via `shared/ws-client.ts`, connecting to the `/api/ws` endpoint.
 
 **Event types:**
 
@@ -338,7 +286,7 @@ WebSocket connections are established via `shared/api/ws.ts`, connecting to the 
 
 **Event handling flow:**
 
-1. `connectGatewayWs()` establishes the WebSocket connection
+1. `ws-client.ts` establishes the WebSocket connection automatically on first request
 2. `parseGatewayWsEvent()` parses raw messages into typed events
 3. `dispatchGatewayWsEvent()` dispatches to the corresponding handler by event type
 4. Handler updates React state, triggering component re-render
@@ -353,7 +301,7 @@ WebSocket connections are established via `shared/api/ws.ts`, connecting to the 
 
 ## Error Handling
 
-- HTTP errors are encapsulated via the `ApiError` class (`shared/api/client.ts`), containing `status` and `body`
+- WS errors are encapsulated via the `ApiError` class (`shared/ws-client.ts`), containing `status` and `body`
 - The API layer extracts error messages uniformly via the `getApiErrorMessage` utility function
 - Operation failures are displayed to the user via `setActionMessage` which sets a page-level notification message
 - Modal errors (e.g., pipeline creation failures) are displayed in inline areas
