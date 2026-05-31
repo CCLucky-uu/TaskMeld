@@ -5,7 +5,7 @@ const run = async () => {
   {
     const appContext = createAppContext({
       env: {
-        API_PORT: "3100",
+        API_PORT: "54320",
       },
     });
 

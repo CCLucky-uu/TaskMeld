@@ -76,7 +76,7 @@ Full command reference: `taskmeld --help` or [CLI docs](docs/cli.md).
 
 - **DAG Pipeline Engine** — Node dependency graph, parallel groups, routing branches, per-node retry, state persistence
 - **CLI Tool** — Full lifecycle: list, run, status, stop, retry, watch (WebSocket streaming)
-- **HTTP + WebSocket API** — REST endpoints for control, WS broadcast for real-time observability
+- **WebSocket API** — Unified WS transport for control and real-time observability
 - **Web Console** — React 19 dashboard with DAG visualization, agent sessions, artifact browser, log viewer
 - **Gateway Integration** — WebSocket client for OpenClaw Gateway auth, event relay, and agent session delegation
 - **File-based Persistence** — All state stored as JSON and log files under `~/.taskmeld/` (`TASKMELD_DATA_DIR` can override it); zero external database
@@ -88,7 +88,7 @@ Full command reference: `taskmeld --help` or [CLI docs](docs/cli.md).
 ```
 CLI (taskmeld)  ·  Web Console (React)
         │                │
-   HTTP API ─────── WS Broker
+   WS RPC ─────── WS Broker
         │                │
      App Assembly (registry + runtime)
               │
@@ -101,8 +101,8 @@ CLI (taskmeld)  ·  Web Console (React)
 |-----------|---------|
 | `src/cli/` | CLI entry, routing, output rendering |
 | `src/pipeline/` | Pipeline engine (runtime, scheduler, execution, DAG) |
-| `src/server/` | HTTP API server + route modules |
-| `src/transport/` | WebSocket broadcast |
+| `src/server/` | HTTP server (health check + static files) |
+| `src/transport/` | WebSocket transport (broadcast + RPC methods) |
 | `src/gateway/` | External Gateway WebSocket client |
 | `src/services/` | Service layer (read/write facades) |
 | `src/app/` | Application assembly (registry, runtime, context) |

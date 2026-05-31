@@ -9,7 +9,7 @@ import {
   retryPipelineQueueJob,
   cancelPipelineQueueJob,
   drainPipelineQueue,
-} from "../../../entities/pipeline/api";
+} from "../../../entities/pipeline/service";
 import type {
   PipelineLink,
   PipelineInboundJob,

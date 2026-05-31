@@ -33,7 +33,7 @@ import {
 } from "../../../entities/pipeline";
 import { fetchSessions, SessionItem } from "../../../entities/session";
 import { TimelineItem } from "../../../entities/timeline";
-import { connectGatewayWs } from "../../../shared/api/ws";
+import { onWsEvent } from "../../../shared/ws-client";
 import { dispatchGatewayWsEvent } from "../../../shared/realtime/gateway-events";
 import { useNodeRetryFeature } from "../../../features/node-retry";
 import { useSessionCreateFeature } from "../../../features/session-create";
@@ -657,7 +657,7 @@ export function useControlPlanePage() {
   }, [activePipelineId, editingPipelineId, pipelineList, selectedGroupId, selectedNodeId]);
 
   useEffect(() => {
-    const disconnect = connectGatewayWs((event) => {
+    const disconnect = onWsEvent((event) => {
       dispatchGatewayWsEvent(event, {
         bootstrap: (boot) => {
           if (!boot) return;

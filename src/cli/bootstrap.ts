@@ -1,7 +1,7 @@
 import { createAppContext } from "../app/create-app-context";
 import type { AppContext } from "../app/create-app-context";
 import { resolveGatewayConfig } from "../app/user-config";
-import { createPipelineRuntimeApiClient, createServerLifecycleClient } from "./server-runtime-client";
+import { createPipelineRuntimeApiClientWs, createServerLifecycleClient } from "./server-runtime-client";
 import { CliError } from "./errors";
 import type { CliAppContext, CliBootstrap, CliPipelineSelector } from "./types";
 
@@ -65,7 +65,7 @@ const buildCliAppContext = (appContext: AppContext): CliAppContext => {
       runPipeline: async (pipelineId: string) => writableServices.pipeline.runPipeline(pipelineId),
       retryNode: async (input) => writableServices.pipeline.retryNode(input),
       diagnoseNode: async (input) => {
-        const runtimeApiClient = createPipelineRuntimeApiClient();
+        const runtimeApiClient = createPipelineRuntimeApiClientWs();
         return runtimeApiClient.diagnoseNode(input.pipelineId, input.nodeId, input.itemKey);
       },
       getOutput: async (pipelineId: string, runId?: string) => writableServices.pipeline.getOutput(pipelineId, runId),
@@ -132,7 +132,7 @@ const buildCliAppContext = (appContext: AppContext): CliAppContext => {
 };
 
 const buildRuntimeApiOnlyContext = (): CliAppContext => {
-  const runtimeApiClient = createPipelineRuntimeApiClient();
+  const runtimeApiClient = createPipelineRuntimeApiClientWs();
   const serverLifecycleClient = createServerLifecycleClient();
   const unsupported = async (): Promise<never> => {
     throw new Error("unsupported_cli_runtime_api_context");

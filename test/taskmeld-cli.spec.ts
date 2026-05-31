@@ -21,16 +21,16 @@ const createMemoryStream = () => {
 };
 
 const createMockServerService = () => ({
-  ensureServerReady: async () => ({ ok: true, action: "ensured", endpoint: "http://127.0.0.1:3100", reused: true, pid: 123, startedAt: "2026-05-08T00:00:00.000Z" }),
-  startServer: async () => ({ ok: true, action: "started", endpoint: "http://127.0.0.1:3100", reused: false, pid: 123, startedAt: "2026-05-08T00:00:00.000Z" }),
-  getServerStatus: async () => ({ ok: true, endpoint: "http://127.0.0.1:3100", ready: true, metadataPresent: true, pid: 123, pidRunning: true, startedAt: "2026-05-08T00:00:00.000Z" }),
-  stopServer: async () => ({ ok: true, action: "stopped", endpoint: "http://127.0.0.1:3100", reused: false, pid: 123, startedAt: "2026-05-08T00:00:00.000Z" }),
+  ensureServerReady: async () => ({ ok: true, action: "ensured", endpoint: "http://127.0.0.1:54320", reused: true, pid: 123, startedAt: "2026-05-08T00:00:00.000Z" }),
+  startServer: async () => ({ ok: true, action: "started", endpoint: "http://127.0.0.1:54320", reused: false, pid: 123, startedAt: "2026-05-08T00:00:00.000Z" }),
+  getServerStatus: async () => ({ ok: true, endpoint: "http://127.0.0.1:54320", ready: true, metadataPresent: true, pid: 123, pidRunning: true, startedAt: "2026-05-08T00:00:00.000Z" }),
+  stopServer: async () => ({ ok: true, action: "stopped", endpoint: "http://127.0.0.1:54320", reused: false, pid: 123, startedAt: "2026-05-08T00:00:00.000Z" }),
 });
 
 const serverRuntimeDir = join(tmpdir(), "taskmeld-cli-spec-server-runtime");
 const serverRuntimeMetadataPath = join(serverRuntimeDir, "runtime.json");
 process.env.TASKMELD_SERVER_RUNTIME_DIR = serverRuntimeDir;
-const { createPipelineRuntimeApiClient, createServerLifecycleClient } = require("../src/cli/server-runtime-client") as typeof import("../src/cli/server-runtime-client");
+const { createPipelineRuntimeApiClientWs: createPipelineRuntimeApiClient, createServerLifecycleClient } = require("../src/cli/server-runtime-client") as typeof import("../src/cli/server-runtime-client");
 
 const createReadonlyBootstrap = (): CliBootstrap => {
   return async () => ({
@@ -201,66 +201,40 @@ const run = async () => {
   }
 
   {
-    const originalFetch = globalThis.fetch;
-    const requests: Array<{ url: string; method: string }> = [];
-    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
-      requests.push({
-        url: String(input),
-        method: String(init?.method ?? "GET").toUpperCase(),
-      });
-      return new Response(JSON.stringify({ ok: true }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
-    }) as typeof fetch;
-    try {
-      const runtimeApiClient = createPipelineRuntimeApiClient();
-      await runtimeApiClient.getPipelineStatus({ pipelineId: "A", runId: "run-42" });
-      await runtimeApiClient.stopPipeline({ pipelineId: "A", batchRunId: "batch-42" });
-      await runtimeApiClient.getPipelineStatus("A");
-      await runtimeApiClient.stopPipeline("A");
-    } finally {
-      globalThis.fetch = originalFetch;
+    // WS 客户端 selector 解析测试：selector 参数在调用前即转换为 params，
+    // 不涉及 WebSocket 实际连接，因此可以直接测试 selector 解析逻辑。
+    const { resolveRuntimePipelineSelector } = require("../src/cli/server-runtime-client") as typeof import("../src/cli/server-runtime-client");
+    {
+      const { pipelineId, target } = resolveRuntimePipelineSelector({ pipelineId: "A", runId: "run-42" });
+      assert.equal(pipelineId, "A", "应正确提取 pipelineId");
+      assert.equal(target?.runId, "run-42", "应正确提取 runId");
+      assert.equal(target?.batchRunId, undefined, "batchRunId 应为 undefined");
     }
-    assert.equal(requests.length, 4, "runtime api client 选择器透传测试应发起 4 次请求");
-    assert.match(
-      requests[0]?.url ?? "",
-      /\/api\/pipelines\/A\/status\?runId=run-42$/,
-      "runtime api status 应把 runId 透传到查询参数",
-    );
-    assert.equal(requests[0]?.method, "GET", "runtime api status 应走 GET");
-    assert.match(
-      requests[1]?.url ?? "",
-      /\/api\/pipelines\/A\/stop\?batchRunId=batch-42$/,
-      "runtime api stop 应把 batchRunId 透传到查询参数",
-    );
-    assert.equal(requests[1]?.method, "POST", "runtime api stop 应走 POST");
-    assert.match(requests[2]?.url ?? "", /\/api\/pipelines\/A\/status$/, "runtime api status 兼容 pipelineId-only 调用");
-    assert.match(requests[3]?.url ?? "", /\/api\/pipelines\/A\/stop$/, "runtime api stop 兼容 pipelineId-only 调用");
+    {
+      const { pipelineId, target } = resolveRuntimePipelineSelector({ pipelineId: "A", batchRunId: "batch-42" });
+      assert.equal(pipelineId, "A", "应正确提取 pipelineId");
+      assert.equal(target?.batchRunId, "batch-42", "应正确提取 batchRunId");
+      assert.equal(target?.runId, undefined, "runId 应为 undefined");
+    }
+    {
+      const { pipelineId, target } = resolveRuntimePipelineSelector("A");
+      assert.equal(pipelineId, "A", "字符串 selector 应回退为 pipelineId");
+      assert.equal(target, undefined, "字符串 selector 不应产生 target");
+    }
   }
 
   {
-    const originalFetch = globalThis.fetch;
-    globalThis.fetch = (async () =>
-      new Response(JSON.stringify({ ok: true }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      })) as typeof fetch;
-    try {
-      const runtimeApiClient = createPipelineRuntimeApiClient();
-      await assert.rejects(
-        runtimeApiClient.getPipelineStatus({ runId: "run-42" }),
-        /Missing pipelineId for runtime API selector/,
-        "runtime api 在缺失 pipelineId 时应给出明确参数错误",
-      );
-      await assert.rejects(
-        runtimeApiClient.stopPipeline({ batchRunId: "batch-42" }),
-        /Missing pipelineId for runtime API selector/,
-        "runtime api stop 在缺失 pipelineId 时应给出明确参数错误",
-      );
-    } finally {
-      globalThis.fetch = originalFetch;
-    }
+    const { resolveRuntimePipelineSelector } = require("../src/cli/server-runtime-client") as typeof import("../src/cli/server-runtime-client");
+    assert.throws(
+      () => resolveRuntimePipelineSelector({ runId: "run-42" }),
+      /Missing pipelineId for runtime API selector/,
+      "runtime api 在缺失 pipelineId 时应给出明确参数错误",
+    );
+    assert.throws(
+      () => resolveRuntimePipelineSelector({ batchRunId: "batch-42" }),
+      /Missing pipelineId for runtime API selector/,
+      "runtime api stop 在缺失 pipelineId 时应给出明确参数错误",
+    );
   }
 
   {
@@ -269,8 +243,8 @@ const run = async () => {
     await writeFile(serverRuntimeMetadataPath, JSON.stringify({
       serverId: "stale-owner",
       pid: 777,
-      port: 3100,
-      endpoint: "http://127.0.0.1:3100",
+      port: 54320,
+      endpoint: "http://127.0.0.1:54320",
       startedAt: "2026-05-01T00:00:00.000Z",
     }, null, 2));
     globalThis.fetch = (async () =>
@@ -278,8 +252,8 @@ const run = async () => {
         ok: true,
         serverId: "live-owner",
         pid: 123,
-        port: 3100,
-        endpoint: "http://127.0.0.1:3100",
+        port: 54320,
+        endpoint: "http://127.0.0.1:54320",
         startedAt: "2026-05-09T00:00:00.000Z",
       }), {
         status: 200,
@@ -306,8 +280,8 @@ const run = async () => {
     await writeFile(serverRuntimeMetadataPath, JSON.stringify({
       serverId: "stale-owner",
       pid: 456,
-      port: 3100,
-      endpoint: "http://127.0.0.1:3100",
+      port: 54320,
+      endpoint: "http://127.0.0.1:54320",
       startedAt: "2026-05-08T00:00:00.000Z",
     }, null, 2));
     globalThis.fetch = (async () => {
@@ -340,8 +314,8 @@ const run = async () => {
     await writeFile(serverRuntimeMetadataPath, JSON.stringify({
       serverId: "stale-owner",
       pid: 456,
-      port: 3100,
-      endpoint: "http://127.0.0.1:3100",
+      port: 54320,
+      endpoint: "http://127.0.0.1:54320",
       startedAt: "2026-05-08T00:00:00.000Z",
     }, null, 2));
     globalThis.fetch = (async () => {

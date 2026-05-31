@@ -5,6 +5,7 @@ import { spawn } from "node:child_process";
 import WebSocket from "ws";
 import { resolveAppContextConfig } from "../app/app-context-env";
 import { resolveTaskMeldDataPath } from "../app/data-dir";
+import { createWsRuntimeClient } from "./ws-runtime-client";
 import type { CliPipelineRunIdentityTarget, CliPipelineSelector } from "./types";
 import { CliError } from "./errors";
 
@@ -51,17 +52,6 @@ type ServerLifecycleResult = {
   startedAt: string | null;
 };
 
-type PipelineStatusShape = {
-  ok: boolean;
-  pipelineId?: string;
-  runId?: string | null;
-  batchRunId?: string | null;
-  requestedRunId?: string | null;
-  requestedBatchRunId?: string | null;
-  matchedBy?: string | null;
-  running?: boolean;
-  status?: { mode?: string; running?: boolean; runId?: string | null; batchRunId?: string | null } | null;
-};
 
 const STARTUP_LOCK_STALE_MS = 15_000;
 const STARTUP_LOCK_WAIT_MS = 250;
@@ -70,33 +60,15 @@ const STOP_TIMEOUT_MS = 10_000;
 
 const buildApiBaseUrl = (): string => {
   const config = resolveAppContextConfig();
-  // CLI 访问本地常驻后端时固定走 loopback，避免 0.0.0.0 作为 client 目标地址不可直连。
   return `http://127.0.0.1:${config.apiPort}`;
 };
+
 const buildWsBaseUrl = (): string => {
   const config = resolveAppContextConfig();
   return `ws://127.0.0.1:${config.apiPort}`;
 };
 
-const buildPipelineApiUrl = (pipelineId: string, suffix: string): string =>
-  `${buildApiBaseUrl()}/api/pipelines/${encodeURIComponent(pipelineId)}${suffix}`;
-
-const buildPipelineApiUrlWithIdentity = (
-  pipelineId: string,
-  suffix: string,
-  target?: CliPipelineRunIdentityTarget,
-): string => {
-  const url = new URL(buildPipelineApiUrl(pipelineId, suffix));
-  if (typeof target?.runId === "string" && target.runId.trim()) {
-    url.searchParams.set("runId", target.runId.trim());
-  }
-  if (typeof target?.batchRunId === "string" && target.batchRunId.trim()) {
-    url.searchParams.set("batchRunId", target.batchRunId.trim());
-  }
-  return url.toString();
-};
-
-const resolveRuntimePipelineSelector = (
+export const resolveRuntimePipelineSelector = (
   selector: string | CliPipelineSelector,
 ): { pipelineId: string; target?: CliPipelineRunIdentityTarget } => {
   if (typeof selector === "string" && selector.trim()) {
@@ -475,47 +447,6 @@ const isPidRunning = (pid: number | null | undefined): boolean => {
   }
 };
 
-const normalizeServerError = async (response: Response): Promise<never> => {
-  let payload: Record<string, unknown> | null = null;
-  try {
-    payload = await response.json() as Record<string, unknown>;
-  } catch {
-    payload = null;
-  }
-  const code = typeof payload?.error === "string" && payload.error.trim() ? payload.error.trim().toUpperCase() : "SERVER_REQUEST_FAILED";
-  const message = typeof payload?.error === "string" && payload.error.trim()
-    ? payload.error.trim()
-    : `server request failed: ${response.status}`;
-  throw new CliError(message, {
-    code,
-    exitCode: response.status === 404 ? 3 : response.status === 400 ? 2 : 4,
-    details: {
-      status: response.status,
-      payload,
-    },
-  });
-};
-
-const requestJson = async <T>(url: string, init?: RequestInit): Promise<T> => {
-  let response: Response;
-  try {
-    response = await fetch(url, init);
-  } catch (error) {
-    throw new CliError("Local API server is unavailable", {
-      code: "LOCAL_API_UNAVAILABLE",
-      exitCode: 5,
-      details: {
-        url,
-        detail: error instanceof Error ? error.message : "unknown_error",
-      },
-    });
-  }
-  if (!response.ok) {
-    await normalizeServerError(response);
-  }
-  return response.json() as Promise<T>;
-};
-
 const isServerHealthy = async (): Promise<boolean> => {
   return (await readServerHealth()) !== null;
 };
@@ -851,37 +782,44 @@ export const createServerLifecycleClient = () => ({
   stopServer: stopLocalApiServer,
 });
 
-export const createPipelineRuntimeApiClient = () => ({
-  ensureServerReady,
-  startPipeline: async (pipelineId: string) =>
-    requestJson<unknown>(buildPipelineApiUrl(pipelineId, "/run"), {
-      method: "POST",
-    }),
-  getPipelineStatus: async (selector: string | CliPipelineSelector) => {
-    const resolved = resolveRuntimePipelineSelector(selector);
-    return requestJson<unknown>(buildPipelineApiUrlWithIdentity(resolved.pipelineId, "/status", resolved.target));
-  },
-  stopPipeline: async (selector: string | CliPipelineSelector) => {
-    const resolved = resolveRuntimePipelineSelector(selector);
-    return requestJson<PipelineStatusShape>(buildPipelineApiUrlWithIdentity(resolved.pipelineId, "/stop", resolved.target), {
-      method: "POST",
-    });
-  },
-  waitForPipelineWatchSignal,
-  diagnoseNode: async (pipelineId: string, nodeId: string, itemKey?: string) => {
-    const url = new URL(buildPipelineApiUrl(pipelineId, `/nodes/${encodeURIComponent(nodeId)}/diagnostics`));
-    if (itemKey) url.searchParams.set("itemKey", itemKey);
-    return requestJson<unknown>(url.toString());
-  },
-  getOutput: async (pipelineId: string, runId?: string) => {
-    const url = new URL(buildPipelineApiUrl(pipelineId, "/outputs"));
-    if (runId) url.searchParams.set("runId", runId);
-    return requestJson<unknown>(url.toString());
-  },
-  listOutputs: async (pipelineId: string) =>
-    requestJson<unknown>(buildPipelineApiUrl(pipelineId, "/outputs")),
-  listLinks: async () =>
-    requestJson<unknown>("/api/pipeline-links"),
-  getQueue: async (pipelineId: string) =>
-    requestJson<unknown>(buildPipelineApiUrl(pipelineId, "/queue")),
-});
+export const createPipelineRuntimeApiClientWs = () => {
+  const wsUrl = `${buildWsBaseUrl()}/api/ws`;
+  const wsClient = createWsRuntimeClient(wsUrl);
+
+  return {
+    ensureServerReady,
+    startPipeline: async (pipelineId: string) =>
+      wsClient.sendReq("pipeline.run", { pipelineId }),
+    getPipelineStatus: async (selector: string | CliPipelineSelector) => {
+      const resolved = resolveRuntimePipelineSelector(selector);
+      const params: Record<string, unknown> = { pipelineId: resolved.pipelineId };
+      if (resolved.target?.runId) params.runId = resolved.target.runId;
+      if (resolved.target?.batchRunId) params.batchRunId = resolved.target.batchRunId;
+      return wsClient.sendReq("pipeline.status", params);
+    },
+    stopPipeline: async (selector: string | CliPipelineSelector) => {
+      const resolved = resolveRuntimePipelineSelector(selector);
+      const params: Record<string, unknown> = { pipelineId: resolved.pipelineId };
+      if (resolved.target?.runId) params.runId = resolved.target.runId;
+      if (resolved.target?.batchRunId) params.batchRunId = resolved.target.batchRunId;
+      return wsClient.sendReq("pipeline.stop", params);
+    },
+    waitForPipelineWatchSignal,
+    diagnoseNode: async (pipelineId: string, nodeId: string, itemKey?: string) => {
+      const params: Record<string, unknown> = { pipelineId, nodeId };
+      if (itemKey) params.itemKey = itemKey;
+      return wsClient.sendReq("pipeline.node.diagnostics", params);
+    },
+    getOutput: async (pipelineId: string, runId?: string) => {
+      const params: Record<string, unknown> = { pipelineId };
+      if (runId) params.runId = runId;
+      return wsClient.sendReq("pipeline.output.list", params);
+    },
+    listOutputs: async (pipelineId: string) =>
+      wsClient.sendReq("pipeline.output.list", { pipelineId }),
+    listLinks: async () =>
+      wsClient.sendReq("pipeline.link.list"),
+    getQueue: async (pipelineId: string) =>
+      wsClient.sendReq("pipeline.queue.list", { pipelineId }),
+  };
+};

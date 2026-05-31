@@ -1,6 +1,4 @@
 import type { GatewayClient, GatewayConnectionInfo, GatewayFrame } from "../gateway";
-import type { ServerResponse } from "node:http";
-import { sendJson as sendJsonBase } from "../server/http-utils";
 import {
   loadPipelineTemplateWithStorage,
   loadWorkflowDefinitionWithStorage,
@@ -70,9 +68,6 @@ export const createPipelineRuntime = (options: CreatePipelineRuntimeOptions) => 
   getBatchRunId = () => schedulerService.getBatchRunState().batchRunId;
   schedulerStateAccessor = schedulerService.getSchedulerState;
   batchRunStateGetter = () => schedulerService.getBatchRunState() as Record<string, unknown> | null;
-
-  const sendJson = (res: ServerResponse, code: number, data: unknown) =>
-    sendJsonBase(res, code, data, options.webOrigin);
 
   const setRun = (nextRun: ReturnType<typeof runtimeStore.getRun>) => {
     runtimeStore.setRun(nextRun);
@@ -174,7 +169,6 @@ export const createPipelineRuntime = (options: CreatePipelineRuntimeOptions) => 
   return {
     initialize,
     dispose: () => executionService.dispose(),
-    sendJson,
     getBootstrapPayload,
     onGatewayStatus,
     onGatewayFrame,

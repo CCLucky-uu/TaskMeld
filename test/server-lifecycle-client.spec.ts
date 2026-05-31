@@ -68,8 +68,8 @@ const setHealthResponses = (responses: MockHealthPayload[]) => {
       ok: true,
       serverId: picked.serverId ?? "test-server",
       pid: picked.pid ?? 123,
-      port: picked.port ?? 3100,
-      endpoint: picked.endpoint ?? "http://127.0.0.1:3100",
+      port: picked.port ?? 54320,
+      endpoint: picked.endpoint ?? "http://127.0.0.1:54320",
       startedAt: picked.startedAt ?? "2026-05-09T00:00:00.000Z",
     }), {
       status: 200,
@@ -128,8 +128,8 @@ const run = async () => {
         "utf8",
       );
       const restoreFetch = setHealthResponses([
-        { serverId: "live-owner", pid: 123, port: 3100, endpoint: "http://127.0.0.1:3100" },
-        { serverId: "live-owner", pid: 123, port: 3100, endpoint: "http://127.0.0.1:3100" },
+        { serverId: "live-owner", pid: 123, port: 54320, endpoint: "http://127.0.0.1:54320" },
+        { serverId: "live-owner", pid: 123, port: 54320, endpoint: "http://127.0.0.1:54320" },
       ]);
       const restoreKill = setKillBehavior(((pid: number, signal?: NodeJS.Signals | number) => {
         if (signal === 0) {
@@ -160,8 +160,8 @@ const run = async () => {
         runtimeMetadataPath,
         JSON.stringify({
           pid: 999999,
-          port: 3100,
-          endpoint: "http://127.0.0.1:3100",
+          port: 54320,
+          endpoint: "http://127.0.0.1:54320",
           startedAt: "2026-05-09T00:00:00.000Z",
         }),
         "utf8",

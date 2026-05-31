@@ -1,6 +1,6 @@
 import { FormEvent, useState } from "react";
 import { createSession as createSessionReq } from "../../../entities/session";
-import { ApiError } from "../../../shared/api/client";
+import { ApiError } from "../../../shared/ws-client";
 
 type UseSessionCreateFeatureArgs = {
   reload: () => Promise<void>;

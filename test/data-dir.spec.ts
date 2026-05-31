@@ -30,6 +30,17 @@ const run = () => {
 
   assert.equal(
     getTaskMeldDataDir({
+      env: {},
+      argv: ["node", "node_modules/.bin/tsx", "src/index.ts"],
+      cwd,
+      homeDir,
+    }),
+    join(cwd, ".data"),
+    "tsx 开发态应使用当前工作区 .data",
+  );
+
+  assert.equal(
+    getTaskMeldDataDir({
       env: { TASKMELD_DATA_DIR: join("D:", "taskmeld-data") },
       argv: ["node", "dist/src/cli/index.js"],
       cwd,
