@@ -270,7 +270,7 @@ export const rebuildArtifactIndex = async (
     await rename(tmpPath, indexPath);
   } catch (error) {
     warnings.push(
-      `重建索引失败 (pipeline ${definition.id}): ${error instanceof Error ? error.message : String(error)}`,
+      `Failed to rebuild index (pipeline ${definition.id}): ${error instanceof Error ? error.message : String(error)}`,
     );
   }
 

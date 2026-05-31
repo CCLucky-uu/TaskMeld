@@ -301,34 +301,34 @@ export const readWorkflowDefinitionFromRaw = (value: unknown): WorkflowDefinitio
 
 export const readWorkflowDefinitionFromRawDetailed = (value: unknown): WorkflowReadResult => {
   if (!isRecord(value)) {
-    return { ok: false, error: "invalid_workflow_definition", detail: "workflow 根对象格式非法" };
+    return { ok: false, error: "invalid_workflow_definition", detail: "Workflow root object has an invalid format" };
   }
   if (value.version === "2.0") {
     return {
       ok: false,
       error: "workflow_migration_required",
-      detail: "检测到 workflow v2.0，请先执行迁移脚本再写入",
+      detail: "Workflow v2.0 detected, please run the migration script before writing",
     };
   }
   if (value.version !== "3.0") {
-    return { ok: false, error: "invalid_workflow_definition", detail: `workflow.version 非法: ${String(value.version ?? "")}` };
+    return { ok: false, error: "invalid_workflow_definition", detail: `Invalid workflow.version: ${String(value.version ?? "")}` };
   }
 
   if (!Array.isArray(value.nodes) || !Array.isArray(value.edges) || !Array.isArray(value.groups)) {
-    return { ok: false, error: "invalid_workflow_definition", detail: "workflow.nodes/edges/groups 必须为数组" };
+    return { ok: false, error: "invalid_workflow_definition", detail: "workflow.nodes/edges/groups must be arrays" };
   }
 
   const nodes: WorkflowNode[] = [];
   for (const item of value.nodes) {
     const normalized = normalizeWorkflowNode(item);
-    if (!normalized) return { ok: false, error: "invalid_workflow_definition", detail: "workflow.nodes 存在非法节点结构" };
+    if (!normalized) return { ok: false, error: "invalid_workflow_definition", detail: "workflow.nodes contains an invalid node structure" };
     nodes.push(normalized);
   }
 
   const edges: WorkflowEdge[] = [];
   for (const item of value.edges) {
     const normalized = normalizeWorkflowEdgeV3(item);
-    if (!normalized) return { ok: false, error: "invalid_workflow_definition", detail: "workflow.edges 存在非法边结构" };
+    if (!normalized) return { ok: false, error: "invalid_workflow_definition", detail: "workflow.edges contains an invalid edge structure" };
     edges.push(normalized);
   }
 
@@ -339,11 +339,11 @@ export const readWorkflowDefinitionFromRawDetailed = (value: unknown): WorkflowR
       return {
         ok: false,
         error: "join_policy_not_supported",
-        detail: `并行组 "${String(item.id ?? "?")}" 的 joinPolicy "${String(item.joinPolicy)}" 未支持，当前仅支持 "all"`,
+        detail: `Parallel group "${String(item.id ?? "?")}" has unsupported joinPolicy "${String(item.joinPolicy)}", only "all" is currently supported`,
       };
     }
     const normalized = normalizeWorkflowGroup(item);
-    if (!normalized) return { ok: false, error: "invalid_workflow_definition", detail: "workflow.groups 存在非法并行组结构" };
+    if (!normalized) return { ok: false, error: "invalid_workflow_definition", detail: "workflow.groups contains an invalid parallel group structure" };
     groups.push(normalized);
   }
 

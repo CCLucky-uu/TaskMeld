@@ -1,4 +1,5 @@
 import { FormEvent, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { sendSessionMessage as sendSessionMessageReq, SendMode, SessionItem } from "../../../entities/session";
 import { ApiError } from "../../../shared/ws-client";
 
@@ -7,6 +8,7 @@ type UseSessionSendFeatureArgs = {
 };
 
 export function useSessionSendFeature({ reload }: UseSessionSendFeatureArgs) {
+  const { t } = useTranslation("session");
   const [selectedSessionId, setSelectedSessionId] = useState("");
   const [sessionMessage, setSessionMessage] = useState("");
   const [sendMode, setSendMode] = useState<SendMode>("auto");
@@ -47,7 +49,7 @@ export function useSessionSendFeature({ reload }: UseSessionSendFeatureArgs) {
       });
       const modelText = ok?.model ? `${ok.modelProvider ? `${ok.modelProvider}/` : ""}${ok.model}` : "-";
       setLastSendInfo(
-        `发送成功\nmethod: ${ok?.usedMethod ?? "-"}\nmodel: ${modelText}\nparams: ${JSON.stringify(ok?.usedParams ?? {}, null, 2)}`,
+        t("sendSuccess", { method: ok?.usedMethod ?? "-", model: modelText, params: JSON.stringify(ok?.usedParams ?? {}, null, 2) }),
       );
       setSessionMessage("");
       await reload();
@@ -55,13 +57,13 @@ export function useSessionSendFeature({ reload }: UseSessionSendFeatureArgs) {
       if (error instanceof ApiError) {
         const err = error.body as { error?: string; attempts?: string[] } | null;
         const detail = err?.attempts?.slice(0, 3).join("\n") ?? err?.error ?? `HTTP ${error.status}`;
-        setLastSendInfo(`发送失败\n${detail}`);
-        alert(`发送失败:\n${detail}`);
+        setLastSendInfo(t("sendFailed", { detail }));
+        alert(t("sendFailed", { detail }));
         return;
       }
       const fallback = error instanceof Error ? error.message : "unknown error";
-      setLastSendInfo(`发送失败\n${fallback}`);
-      alert(`发送失败:\n${fallback}`);
+      setLastSendInfo(t("sendFailed", { detail: fallback }));
+      alert(t("sendFailed", { detail: fallback }));
     }
   };
 

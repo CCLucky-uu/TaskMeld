@@ -1,0 +1,15 @@
+{
+  "overview": "总览",
+  "agents": "智能体",
+  "pipeline": "流水线",
+  "pipelineRuns": "运行记录",
+  "artifacts": "产物",
+  "logs": "日志",
+  "schedulerPanel": "调度面板",
+  "home": "主页",
+  "collapseNav": "收起导航",
+  "expandNav": "展开导航",
+  "backToHome": "返回主页",
+  "skipToContent": "跳到主内容",
+  "settings": "设置"
+}

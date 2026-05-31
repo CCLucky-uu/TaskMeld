@@ -1,3 +1,4 @@
+import i18n from "../../shared/i18n";
 import type { PipelineNode } from "./types";
 
 export type PipelineErrorKind = "structured" | "node_return" | "unknown";
@@ -34,7 +35,7 @@ export const parsePipelineError = (rawError: string | null | undefined): ParsedP
   ) {
     return {
       kind: "structured",
-      label: "结构化错误",
+      label: i18n.t("overview:structured"),
       code: "structured_contract_or_transport",
       message: raw.replace(/^Error:\s*/i, ""),
       raw,
@@ -51,7 +52,7 @@ export const parsePipelineError = (rawError: string | null | undefined): ParsedP
     if (code || message) {
       return {
         kind: "node_return",
-        label: "节点返回错误",
+        label: i18n.t("overview:nodeReturn"),
         code: code || "node_error",
         message: message || code || raw,
         raw,
@@ -61,7 +62,7 @@ export const parsePipelineError = (rawError: string | null | undefined): ParsedP
 
   return {
     kind: "unknown",
-    label: "未知错误",
+    label: i18n.t("common:common.error"),
     code: "unknown_error",
     message: raw.replace(/^Error:\s*/i, ""),
     raw,

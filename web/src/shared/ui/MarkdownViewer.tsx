@@ -2,6 +2,7 @@ import { Children, isValidElement, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeSanitize from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
+import i18n from "../i18n";
 
 type MarkdownViewerProps = {
   content: string;
@@ -57,7 +58,7 @@ function MarkdownCodeBlock({ blockKey, className, children, collapsed, onToggleC
             handleToggle();
           }
         }}
-        aria-label={collapsed ? "展开代码块" : "折叠代码块"}
+        aria-label={collapsed ? i18n.t("common:common.expandCodeBlock") : i18n.t("common:common.collapseCodeBlock")}
       >
         <span className="font-[JetBrains_Mono,monospace] text-xs text-[#8ba0b0]">{lang}</span>
         <div className="flex items-center gap-2">

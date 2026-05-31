@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { controlInputClassName, controlInputMonoClassName } from "../../../shared/ui/surfaceClassNames";
 import type { ArtifactFilterState, ArtifactNodeOption, ArtifactPipelineOption } from "../model/types";
 
@@ -51,6 +52,7 @@ export function ArtifactFiltersBar({
   onRefresh,
   onExport,
 }: ArtifactFiltersBarProps) {
+  const { t } = useTranslation("artifact");
   const [nodePickerOpen, setNodePickerOpen] = useState(false);
   const nodePickerRef = useRef<HTMLDivElement | null>(null);
 
@@ -69,10 +71,10 @@ export function ArtifactFiltersBar({
 
   const selectedNodeLabel =
     filters.nodeIds.length === 0
-      ? "全部"
+      ? t("common:common.all")
       : filters.nodeIds.length <= 3
         ? filters.nodeIds.join(", ")
-        : `${filters.nodeIds.slice(0, 3).join(", ")} 等${filters.nodeIds.length}个`;
+        : `${filters.nodeIds.slice(0, 3).join(", ")} ${t("nodeSummary", { count: filters.nodeIds.length })}`;
 
   const toggleNode = (nodeId: string, checked: boolean) => {
     if (!nodeId.trim()) return;
@@ -89,10 +91,10 @@ export function ArtifactFiltersBar({
       <div className="grid gap-2 lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-start">
         <div className="flex flex-wrap items-center gap-1.5">
           {([
-            { key: "today", label: "今天" },
-            { key: "7d", label: "7天" },
-            { key: "30d", label: "30天" },
-            { key: "custom", label: "自定义" },
+            { key: "today", label: t("common:time.today") },
+            { key: "7d", label: t("common:time.last7d") },
+            { key: "30d", label: t("common:time.last30d") },
+            { key: "custom", label: t("common:time.custom") },
           ] as const).map((option) => (
             <button
               key={option.key}
@@ -137,7 +139,7 @@ export function ArtifactFiltersBar({
             }}
             disabled={loading}
           >
-            <option value="">全部流水线</option>
+            <option value="">{t("allPipelines")}</option>
             {pipelineOptions.map((pipeline) => (
               <option key={pipeline.id} value={pipeline.id}>
                 {pipeline.id} - {pipeline.title}
@@ -153,7 +155,7 @@ export function ArtifactFiltersBar({
             }}
             disabled={loading}
           >
-            <option value="">全部状态</option>
+            <option value="">{t("allStatus")}</option>
             <option value="success">success</option>
             <option value="failed">failed</option>
             <option value="rejected">rejected</option>
@@ -168,7 +170,7 @@ export function ArtifactFiltersBar({
             }}
             disabled={loading}
           >
-            <option value="">全部类型</option>
+            <option value="">{t("allTypes")}</option>
             <option value="artifact">artifact</option>
             <option value="envelope">envelope</option>
             <option value="adapter">adapter</option>
@@ -191,7 +193,7 @@ export function ArtifactFiltersBar({
                   setNodePickerOpen((prev) => !prev);
                 }
               }}
-              aria-label="编辑节点筛选"
+              aria-label={t("editNodeFilter")}
             >
               {selectedNodeLabel}
             </div>
@@ -207,7 +209,7 @@ export function ArtifactFiltersBar({
                       onChangeFilters((prev) => ({ ...prev, nodeIds: [] }));
                     }}
                   />
-                  <span className="block min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">全部节点</span>
+                  <span className="block min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">{t("allNodes")}</span>
                 </label>
                 {nodeOptions.length ? (
                   nodeOptions.map((node) => (
@@ -222,7 +224,7 @@ export function ArtifactFiltersBar({
                     </label>
                   ))
                 ) : (
-                  <p className={nodeEmptyClassName}>当前筛选下暂无可选节点</p>
+                  <p className={nodeEmptyClassName}>{t("noNodesAvailable")}</p>
                 )}
               </div>
             ) : null}
@@ -230,22 +232,22 @@ export function ArtifactFiltersBar({
         </div>
         <div className="flex flex-wrap items-center justify-start gap-1.5 lg:justify-end">
           <button type="button" className={actionButtonClassName} onClick={onApply} disabled={loading}>
-            应用筛选
+            {t("applyFilters")}
           </button>
           <button type="button" className={actionButtonClassName} onClick={onReset} disabled={loading}>
-            重置
+            {t("reset")}
           </button>
           <button type="button" className={actionButtonClassName} onClick={onRefresh} disabled={loading}>
-            刷新
+            {t("refresh")}
           </button>
           <button type="button" className={actionButtonClassName} onClick={onExport} disabled={loading || exporting}>
-            {exporting ? "导出中..." : "导出"}
+            {exporting ? t("exporting") : t("export")}
           </button>
         </div>
       </div>
       <p className={`${monoClassName} m-0 text-xs text-(--muted)`}>
-        时间范围：{filters.preset === "today" ? "今天" : filters.preset === "7d" ? "近7天" : filters.preset === "30d" ? "近30天" : "自定义"} |
-        流水线：{filters.pipelineId || "全部"} | 节点：{selectedNodeLabel}
+        {t("timeRange")}：{filters.preset === "today" ? t("common:time.today") : filters.preset === "7d" ? t("recentDays", { count: 7 }) : filters.preset === "30d" ? t("recentDays", { count: 30 }) : t("common:time.custom")} |
+        {t("pipeline")}：{filters.pipelineId || t("common:common.all")} | {t("node")}：{selectedNodeLabel}
       </p>
     </section>
   );

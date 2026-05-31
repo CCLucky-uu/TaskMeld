@@ -39,7 +39,7 @@ export const createNodeItemExecutor = (deps: NodeItemExecutorDeps) => {
     const maxAttempts = Math.max(1, workflowNode?.retryPolicy.maxAttempts ?? 1);
     if (item.attempt >= maxAttempts) {
       markItemFailed(item, ctx("max_attempts_exceeded", { error: `max_attempts_exceeded:${maxAttempts}` }));
-      deps.runtimeStore.pushTimeline(`节点项超过重试上限: ${item.nodeId}#${item.itemKey} (${maxAttempts})`, "error");
+      deps.runtimeStore.pushTimeline(`Node item exceeded max retry attempts: ${item.nodeId}#${item.itemKey} (${maxAttempts})`, "error");
       deps.runtimeStore.emitPipeline();
       return { ok: false, error: item.lastError ?? undefined, finalStatus: "failed" };
     }
@@ -48,7 +48,7 @@ export const createNodeItemExecutor = (deps: NodeItemExecutorDeps) => {
       await new Promise(resolve => setTimeout(resolve, retryBackoffMs));
     }
     markItemRunning(item, ctx("exec_start"));
-    deps.runtimeStore.pushTimeline(`节点项执行已触发: ${item.nodeId}#${item.itemKey}`);
+    deps.runtimeStore.pushTimeline(`Node item execution triggered: ${item.nodeId}#${item.itemKey}`);
     deps.runtimeStore.emitPipeline();
 
     const exec = await deps.nodeRunner.executeNode(node, {

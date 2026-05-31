@@ -1,4 +1,5 @@
 import { DragEvent, Fragment, KeyboardEvent, ReactNode, useState } from "react";
+import { useTranslation } from "react-i18next";
 import ArrowDownIcon from "@iconify-react/lucide/arrow-down";
 import ArrowUpIcon from "@iconify-react/lucide/arrow-up";
 import BracesIcon from "@iconify-react/lucide/braces";
@@ -140,9 +141,9 @@ const pipelineCreateEntryClassName =
   "relative grid h-full min-h-0 w-full min-w-0 content-center justify-items-center gap-1 border border-dashed border-[rgba(50,215,186,0.18)] bg-[rgba(18,31,38,0.7)] p-2.5 text-center text-(--text) shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] hover:border-[rgba(50,215,186,0.3)] hover:bg-[rgba(23,39,47,0.84)]";
 
 // 节点卡片内部只展示关键信息：标题、ID、Agent，避免长文本挤占状态和操作区域。
-const toCompactAgentLabel = (agentId: string): string => {
+const toCompactAgentLabel = (agentId: string, t: (key: string) => string): string => {
   const normalized = agentId.trim();
-  if (!normalized) return "未配置 Agent";
+  if (!normalized) return t("notConfiguredAgent");
   return normalized.startsWith("@") ? normalized : `@${normalized}`;
 };
 
@@ -176,6 +177,7 @@ export function PipelineCard({
   statusTone,
   statusLabel,
 }: PipelineCardProps) {
+  const { t } = useTranslation("pipeline");
   const [draggedNodeKey, setDraggedNodeKey] = useState("");
   const [dragOverNodeId, setDragOverNodeId] = useState("");
   const [dragOverPosition, setDragOverPosition] = useState<"before" | "after">(
@@ -337,7 +339,7 @@ export function PipelineCard({
               className={`${monoClassName} inline-block flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-right text-xs`}
               title={node.executor.agentId}
             >
-              {toCompactAgentLabel(node.executor.agentId)}
+              {toCompactAgentLabel(node.executor.agentId, t)}
             </small>
           </div>
         </div>
@@ -357,8 +359,8 @@ export function PipelineCard({
                   onMoveNode(pipelineId, node.id, "up");
                 }}
                 disabled={deletingEntity || savingNodeOrder}
-                aria-label="上移节点"
-                title="上移节点"
+                aria-label={t("moveUp")}
+                title={t("moveUp")}
               >
                 <ArrowUpIcon className="h-full w-full" />
               </button>
@@ -370,8 +372,8 @@ export function PipelineCard({
                   onMoveNode(pipelineId, node.id, "down");
                 }}
                 disabled={deletingEntity || savingNodeOrder}
-                aria-label="下移节点"
-                title="下移节点"
+                aria-label={t("moveDown")}
+                title={t("moveDown")}
               >
                 <ArrowDownIcon className="h-full w-full" />
               </button>
@@ -383,8 +385,8 @@ export function PipelineCard({
                   onRequestDeleteNode(pipelineId, node.id);
                 }}
                 disabled={deletingEntity || savingNodeOrder}
-                aria-label="删除节点"
-                title="删除节点"
+                aria-label={t("deleteNode")}
+                title={t("deleteNode")}
               >
                 <Trash2Icon className="h-full w-full" />
               </button>
@@ -531,11 +533,11 @@ export function PipelineCard({
                   }}
                   disabled={deletingEntity}
                 >
-                  删除组
+                  {t("deleteGroup")}
                 </button>
               ) : null}
               <div className={`${monoClassName} text-xs text-[#95b4c8]`}>
-                并行组: {block.groupId}
+                {t("parallelGroup", { groupId: block.groupId })}
               </div>
               <div className="grid grid-cols-[repeat(auto-fill,minmax(210px,1fr))] gap-3">
                 {(groupById.get(block.groupId)?.members ?? [])
@@ -561,8 +563,8 @@ export function PipelineCard({
           >
             {/* 新增入口跟随当前编辑中的流水线网格渲染，避免始终掉到整页最底部。 */}
             <span className={`${monoClassName} text-[18px]`}>+</span>
-            <strong>新增对象</strong>
-            <small>点击创建节点或并行组</small>
+            <strong>{t("addObject")}</strong>
+            <small>{t("addObjectHint")}</small>
           </button>
         ) : null}
         </div>
@@ -642,7 +644,7 @@ export function PipelineCard({
         ? `status=${batchRunStatus} | ${batchRunProcessedItems ?? 0}/${batchRunTotalItems ?? 0} | batch ${batchRunProcessedBatches ?? 0}/${batchRunTotalBatches ?? 0} | size=${
             batchRunStatus === "idle" ? 5 : (batchRunBatchSize ?? 0)
           }${batchRunError ? ` | error=${batchRunError}` : ""}`
-        : "暂无批跑状态";
+        : t("noBatchStatus");
     const isRemoteBatchEnabled = pluginState.enabled;
     const hasRunningNode = [...nodes, ...(branchNodes ?? [])].some((node) => node.status === "running");
     const canStopPipeline = Boolean(isRunning || batchRunStatus === "running" || hasRunningNode);
@@ -723,7 +725,7 @@ export function PipelineCard({
             ) : (
               <p
                 className="m-0 cursor-text whitespace-nowrap text-base font-medium italic leading-none"
-                title="双击修改标题"
+                title={t("doubleClickTitle")}
                 onDoubleClick={() => {
                   setEditingTitlePipelineId(pipelineId);
                   setEditingTitleValue(title);
@@ -743,8 +745,8 @@ export function PipelineCard({
                     [pipelineId]: !isCollapsed,
                   }))
                 }
-                aria-label={isCollapsed ? "展开流水线" : "折叠流水线"}
-                title={isCollapsed ? "展开流水线" : "折叠流水线"}
+                aria-label={isCollapsed ? t("expandPipeline") : t("collapsePipeline")}
+                title={isCollapsed ? t("expandPipeline") : t("collapsePipeline")}
               >
                 {isCollapsed ? (
                   <ChevronRightIcon className="h-4 w-4" />
@@ -756,8 +758,8 @@ export function PipelineCard({
                 className={`${actionIconButtonClassName} ${canStopPipeline ? "border-[rgba(255,107,107,0.35)] text-(--bad) hover:bg-[rgba(255,107,107,0.1)]" : "border-(--line) text-(--muted)"}`}
                 onClick={() => onStop(pipelineId)}
                 disabled={!canStopPipeline || Boolean(isBatchOperating)}
-                aria-label={canStopPipeline ? "停止流水线" : "流水线未运行"}
-                title={canStopPipeline ? "停止流水线" : "流水线未运行"}
+                aria-label={canStopPipeline ? t("stopPipeline") : t("pipelineNotRunning")}
+                title={canStopPipeline ? t("stopPipeline") : t("pipelineNotRunning")}
               >
                 <SquareIcon className="h-3.5 w-3.5" />
               </button>
@@ -774,20 +776,20 @@ export function PipelineCard({
                 aria-label={
                   isRemoteBatchEnabled
                     ? isPrimaryActionBusy
-                      ? "远程批跑中"
-                      : "启动远程批跑"
+                      ? t("remoteBatchRunning")
+                      : t("startRemoteBatch")
                     : isRunning
-                      ? "运行启动中"
-                      : "启动运行"
+                      ? t("runStarting")
+                      : t("startRun")
                 }
                 title={
                   isRemoteBatchEnabled
                     ? isPrimaryActionBusy
-                      ? "远程批跑中"
-                      : "启动远程批跑"
+                      ? t("remoteBatchRunning")
+                      : t("startRemoteBatch")
                     : isRunning
-                      ? "运行启动中"
-                      : "启动运行"
+                      ? t("runStarting")
+                      : t("startRun")
                 }
               >
                 {isPrimaryActionBusy ? (
@@ -799,24 +801,24 @@ export function PipelineCard({
               <button
                 className={actionIconButtonClassName}
                 onClick={() => onOpenPlugins(pipelineId)}
-                aria-label="插件配置"
-                title="插件配置"
+                aria-label={t("pluginConfig")}
+                title={t("pluginConfig")}
               >
                 <PlugIcon className="h-4 w-4" />
               </button>
               <button
                 className={actionIconButtonClassName}
                 onClick={() => onOpenWorkflowJson(pipelineId)}
-                aria-label="查看工作流 JSON"
-                title="查看工作流 JSON"
+                aria-label={t("viewWorkflowJson")}
+                title={t("viewWorkflowJson")}
               >
                 <BracesIcon className="h-4 w-4" />
               </button>
               <button
                 className={`${actionIconButtonClassName} ${isEditing ? "border-(--warn) text-(--warn) hover:bg-[rgba(255,184,77,0.12)]" : ""}`}
                 onClick={() => onToggleEditing(pipelineId, !isEditing)}
-                aria-label={isEditing ? "保存编辑" : "进入编辑"}
-                title={isEditing ? "保存编辑" : "进入编辑"}
+                aria-label={isEditing ? t("saveEdit") : t("enterEdit")}
+                title={isEditing ? t("saveEdit") : t("enterEdit")}
               >
                 {isEditing ? (
                   <SaveIcon className="h-4 w-4" />
@@ -828,8 +830,8 @@ export function PipelineCard({
                 className={actionIconButtonClassName}
                 onClick={() => onRequestDeletePipeline(pipelineId)}
                 disabled={!canDelete || deletingPipeline}
-                aria-label="删除流水线"
-                title={!canDelete ? "至少保留一条流水线" : "删除流水线"}
+                aria-label={t("deletePipeline")}
+                title={!canDelete ? t("keepAtLeastOne") : t("deletePipeline")}
               >
                 <Trash2Icon className="h-4 w-4" />
               </button>
@@ -857,7 +859,7 @@ export function PipelineCard({
         ) : null}
         {!isCollapsed && pluginState.enabled ? (
           <RemoteBatchPanel
-            title={`远程关键词池批跑（DAG-${pipelineId}）`}
+            title={t("remoteBatchTitle", { pipelineId })}
             statusText={batchStatusText}
             startBatch={batchStartBatch ?? "1"}
             isOperating={Boolean(isBatchOperating)}
@@ -880,7 +882,7 @@ export function PipelineCard({
         ) : !isCollapsed ? (
           <div className={pipelineGridShellClassName}>
             <div className={`${pipelineGridClassName} max-h-none`}>
-              {renderEmptyState(emptyMessage ?? "暂无节点", {
+              {renderEmptyState(emptyMessage ?? t("noNodes"), {
                 wrapperClassName: "px-0",
               })}
               {isEditing ? (
@@ -891,8 +893,8 @@ export function PipelineCard({
                 >
                   {/* 空流水线也要把新增入口放在当前 DAG 区块内，保持交互位置一致。 */}
                   <span className={`${monoClassName} text-[18px]`}>+</span>
-                  <strong>新增对象</strong>
-                  <small>点击创建节点或并行组</small>
+                  <strong>{t("addObject")}</strong>
+                  <small>{t("addObjectHint")}</small>
                 </button>
               ) : null}
             </div>
@@ -900,7 +902,7 @@ export function PipelineCard({
         ) : null}
         {!isCollapsed && branchNodes ? (
           <div>
-            {renderInsetBlock("支线节点", {
+            {renderInsetBlock(t("branchNodes"), {
               contentClassName: `${monoClassName} mb-2 text-xs text-[#8da2b3]`,
             })}
             {branchNodes.length > 0 ? (
@@ -915,7 +917,7 @@ export function PipelineCard({
                 false,
               )
             ) : (
-              renderEmptyState("暂无支线节点（可在 workflow.lane=branch 后显示）", {
+              renderEmptyState(t("noBranchNodes"), {
                 wrapperClassName: "mb-3",
                 contentClassName: "p-2.5",
               })
@@ -971,7 +973,7 @@ export function PipelineCard({
           isEditing: section.isEditing,
           tone: index === 0 ? "primary" : "secondary",
           showActions: true,
-          emptyMessage: `当前流水线 ${section.pipelineId} 暂无节点`,
+          emptyMessage: t("currentPipelineNoNodes", { pipelineId: section.pipelineId }),
           showTopBand: index === 0,
           showBottomBand: true,
           collapsed: isSectionCollapsed,

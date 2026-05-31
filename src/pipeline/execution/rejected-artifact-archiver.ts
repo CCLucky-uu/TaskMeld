@@ -48,7 +48,7 @@ export const archiveRejectedArtifacts = async (params: {
       moved += 1;
     } catch (error) {
       pushTimeline(
-        `归档被驳回产物失败 (节点 ${node.id}): ${error instanceof Error ? error.message : String(error)}`,
+        `Failed to archive rejected artifact (node ${node.id}): ${error instanceof Error ? error.message : String(error)}`,
         "warn",
       );
     }

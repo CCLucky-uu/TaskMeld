@@ -7,6 +7,7 @@ import {
 } from "../../../entities/pipeline";
 import { TimelineItem } from "../../../entities/timeline";
 import type { ApiError } from "../../../shared/ws-client";
+import i18n from "../../../shared/i18n";
 
 const MAINLINE_ROUTE_VALUE = "yes";
 const DEFAULT_BRANCH_ROUTE_VALUE = "no";
@@ -391,8 +392,8 @@ export const buildAgentCards = (
 ) => {
   const timelineBusyCounts = (() => {
     const counts: Record<string, number> = {};
-    const started = /Agent\s+([^\s]+)\s+开始工作/;
-    const finished = /Agent\s+([^\s]+)\s+结束工作/;
+    const started = /Agent\s+([^\s]+)\s+started/;
+    const finished = /Agent\s+([^\s]+)\s+finished/;
     for (const item of [...timeline].reverse()) {
       const text = item.text ?? "";
       const startMatch = text.match(started);
@@ -484,19 +485,19 @@ export const getApiErrorMessage = (error: unknown) =>
 
 export const validateWorkflowBeforeSave = (workflow: WorkflowDefinition): { ok: true } | { ok: false; message: string } => {
   if (workflow.version !== "3.0") {
-    return { ok: false, message: `workflow.version 非法，仅支持 3.0: ${String(workflow.version)}` };
+    return { ok: false, message: i18n.t("common:validation.versionInvalid", { version: String(workflow.version) }) };
   }
   if (!Array.isArray(workflow.nodes) || !Array.isArray(workflow.edges) || !Array.isArray(workflow.groups)) {
-    return { ok: false, message: "workflow.nodes/edges/groups 必须为数组" };
+    return { ok: false, message: i18n.t("common:validation.mustBeArray") };
   }
   const nodeIds = new Set(workflow.nodes.map((node) => node.id));
   const groupIds = new Set(workflow.groups.map((group) => group.id));
   const entityIds = new Set<string>([...nodeIds, ...groupIds]);
   if (nodeIds.size !== workflow.nodes.length) {
-    return { ok: false, message: "workflow.nodes 存在重复 id" };
+    return { ok: false, message: i18n.t("common:validation.duplicateNodeId") };
   }
   if (groupIds.size !== workflow.groups.length) {
-    return { ok: false, message: "workflow.groups 存在重复 id" };
+    return { ok: false, message: i18n.t("common:validation.duplicateGroupId") };
   }
   const edgeSeen = new Set<string>();
   const outgoingKindsBySource = new Map<string, Set<"dependency" | "route">>();
@@ -505,13 +506,13 @@ export const validateWorkflowBeforeSave = (workflow: WorkflowDefinition): { ok: 
   const indegreeByEntity = new Map<string, number>([...entityIds].map((id) => [id, 0]));
   for (const edge of workflow.edges) {
     if (!entityIds.has(edge.from) || !entityIds.has(edge.to)) {
-      return { ok: false, message: `边引用了不存在实体: ${edge.from} -> ${edge.to}` };
+      return { ok: false, message: i18n.t("common:validation.edgeReferencesMissing", { from: edge.from, to: edge.to }) };
     }
     if (edge.from === edge.to) {
-      return { ok: false, message: `检测到自环边: ${edge.from} -> ${edge.to}` };
+      return { ok: false, message: i18n.t("common:validation.selfLoopEdge", { from: edge.from, to: edge.to }) };
     }
     const key = `${edge.from}|${edge.to}|${edge.when ?? ""}`;
-    if (edgeSeen.has(key)) return { ok: false, message: `检测到重复边: ${edge.from} -> ${edge.to}` };
+    if (edgeSeen.has(key)) return { ok: false, message: i18n.t("common:validation.duplicateEdge", { from: edge.from, to: edge.to }) };
     edgeSeen.add(key);
     const kind: "dependency" | "route" = edge.when === null ? "dependency" : "route";
     const kinds = outgoingKindsBySource.get(edge.from) ?? new Set<"dependency" | "route">();
@@ -526,28 +527,28 @@ export const validateWorkflowBeforeSave = (workflow: WorkflowDefinition): { ok: 
     if (kinds.size <= 1) continue;
     const sourceNode = workflow.nodes.find((node) => node.id === sourceId);
     if (sourceNode?.routePolicy) continue;
-    return { ok: false, message: `节点 ${sourceId} 同时存在 dependency 与 route 出边，禁止保存` };
+    return { ok: false, message: i18n.t("common:validation.mixedEdgeTypes", { nodeId: sourceId }) };
   }
 
   for (const node of workflow.nodes) {
     const allowed = node.routePolicy?.allowed ?? [];
     if (allowed.length === 0) continue;
     if (!allowed.includes(MAINLINE_ROUTE_VALUE) || !allowed.includes(DEFAULT_BRANCH_ROUTE_VALUE)) {
-      return { ok: false, message: `节点 ${node.id} 开启分流后必须包含 yes 和 no` };
+      return { ok: false, message: i18n.t("common:validation.routeMustContainYesNo", { nodeId: node.id }) };
     }
     const outgoingEdges = outgoingEdgesBySource.get(node.id) ?? [];
     const dependencyEdges = outgoingEdges.filter((edge) => edge.when === null);
     if (dependencyEdges.length > 1) {
-      return { ok: false, message: `节点 ${node.id} 的 yes 主线依赖边最多只能有 1 条` };
+      return { ok: false, message: i18n.t("common:validation.yesMainlineMaxOne", { nodeId: node.id }) };
     }
     const routeEdgeCounts = new Map<string, number>();
     for (const edge of outgoingEdges.filter((item) => item.when !== null)) {
       routeEdgeCounts.set(edge.when ?? "", (routeEdgeCounts.get(edge.when ?? "") ?? 0) + 1);
       if (edge.when === MAINLINE_ROUTE_VALUE) {
-        return { ok: false, message: `节点 ${node.id} 的 yes 不能保存为路由边` };
+        return { ok: false, message: i18n.t("common:validation.yesCannotBeRouteEdge", { nodeId: node.id }) };
       }
       if (!allowed.includes(edge.when ?? "")) {
-        return { ok: false, message: `节点 ${node.id} 存在未声明的路由边: ${edge.when}` };
+        return { ok: false, message: i18n.t("common:validation.undeclaredRouteEdge", { nodeId: node.id, route: edge.when }) };
       }
       const targetNode = workflow.nodes.find((candidate) => candidate.id === edge.to);
       const targetGroup = workflow.groups.find((group) => group.id === edge.to);
@@ -556,12 +557,12 @@ export const validateWorkflowBeforeSave = (workflow: WorkflowDefinition): { ok: 
         : [];
       const isBranchTarget = targetNode?.lane === "branch" || (targetGroupMembers.length > 0 && targetGroupMembers.every((member) => member?.lane === "branch"));
       if (!isBranchTarget) {
-        return { ok: false, message: `节点 ${node.id} 的路由 ${edge.when} 只能指向支线节点或支线并行组` };
+        return { ok: false, message: i18n.t("common:validation.routeMustTargetBranch", { nodeId: node.id, route: edge.when }) };
       }
     }
     for (const route of allowed.filter((item) => item !== MAINLINE_ROUTE_VALUE)) {
       if ((routeEdgeCounts.get(route) ?? 0) !== 1) {
-        return { ok: false, message: `节点 ${node.id} 的路由 ${route} 必须配置且只能配置 1 个支线目标` };
+        return { ok: false, message: i18n.t("common:validation.routeTargetMustBeOne", { nodeId: node.id, route }) };
       }
     }
   }
@@ -569,18 +570,18 @@ export const validateWorkflowBeforeSave = (workflow: WorkflowDefinition): { ok: 
   // 这些约束必须前置到前端：否则用户只能在提交后才看到后端拒绝，编辑体验会变成“改完才报错”。
   for (const group of workflow.groups) {
     if (group.type !== "parallel") {
-      return { ok: false, message: `并行组 ${group.id} 的 type 非法` };
+      return { ok: false, message: i18n.t("common:validation.groupTypeInvalid", { groupId: group.id }) };
     }
     if (!Array.isArray(group.members) || group.members.length < 2) {
-      return { ok: false, message: `并行组 ${group.id} 成员数量至少为 2` };
+      return { ok: false, message: i18n.t("common:validation.groupMinMembers", { groupId: group.id }) };
     }
     const memberSet = new Set(group.members);
     if (memberSet.size !== group.members.length) {
-      return { ok: false, message: `并行组 ${group.id} 存在重复成员` };
+      return { ok: false, message: i18n.t("common:validation.groupDuplicateMembers", { groupId: group.id }) };
     }
     for (const memberId of group.members) {
       if (!nodeIds.has(memberId)) {
-        return { ok: false, message: `并行组 ${group.id} 引用了不存在成员 ${memberId}` };
+        return { ok: false, message: i18n.t("common:validation.groupMemberMissing", { groupId: group.id, memberId }) };
       }
     }
   }
@@ -591,10 +592,10 @@ export const validateWorkflowBeforeSave = (workflow: WorkflowDefinition): { ok: 
     if (!groupId) continue;
     const group = explicitGroupById.get(groupId);
     if (!group) {
-      return { ok: false, message: `节点 ${node.id} 引用了不存在并行组 ${groupId}` };
+      return { ok: false, message: i18n.t("common:validation.nodeGroupMissing", { nodeId: node.id, groupId }) };
     }
     if (!group.members.includes(node.id)) {
-      return { ok: false, message: `节点 ${node.id} 未加入其声明的并行组 ${groupId}` };
+      return { ok: false, message: i18n.t("common:validation.nodeNotInGroup", { nodeId: node.id, groupId }) };
     }
   }
 
@@ -609,13 +610,13 @@ export const validateWorkflowBeforeSave = (workflow: WorkflowDefinition): { ok: 
       if (edge.when !== null) continue;
       if (!memberSet.has(edge.to)) continue;
       if (edge.from === group.id) {
-        return { ok: false, message: `并行组 ${group.id} 不能直接连入成员节点` };
+        return { ok: false, message: i18n.t("common:validation.groupCannotDirectConnect", { groupId: group.id }) };
       }
       if (memberSet.has(edge.from)) {
-        return { ok: false, message: `并行组 ${group.id} 成员之间禁止直接依赖` };
+        return { ok: false, message: i18n.t("common:validation.groupMemberNoDirectDep", { groupId: group.id }) };
       }
       if (groupIncoming.has(edge.from)) {
-        return { ok: false, message: `并行组 ${group.id} 的入口节点不能直连成员` };
+        return { ok: false, message: i18n.t("common:validation.groupEntryCannotDirectConnect", { groupId: group.id }) };
       }
     }
   }
@@ -633,7 +634,7 @@ export const validateWorkflowBeforeSave = (workflow: WorkflowDefinition): { ok: 
     }
   }
   if (visited !== entityIds.size) {
-    return { ok: false, message: "工作流存在环路，无法保存" };
+    return { ok: false, message: i18n.t("common:validation.workflowHasCycle") };
   }
   return { ok: true };
 };

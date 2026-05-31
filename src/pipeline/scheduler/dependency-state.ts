@@ -80,7 +80,7 @@ export const createDependencyState = (options: CreateDependencyStateOptions) => 
       const wakeTs = Date.parse(item.wakeAt);
       if (!Number.isFinite(wakeTs) || wakeTs > now) continue;
       markItemWakeSuccess(item, { reason: "sleep_expired" });
-      options.runtimeStore.pushTimeline(`等待节点已唤醒: ${item.nodeId}#${item.itemKey}`);
+      options.runtimeStore.pushTimeline(`Waiting node woken: ${item.nodeId}#${item.itemKey}`);
     }
   };
 

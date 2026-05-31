@@ -97,7 +97,7 @@ export const createNodeRunner = (deps: CreateNodeRunnerDeps) => {
       node.rejectCount = 0;
       node.rejectFeedbacks = [];
       succeeded = true;
-      deps.runtimeStore.pushTimeline(`节点执行完成(结构化): ${node.id} <- ${usedAgentId}`);
+      deps.runtimeStore.pushTimeline(`Node executed (structured): ${node.id} <- ${usedAgentId}`);
     } else if (envelopeErrorCode === "upstream_reject" && node.allowReject) {
       node.artifacts = [];
       await deps.handleNodeReject({
@@ -127,7 +127,7 @@ export const createNodeRunner = (deps: CreateNodeRunnerDeps) => {
       node.artifacts = result.artifacts;
       execError = "upstream_reject_not_allowed: node_allowReject_false";
       deps.runtimeStore.pushTimeline(
-        `节点执行失败(结构化): ${node.id} <- ${usedAgentId} upstream_reject_not_allowed: node_allowReject_false`,
+        `Node execution failed (structured): ${node.id} <- ${usedAgentId} upstream_reject_not_allowed: node_allowReject_false`,
         "error",
       );
     } else {
@@ -140,7 +140,7 @@ export const createNodeRunner = (deps: CreateNodeRunnerDeps) => {
       const detailText = envelopeError.message
         ? `${envelopeError.code ? `${envelopeError.code}: ` : ""}${envelopeError.message}`
         : envelopeError.code || "node_failed";
-      deps.runtimeStore.pushTimeline(`节点执行失败(结构化): ${node.id} <- ${usedAgentId} ${detailText}`, "error");
+      deps.runtimeStore.pushTimeline(`Node execution failed (structured): ${node.id} <- ${usedAgentId} ${detailText}`, "error");
     }
 
     return { succeeded, finalStatus, execError, haltPipeline };
@@ -149,7 +149,7 @@ export const createNodeRunner = (deps: CreateNodeRunnerDeps) => {
   const executeNode = async (node: NodeRun, opts?: { itemKey?: string; dependencyIds?: string[] }): Promise<ExecuteNodeResult> => {
     const resolved = await deps.sessionRegistry.resolveExecutorSession(node);
     if (!resolved) {
-      deps.runtimeStore.pushTimeline(`节点 ${node.id} 执行失败: 找不到执行者会话(${node.executor.agentId})`, "error");
+      deps.runtimeStore.pushTimeline(`Node ${node.id} execution failed: executor session not found (${node.executor.agentId})`, "error");
       markNodeFailed(node, ctx("executor_session_not_found", { error: "executor_session_not_found" }));
       deps.runtimeStore.emitPipeline();
       return {
@@ -164,7 +164,7 @@ export const createNodeRunner = (deps: CreateNodeRunnerDeps) => {
     const usedAgentId = resolved.agentId;
 
     markNodeRunning(node, ctx("exec_start"));
-    deps.runtimeStore.pushTimeline(`节点执行已触发: ${node.id} -> ${usedAgentId}`);
+    deps.runtimeStore.pushTimeline(`Node execution triggered: ${node.id} -> ${usedAgentId}`);
     deps.runtimeStore.emitPipeline();
 
     const effectiveDependencyIds =
@@ -201,7 +201,7 @@ export const createNodeRunner = (deps: CreateNodeRunnerDeps) => {
         markNodeFailed(node, ctx(classification.reason, { error: String(error) }));
       }
       deps.runtimeStore.pushTimeline(
-        `节点执行中断(结构化): ${node.id} <- ${usedAgentId} ${String(error)}`,
+        `Node execution interrupted (structured): ${node.id} <- ${usedAgentId} ${String(error)}`,
         "warn",
       );
       deps.runtimeStore.emitPipeline();

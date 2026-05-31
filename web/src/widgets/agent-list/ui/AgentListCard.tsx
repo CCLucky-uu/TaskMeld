@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import LayoutGridIcon from "@iconify-react/lucide/layout-grid";
 import ListIcon from "@iconify-react/lucide/list";
 import { controlInputClassName } from "../../../shared/ui/surfaceClassNames";
@@ -35,6 +36,7 @@ export function AgentListCard({ agents, onOpenAgentSession, onOpenAgentOutput }:
   const [searchKeyword, setSearchKeyword] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "busy" | "idle">("all");
   const [viewMode, setViewMode] = useState<"card" | "list">("card");
+  const { t } = useTranslation('agent');
 
   const filteredAgents = useMemo(() => {
     const searched = filterAgentCards(agents, searchKeyword);
@@ -51,32 +53,32 @@ export function AgentListCard({ agents, onOpenAgentSession, onOpenAgentOutput }:
             className={`${controlInputClassName} m-0 h-8 min-w-[260px] flex-[1_1_420px] py-0 leading-none`}
             value={searchKeyword}
             onChange={(event) => setSearchKeyword(event.target.value)}
-            placeholder="搜索智能体（ID/角色/输出/事件）"
-            aria-label="搜索智能体"
+            placeholder={t('searchPlaceholder')}
+            aria-label={t('searchLabel')}
           />
           <span className={`${gridTileClassName} h-8 w-4 shrink-0`} aria-hidden="true" />
           {/* 状态筛选只影响展示，不改动任何业务行为。 */}
-          <div className={filterGroupShellClassName} role="group" aria-label="智能体状态筛选">
+          <div className={filterGroupShellClassName} role="group" aria-label={t('statusFilter')}>
             <button
               type="button"
               className={`${filterGroupButtonClassName} ${statusFilter === "all" ? filterGroupButtonActiveClassName : ""}`}
               onClick={() => setStatusFilter("all")}
             >
-              全部
+              {t('all')}
             </button>
             <button
               type="button"
               className={`${filterGroupButtonClassName} ${statusFilter === "busy" ? filterGroupButtonActiveClassName : ""}`}
               onClick={() => setStatusFilter("busy")}
             >
-              忙碌
+              {t('busy')}
             </button>
             <button
               type="button"
               className={`${filterGroupButtonClassName} ${statusFilter === "idle" ? filterGroupButtonActiveClassName : ""}`}
               onClick={() => setStatusFilter("idle")}
             >
-              空闲
+              {t('idle')}
             </button>
           </div>
           <span className={`${gridTileClassName} h-8 w-4 shrink-0`} aria-hidden="true" />
@@ -85,8 +87,8 @@ export function AgentListCard({ agents, onOpenAgentSession, onOpenAgentOutput }:
             type="button"
             className={viewToggleButtonClassName}
             onClick={() => setViewMode((current) => (current === "card" ? "list" : "card"))}
-            aria-label={viewMode === "card" ? "切换为列表视图" : "切换为卡片视图"}
-            title={viewMode === "card" ? "切换为列表视图" : "切换为卡片视图"}
+            aria-label={viewMode === "card" ? t('switchToList') : t('switchToCard')}
+            title={viewMode === "card" ? t('switchToList') : t('switchToCard')}
           >
             {viewMode === "card" ? <ListIcon className="h-4 w-4" /> : <LayoutGridIcon className="h-4 w-4" />}
           </button>
@@ -116,34 +118,34 @@ export function AgentListCard({ agents, onOpenAgentSession, onOpenAgentOutput }:
                 <div className="flex items-center justify-between gap-2">
                   <strong className="truncate text-sm">{agent.id}</strong>
                   <span className={`${statusTagBaseClassName} ${statusTagToneClassName[agent.workStatus === "busy" ? "busy" : "idle"]}`}>
-                    {agent.workStatus === "busy" ? "忙碌" : "空闲"}
+                    {agent.workStatus === "busy" ? t('busy') : t('idle')}
                   </span>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div className="border border-(--line) bg-[rgba(10,18,24,0.65)] px-2 py-1.5">
-                    <p className="m-0 text-[10px] text-(--muted)">角色</p>
+                    <p className="m-0 text-[10px] text-(--muted)">{t('role')}</p>
                     <p className={`${monoClassName} m-0 mt-0.5 truncate text-xs text-(--text)`}>{agent.role}</p>
                   </div>
                   <div className="border border-(--line) bg-[rgba(10,18,24,0.65)] px-2 py-1.5">
-                    <p className="m-0 text-[10px] text-(--muted)">最近节点</p>
+                    <p className="m-0 text-[10px] text-(--muted)">{t('recentNode')}</p>
                     <p className={`${monoClassName} m-0 mt-0.5 truncate text-xs text-(--text)`}>
                       {agent.lastExecution?.nodeId ?? "-"}
                     </p>
                   </div>
                 </div>
                 <div className="grid content-start gap-1 border border-(--line) bg-[rgba(10,18,24,0.65)] p-2">
-                  <small className={`${monoClassName} text-xs text-(--muted)`}>成功输出</small>
+                  <small className={`${monoClassName} text-xs text-(--muted)`}>{t('outputPreview')}</small>
                   <p className="m-0 min-h-[calc(1.35em*2)] overflow-hidden text-xs leading-[1.35] text-[var(--muted)] [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] break-words">
-                    {agent.outputPreview || "暂无输出内容"}
+                    {agent.outputPreview || t('noOutput')}
                   </p>
-                  <small className={`${monoClassName} text-xs text-(--muted)`}>事件</small>
+                  <small className={`${monoClassName} text-xs text-(--muted)`}>{t('eventPreview')}</small>
                   <p className="m-0 min-h-[calc(1.35em*2)] overflow-hidden text-xs leading-[1.35] text-[var(--muted)] [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] break-words">
-                    {agent.eventPreview || "暂无相关事件"}
+                    {agent.eventPreview || t('noEvent')}
                   </p>
                 </div>
                 <div className="mt-auto grid gap-2 border-t border-(--line) pt-2">
                   <small className={`${monoClassName} self-end text-xs leading-[1.2] text-[var(--muted)]`}>
-                  {agent.lastActiveAt ? new Date(agent.lastActiveAt).toLocaleString("zh-CN", { hour12: false }) : "-"}
+                  {agent.lastActiveAt ? new Date(agent.lastActiveAt).toLocaleString(undefined, { hour12: false }) : "-"}
                   </small>
                   <div className="flex items-center justify-end gap-2">
                     <button
@@ -154,7 +156,7 @@ export function AgentListCard({ agents, onOpenAgentSession, onOpenAgentOutput }:
                         onOpenAgentOutput(agent.id);
                       }}
                     >
-                      查看输出
+                      {t('viewOutput')}
                     </button>
                     <button
                       className={primaryActionButtonClassName}
@@ -164,7 +166,7 @@ export function AgentListCard({ agents, onOpenAgentSession, onOpenAgentOutput }:
                         onOpenAgentSession(agent.id);
                       }}
                     >
-                      打开会话
+                      {t('openSession')}
                     </button>
                   </div>
                 </div>
@@ -194,12 +196,12 @@ export function AgentListCard({ agents, onOpenAgentSession, onOpenAgentOutput }:
                     <p className={`${monoClassName} m-0 mt-0.5 truncate text-xs text-(--muted)`}>{agent.role}</p>
                   </div>
                   <span className={`${statusTagBaseClassName} ${statusTagToneClassName[agent.workStatus === "busy" ? "busy" : "idle"]}`}>
-                    {agent.workStatus === "busy" ? "忙碌" : "空闲"}
+                    {agent.workStatus === "busy" ? t('busy') : t('idle')}
                   </span>
-                  <p className="m-0 truncate text-xs text-(--muted)">{agent.outputPreview || "暂无输出内容"}</p>
-                  <p className="m-0 truncate text-xs text-(--muted)">{agent.eventPreview || "暂无相关事件"}</p>
+                  <p className="m-0 truncate text-xs text-(--muted)">{agent.outputPreview || t('noOutput')}</p>
+                  <p className="m-0 truncate text-xs text-(--muted)">{agent.eventPreview || t('noEvent')}</p>
                   <p className={`${monoClassName} m-0 text-xs text-(--muted)`}>
-                    {agent.lastActiveAt ? new Date(agent.lastActiveAt).toLocaleString("zh-CN", { hour12: false }) : "-"}
+                    {agent.lastActiveAt ? new Date(agent.lastActiveAt).toLocaleString(undefined, { hour12: false }) : "-"}
                   </p>
                   <div className="flex items-center justify-end gap-2">
                     <button
@@ -210,7 +212,7 @@ export function AgentListCard({ agents, onOpenAgentSession, onOpenAgentOutput }:
                         onOpenAgentOutput(agent.id);
                       }}
                     >
-                      查看输出
+                      {t('viewOutput')}
                     </button>
                     <button
                       className={primaryActionButtonClassName}
@@ -220,7 +222,7 @@ export function AgentListCard({ agents, onOpenAgentSession, onOpenAgentOutput }:
                         onOpenAgentSession(agent.id);
                       }}
                     >
-                      打开会话
+                      {t('openSession')}
                     </button>
                   </div>
                 </li>
@@ -228,7 +230,7 @@ export function AgentListCard({ agents, onOpenAgentSession, onOpenAgentOutput }:
             </ul>
           </div>
         ) : (
-          <p className={`${monoClassName} m-0 px-3 pt-3 pb-2 text-[var(--muted)]`}>未匹配到智能体</p>
+          <p className={`${monoClassName} m-0 px-3 pt-3 pb-2 text-[var(--muted)]`}>{t('noMatch')}</p>
         )}
       </div>
     </section>

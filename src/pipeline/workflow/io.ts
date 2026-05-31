@@ -36,7 +36,7 @@ export const loadWorkflowDefinitionWithStorage = (options: WorkflowStorageOption
       throw error;
     }
     const wrapped = new Error("invalid_persisted_workflow_definition");
-    (wrapped as Error & { detail?: string }).detail = "workflow 文件解析失败，请检查 JSON 格式";
+    (wrapped as Error & { detail?: string }).detail = "Failed to parse workflow file, please check JSON format";
     throw wrapped;
   }
 };

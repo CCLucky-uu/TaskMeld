@@ -229,7 +229,7 @@ export const createRouteItemManager = (options: CreateRouteItemManagerOptions) =
             }
           }
         }
-        options.runtimeStore.pushTimeline(`分流命中: ${item.nodeId}#${item.itemKey} -> ${bucket.route} (${bucket.count} 条)`);
+        options.runtimeStore.pushTimeline(`Route hit: ${item.nodeId}#${item.itemKey} -> ${bucket.route} (${bucket.count} items)`);
       }
     }
 

@@ -4,6 +4,8 @@
  * 支持矩形、圆形、文本行三种变体，通过子组件的预设类名组合使用。
  */
 
+import i18n from "../i18n";
+
 type SkeletonProps = {
   /** 额外样式类名，控制宽高圆角等 */
   className?: string;
@@ -13,7 +15,7 @@ export function Skeleton({ className }: SkeletonProps) {
   return (
     <div
       role="status"
-      aria-label="加载中"
+      aria-label={i18n.t("common:common.loading")}
       className={`animate-pulse bg-[rgba(142,163,179,0.15)] ${className ?? ""}`}
     />
   );

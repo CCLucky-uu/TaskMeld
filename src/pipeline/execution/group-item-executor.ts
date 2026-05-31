@@ -163,7 +163,7 @@ export const createGroupItemExecutor = (deps: CreateGroupItemExecutorDeps) => {
     }
     markGroupItemRunning(item, ctx("group_start"));
     markGroupRunning(runGroup, ctx("group_start"));
-    deps.runtimeStore.pushTimeline(`并行组执行已触发: ${group.id}#${item.itemKey}`);
+    deps.runtimeStore.pushTimeline(`Parallel group execution triggered: ${group.id}#${item.itemKey}`);
     deps.runtimeStore.emitPipeline();
 
     const { results, memberItems } = await executeGroupMembers(item, group);

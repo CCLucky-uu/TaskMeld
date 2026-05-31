@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import type { StoredArtifactItem } from "../../../entities/artifact";
 import type { ArtifactDateGroup } from "../model/types";
 
@@ -28,14 +29,15 @@ export function ArtifactTreePane({
   error,
   onSelect,
 }: ArtifactTreePaneProps) {
+  const { t } = useTranslation("artifact");
   return (
     <section className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)] border border-(--line) bg-[rgba(12,21,27,0.85)]">
-      <div className="border-b border-(--line) px-2 py-1.5 text-xs text-(--muted)">产物目录</div>
+      <div className="border-b border-(--line) px-2 py-1.5 text-xs text-(--muted)">{t("artifactDirectory")}</div>
       <div className="min-h-0 overflow-auto px-2 py-1.5">
-        {loading ? <p className={`${monoClassName} m-0 text-xs text-(--muted)`}>加载中...</p> : null}
-        {!loading && error ? <p className={`${monoClassName} m-0 text-xs text-(--bad)`}>加载失败: {error}</p> : null}
+        {loading ? <p className={`${monoClassName} m-0 text-xs text-(--muted)`}>{t("loading")}</p> : null}
+        {!loading && error ? <p className={`${monoClassName} m-0 text-xs text-(--bad)`}>{t("loadFailed", { error })}</p> : null}
         {!loading && !error && groups.length === 0 ? (
-          <p className={`${monoClassName} m-0 text-xs text-(--muted)`}>当前筛选条件下无产物</p>
+          <p className={`${monoClassName} m-0 text-xs text-(--muted)`}>{t("noArtifacts")}</p>
         ) : null}
         {!error && groups.map((dateGroup) => (
           <details key={dateGroup.dateKey} open className="group">

@@ -38,7 +38,7 @@ export const createPipelineDefinition = (id: PipelineId, title?: string): Pipeli
   const baseDir = join(PIPELINE_ROOT_DIR, id);
   return {
     id,
-    title: title?.trim() || `流水线 DAG-${id}`,
+    title: title?.trim() || `Pipeline ${id}`,
     workflowFilePath: join(baseDir, "workflow.json"),
     runStateFile: join(baseDir, "run-state.json"),
     artifactDir: join(baseDir, "artifacts"),
@@ -50,7 +50,7 @@ const createDefaultDefinitionsDocument = (): PipelineDefinitionsDocument => ({
   defaultPipelineId: DEFAULT_PIPELINE_ID_FALLBACK,
   items: DEFAULT_PIPELINE_IDS.map((pipelineId) => ({
     id: pipelineId,
-    title: `流水线 DAG-${pipelineId}`,
+    title: `Pipeline ${pipelineId}`,
   })),
 });
 
@@ -65,7 +65,7 @@ const normalizeDefinitionItems = (items: unknown): PipelineDefinitionItem[] => {
     const record = item as Record<string, unknown>;
     if (!isValidPipelineId(record.id)) continue;
     const id = record.id.trim();
-    const title = typeof record.title === "string" && record.title.trim() ? record.title.trim() : `流水线 DAG-${id}`;
+    const title = typeof record.title === "string" && record.title.trim() ? record.title.trim() : `Pipeline ${id}`;
     deduped.set(id, { id, title });
   }
   return [...deduped.values()];

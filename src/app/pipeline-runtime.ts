@@ -90,7 +90,7 @@ export const createPipelineRuntime = (options: CreatePipelineRuntimeOptions) => 
 
   const onGatewayStatus = (status: GatewayConnectionInfo) => {
     runtimeStore.setLatestStatus(status);
-    runtimeStore.pushTimeline(`网关状态: ${status.status}`, status.status.includes("failed") ? "error" : "info");
+    runtimeStore.pushTimeline(`Gateway status: ${status.status}`, status.status.includes("failed") ? "error" : "info");
     runtimeStore.broadcast({
       type: "gateway.status",
       payload: status,
@@ -103,7 +103,7 @@ export const createPipelineRuntime = (options: CreatePipelineRuntimeOptions) => 
     const isSilentEvent = isHealthEvent || isTickEvent;
     runtimeStore.setLastFrame(frame);
     if (frame.type === "event" && !isSilentEvent) {
-      runtimeStore.pushTimeline(`事件: ${frame.event}`, "info", {
+      runtimeStore.pushTimeline(`Event: ${frame.event}`, "info", {
         type: "event",
         event: frame.event,
         seq: frame.seq ?? null,
@@ -126,7 +126,7 @@ export const createPipelineRuntime = (options: CreatePipelineRuntimeOptions) => 
   };
 
   const onGatewayError = (error: unknown) => {
-    runtimeStore.pushTimeline(`网关错误: ${String(error)}`, "error");
+    runtimeStore.pushTimeline(`Gateway error: ${String(error)}`, "error");
     runtimeStore.broadcast({
       type: "gateway.error",
       payload: { message: String(error) },
@@ -135,7 +135,7 @@ export const createPipelineRuntime = (options: CreatePipelineRuntimeOptions) => 
 
   const onGatewayReady = (hello: unknown) => {
     runtimeStore.setLatestHello(hello);
-    runtimeStore.pushTimeline("网关握手完成");
+    runtimeStore.pushTimeline("Gateway handshake completed");
     runtimeStore.emitPipeline();
     runtimeStore.broadcast({
       type: "gateway.ready",

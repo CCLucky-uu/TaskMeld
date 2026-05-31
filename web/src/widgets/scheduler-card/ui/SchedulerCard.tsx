@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { actionRowClassName, panelHeaderClassName } from "../../../shared/ui/panelClasses";
 
 const monoClassName = "font-[JetBrains_Mono,monospace]";
@@ -22,6 +23,7 @@ export function SchedulerCard({
   onManualTick,
   embedded = false,
 }: SchedulerCardProps) {
+  const { t } = useTranslation('scheduler');
   const wrapperClassName = embedded
     ? "border-b border-(--line) bg-[rgba(15,23,29,0.42)] mb-3"
     : "";
@@ -29,18 +31,18 @@ export function SchedulerCard({
   return (
     <section data-center-card={!embedded} className={wrapperClassName}>
       <div className={`mb-2 flex items-center justify-between gap-2 px-3 pt-0` }>
-        <div className="font-[JetBrains_Mono,monospace] text-xs text-(--muted)">调度器配置（DAG-{pipelineId}）</div>
+        <div className="font-[JetBrains_Mono,monospace] text-xs text-(--muted)">{t('schedulerConfig', { pipelineId })}</div>
         <span className={monoClassName}>{`mode=${schedulerMode}`}</span>
       </div>
       <div className={`${actionRowClassName} mb-0.5 grid grid-cols-3 max-[980px]:grid-cols-2 max-[640px]:grid-cols-1`}>
         <button className={actionButtonClassName} type="button" onClick={onToggleScheduler}>
-          {schedulerEnabled ? "停用调度器" : "启用调度器"}
+          {schedulerEnabled ? t('disableScheduler') : t('enableScheduler')}
         </button>
         <button className={actionButtonClassName} type="button" onClick={onSwitchSchedulerMode}>
-          切到{schedulerMode === "manual" ? "自动" : "手动"}模式
+          {t('switchToMode', { mode: schedulerMode === "manual" ? t('auto') : t('manual') })}
         </button>
         <button className={actionButtonClassName} type="button" onClick={onManualTick}>
-          手动推进一步
+          {t('manualStep')}
         </button>
       </div>
     </section>

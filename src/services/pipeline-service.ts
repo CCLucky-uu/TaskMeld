@@ -311,25 +311,25 @@ const markRunningRunStopped = (run: ReturnType<PipelineRuntime["runtime"]["getRu
     if (node.status === "success" || node.status === "failed" || node.status === "rejected" || node.status === "skipped") continue;
     node.status = "stopped";
     node.finishedAt = node.finishedAt ?? now;
-    node.lastError = node.lastError ?? "用户手动停止流水线";
+    node.lastError = node.lastError ?? "Pipeline manually stopped by user";
   }
   for (const item of run.itemRuns ?? []) {
     if (item.status === "success" || item.status === "failed" || item.status === "rejected" || item.status === "skipped") continue;
     item.status = "stopped";
     item.finishedAt = item.finishedAt ?? now;
-    item.lastError = item.lastError ?? "用户手动停止流水线";
+    item.lastError = item.lastError ?? "Pipeline manually stopped by user";
   }
   for (const group of run.groups ?? []) {
     if (group.status === "success" || group.status === "failed" || group.status === "rejected" || group.status === "skipped") continue;
     group.status = "stopped";
     group.finishedAt = group.finishedAt ?? now;
-    group.lastError = group.lastError ?? "用户手动停止流水线";
+    group.lastError = group.lastError ?? "Pipeline manually stopped by user";
   }
   for (const groupItem of run.groupItemRuns ?? []) {
     if (groupItem.status === "success" || groupItem.status === "failed" || groupItem.status === "rejected" || groupItem.status === "skipped") continue;
     groupItem.status = "stopped";
     groupItem.finishedAt = groupItem.finishedAt ?? now;
-    groupItem.lastError = groupItem.lastError ?? "用户手动停止流水线";
+    groupItem.lastError = groupItem.lastError ?? "Pipeline manually stopped by user";
   }
   run.status = "stopped";
   run.updatedAt = now;
@@ -489,7 +489,7 @@ export const createPipelineService = (app: PipelineRegistry): PipelineService =>
       }
 
       runtime.runtime.pushTimeline(
-        `[${pipelineId}] 远程关键词池批跑已启动: ${items.length} 个关键词, 每批 ${started.snapshot.batchSize} 个`,
+        `[${pipelineId}] Remote keyword pool batch started: ${items.length} items, batch size ${started.snapshot.batchSize}`,
         "info",
         { remoteUrl },
       );
@@ -511,7 +511,7 @@ export const createPipelineService = (app: PipelineRegistry): PipelineService =>
 
     const run = runtime.runtime.seedRun(runtime.workflow.getTemplateNodes());
     runtime.runtime.setRun(run);
-    runtime.runtime.pushTimeline(`[${pipelineId}] 已启动新运行: ${run.id}`);
+    runtime.runtime.pushTimeline(`[${pipelineId}] New run started: ${run.id}`);
     runtime.runtime.emitPipeline();
     // start 只负责发起运行，不承诺在返回时已执行完成。
     void runtime.pipeline.drainPipeline(`run:start:${run.id}`).then(() => {
@@ -580,7 +580,7 @@ export const createPipelineService = (app: PipelineRegistry): PipelineService =>
           runtime.pipeline.abortRunControllers(runState.id);
         }
         markRunningRunStopped(runState);
-        runtime.runtime.pushTimeline(`[${pipelineId}] 已请求停止单次运行: ${runState.id}`, "warn");
+        runtime.runtime.pushTimeline(`[${pipelineId}] Stop requested for run: ${runState.id}`, "warn");
         runtime.runtime.emitPipeline();
         const stoppedStatus = buildPipelineExecutionStatus({
           pipelineId,
@@ -722,7 +722,7 @@ export const createPipelineService = (app: PipelineRegistry): PipelineService =>
       };
     }
     runtime.runtime.pushTimeline(
-      `[${input.pipelineId}] 远程关键词池批跑已启动: ${items.length} 个关键词, 每批 ${started.snapshot.batchSize} 个`,
+      `[${input.pipelineId}] Remote keyword pool batch started: ${items.length} items, batch size ${started.snapshot.batchSize}`,
       "info",
       { remoteUrl },
     );

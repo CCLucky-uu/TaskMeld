@@ -1,0 +1,15 @@
+{
+  "timeline": "实时时间线",
+  "displayCount": "显示 {{displayed}} 条 / 原始 {{total}} 条",
+  "viewFullLog": "查看完整日志",
+  "eventDetail": "事件详情",
+  "error": "错误",
+  "warning": "警告",
+  "info": "信息",
+  "agentStart": "开始工作",
+  "agentEnd": "结束工作",
+  "agentDetail": "工作细节{{suffix}} ({{count}} 条)",
+  "collapsed": "已折叠",
+  "inProgress": "进行中",
+  "close": "关闭"
+}

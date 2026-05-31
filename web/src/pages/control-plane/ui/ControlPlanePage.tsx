@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { AgentListCard } from "../../../widgets/agent-list/ui/AgentListCard";
 import { NavPanel } from "../../../widgets/nav-panel/ui/NavPanel";
 import { GroupDetailPanel, NodeDetailPanel } from "../../../widgets/node-detail";
@@ -10,6 +11,7 @@ import { RunLogPage } from "../../../widgets/run-log-viewer";
 import { TopBar } from "../../../widgets/top-bar/ui/TopBar";
 import { OverviewBoard } from "../../../widgets/overview-board/ui/OverviewBoard";
 import { ArtifactBoard } from "../../../widgets/artifact-board";
+import { SettingsBoard } from "../../../widgets/settings-board/ui/SettingsBoard";
 import { CloseIcon, InlineSelect } from "../../../shared/ui";
 import { useMediaQuery } from "../../../shared/lib/useMediaQuery";
 import { actionRowClassName, panelHeaderClassName } from "../../../shared/ui/panelClasses";
@@ -32,6 +34,7 @@ import {
 } from "../../../shared/ui/surfaceClassNames";
 import { controlPlaneNavItems } from "../model/controlPlaneNavItems";
 import { useControlPlanePage } from "../model/useControlPlanePage";
+import type { NavKey } from "../../../widgets/nav-panel/model/navItem";
 import PlusIcon from "@iconify-react/lucide/plus";
 const smallModalPanelClassName = `${modalPanelBaseClassName} w-[min(560px,94vw)]`;
 const outputModalPanelClassName =
@@ -61,21 +64,21 @@ const statusTone: Record<string, string> = {
 };
 
 const statusLabel: Record<string, string> = {
-  ready: "就绪",
-  connecting: "连接中",
-  ws_open: "通道已开",
-  challenged: "挑战校验中",
-  connect_sent: "握手已发送",
-  idle: "空闲",
-  failed: "失败",
-  success: "成功",
-  running: "运行中",
-  blocked: "阻塞",
-  waiting: "等待中",
-  rejected: "打回",
-  skipped: "已跳过",
-  stopped: "已停止",
-  queued: "排队中",
+  ready: "ready",
+  connecting: "connecting",
+  ws_open: "ws_open",
+  challenged: "challenged",
+  connect_sent: "connect_sent",
+  idle: "idle",
+  failed: "failed",
+  success: "success",
+  running: "running",
+  blocked: "blocked",
+  waiting: "waiting",
+  rejected: "rejected",
+  skipped: "skipped",
+  stopped: "stopped",
+  queued: "queued",
 };
 
 type ModalLayerProps = {
@@ -146,33 +149,40 @@ function ModalLayer({ open, onClose, panelClassName, ariaLabel, children }: Moda
 }
 
 type ControlPlanePageProps = {
-  pageRoute?: "home" | "pipeline" | "logs" | "agents" | "artifacts";
-  initialActive?: string;
-  onNavigateByNav?: (label: string, pipelineId?: string) => void;
+  pageRoute?: "home" | "pipeline" | "logs" | "agents" | "artifacts" | "settings";
+  initialActive?: NavKey;
+  onNavigateByNav?: (label: NavKey, pipelineId?: string) => void;
   onNavigateHome?: () => void;
   focusPipelineId?: string;
 };
 
 export function ControlPlanePage({
   pageRoute = "home",
-  initialActive = "总览",
+  initialActive = "overview",
   onNavigateByNav,
   onNavigateHome,
   focusPipelineId,
 }: ControlPlanePageProps) {
+  const { t } = useTranslation(["modal", "common", "nav", "settings"]);
+  const translatedStatusTone = statusTone;
+  const translatedStatusLabel = Object.fromEntries(
+    Object.entries(statusLabel).map(([key, val]) => [key, t(`common:status.${val}`)]),
+  );
   const vm = useControlPlanePage();
-  const effectivePageRoute: "home" | "pipeline" | "logs" | "agents" | "artifacts" = pageRoute;
+  const effectivePageRoute: "home" | "pipeline" | "logs" | "agents" | "artifacts" | "settings" = pageRoute;
   const isPipelineRoute = effectivePageRoute === "pipeline";
   const routeText =
     effectivePageRoute === "pipeline"
-      ? "流水线"
+      ? t("nav:pipeline")
       : effectivePageRoute === "logs"
-        ? "日志"
+        ? t("nav:logs")
         : effectivePageRoute === "agents"
-          ? "智能体"
+          ? t("nav:agents")
           : effectivePageRoute === "artifacts"
-            ? "产物"
-          : "总览";
+            ? t("nav:artifacts")
+          : effectivePageRoute === "settings"
+            ? t("nav:settings")
+          : t("nav:overview");
   const isMobile = useMediaQuery("(max-width: 767px)");
   const [navCollapsed, setNavCollapsed] = useState(false);
   // 从桌面端缩小窗口到移动端时，同步关闭抽屉避免中间帧闪烁
@@ -214,10 +224,14 @@ export function ControlPlanePage({
         : "grid-cols-[minmax(0,1fr)_300px]",
   ].join(" ");
   const centerColumnClassName = [
-    `flex min-h-0 min-w-0 flex-col overflow-x-hidden ${
-      effectivePageRoute === "agents" || effectivePageRoute === "pipeline" || effectivePageRoute === "artifacts"
-        ? "overflow-y-hidden"
-        : "overflow-y-auto"
+    `flex min-h-0 min-w-0 flex-col ${
+      effectivePageRoute === "settings"
+        ? "overflow-visible"
+        : `overflow-x-hidden ${
+            effectivePageRoute === "agents" || effectivePageRoute === "pipeline" || effectivePageRoute === "artifacts"
+              ? "overflow-y-hidden"
+              : "overflow-y-auto"
+          }`
     } border-r border-[var(--line)]`,
     "[&>[data-center-card]]:min-h-0 [&>[data-center-card]]:min-w-0 [&>[data-center-card]]:shrink-0 [&>[data-center-card]]:border-b [&>[data-center-card]]:border-[var(--line)]",
     "[&>[data-pipeline-card]]:shrink [&>[data-pipeline-card]]:flex-1 [&>[data-pipeline-card]]:overflow-y-auto",
@@ -464,7 +478,7 @@ export function ControlPlanePage({
           latencyMs={vm.latencyMs}
           agentCount={vm.agents.length}
           sessionCount={vm.sessions.length}
-          statusLabel={statusLabel}
+          statusLabel={translatedStatusLabel}
           navCollapsed={navCollapsed}
           onToggleNav={() => setNavCollapsed((prev) => !prev)}
           routeText={routeText}
@@ -494,14 +508,14 @@ export function ControlPlanePage({
               disabled={vm.isCreatingPipeline || vm.isDeletingPipeline || vm.isRenamingPipeline}
             >
               <PlusIcon className="mr-1.5 h-4 w-4" />
-              {vm.isCreatingPipeline ? "新增中..." : "新增流水线"}
+              {vm.isCreatingPipeline ? t("modal:creating") : t("modal:createPipeline")}
             </button>
             <button
               className={`${pipelineCreateButtonClassName} ml-2`}
               type="button"
               onClick={() => setDispatchBoardOpen(true)}
             >
-              调度面板
+              {t("pipeline:schedulerPanel")}
             </button>
           </div>
           <PipelineCard
@@ -599,7 +613,7 @@ export function ControlPlanePage({
             }}
             deletingPipeline={vm.isDeletingPipeline}
             statusTone={statusTone}
-            statusLabel={statusLabel}
+            statusLabel={translatedStatusLabel}
           />
             </>
           ) : effectivePageRoute === "agents" ? (
@@ -616,9 +630,11 @@ export function ControlPlanePage({
               }))}
               onNavigatePipeline={(pipelineId) => {
                 vm.setActivePipelineId(pipelineId);
-                onNavigateByNav?.("流水线", pipelineId);
+                onNavigateByNav?.("pipeline", pipelineId);
               }}
             />
+          ) : effectivePageRoute === "settings" ? (
+            <SettingsBoard />
           ) : (
             <OverviewBoard
               pipelines={vm.pipelineList.map((pipelineItem) => ({
@@ -637,7 +653,7 @@ export function ControlPlanePage({
               }}
               onNavigatePipeline={(pipelineId) => {
                 vm.setActivePipelineId(pipelineId);
-                onNavigateByNav?.("流水线", pipelineId);
+                onNavigateByNav?.("pipeline", pipelineId);
               }}
               onOpenAgentSession={vm.openSessionModalForAgent}
             />
@@ -679,7 +695,7 @@ export function ControlPlanePage({
             onBlurSave={vm.saveSelectedNodeConfigOnBlur}
             onRetry={vm.retryNode}
             statusTone={statusTone}
-            statusLabel={statusLabel}
+            statusLabel={translatedStatusLabel}
             />
           </div>
         ) : effectivePageRoute === "pipeline" && !detailCollapsed && vm.selectedGroup ? (
@@ -700,7 +716,7 @@ export function ControlPlanePage({
             onSave={vm.saveSelectedGroupConfig}
             isDeleting={vm.isDeletingNode}
             statusTone={statusTone}
-            statusLabel={statusLabel}
+            statusLabel={translatedStatusLabel}
             onDelete={() => vm.setDeleteTargetGroupId(vm.selectedGroup?.id ?? "")}
             />
           </div>
@@ -716,10 +732,10 @@ export function ControlPlanePage({
           resetCreatePipelineDraft();
         }}
         panelClassName={smallModalPanelClassName}
-        ariaLabel="创建流水线"
+        ariaLabel={t("modal:createPipelineTitle")}
       >
           <div className={panelHeaderClassName}>
-            <h2>新增流水线</h2>
+            <h2>{t("modal:createPipeline")}</h2>
             <button
               className={drawerCloseClassName}
               type="button"
@@ -728,36 +744,36 @@ export function ControlPlanePage({
                 setCreatePipelineModalOpen(false);
                 resetCreatePipelineDraft();
               }}
-              aria-label="关闭"
+              aria-label={t("modal:close")}
             >
               <CloseIcon />
             </button>
           </div>
           <div className={fieldClassName}>
-            <label className={fieldLabelClassName}>流水线 ID</label>
+            <label className={fieldLabelClassName}>{t("modal:fieldLabel.pipelineId")}</label>
             <input
               className={controlSingleLineMonoClassName}
               value={createPipelineId}
               onChange={(event) => setCreatePipelineId(event.target.value)}
-              placeholder="例如 C"
+              placeholder={t("modal:placeholder.pipelineId")}
             />
           </div>
           <div className={fieldClassName}>
-            <label className={fieldLabelClassName}>流水线标题</label>
+            <label className={fieldLabelClassName}>{t("modal:fieldLabel.pipelineTitle")}</label>
             <input
               className={controlSingleLineClassName}
               value={createPipelineTitle}
               onChange={(event) => setCreatePipelineTitle(event.target.value)}
-              placeholder="例如 流水线 DAG-C"
+              placeholder={t("modal:placeholder.pipelineTitle")}
             />
           </div>
           <div className={fieldClassName}>
-            <label className={fieldLabelClassName}>创建方式</label>
+            <label className={fieldLabelClassName}>{t("modal:fieldLabel.createMethod")}</label>
             <InlineSelect
               value={createPipelineCloneEnabled ? "clone" : "blank"}
               options={[
-                { value: "blank", label: "空白创建" },
-                { value: "clone", label: "从现有流水线克隆" },
+                { value: "blank", label: t("modal:fieldLabel.blank") },
+                { value: "clone", label: t("modal:fieldLabel.clone") },
               ]}
               onChange={(next) => {
                 const cloneEnabled = next === "clone";
@@ -767,12 +783,12 @@ export function ControlPlanePage({
                 }
               }}
               triggerClassName={controlInputClassName}
-              ariaLabel="选择创建方式"
+              ariaLabel={t("modal:fieldLabel.createMethod")}
             />
           </div>
           {createPipelineCloneEnabled ? (
             <div className={fieldClassName}>
-              <label className={fieldLabelClassName}>克隆来源</label>
+              <label className={fieldLabelClassName}>{t("modal:fieldLabel.cloneSource")}</label>
               <InlineSelect
                 value={createPipelineCloneFrom}
                 options={vm.pipelineList.map((item) => ({
@@ -781,7 +797,7 @@ export function ControlPlanePage({
                 }))}
                 onChange={setCreatePipelineCloneFrom}
                 triggerClassName={controlInputClassName}
-                ariaLabel="选择克隆来源"
+                ariaLabel={t("modal:fieldLabel.cloneSource")}
               />
             </div>
           ) : null}
@@ -795,7 +811,7 @@ export function ControlPlanePage({
               onClick={() => void submitCreatePipeline()}
               disabled={vm.isCreatingPipeline || (createPipelineCloneEnabled && !createPipelineCloneFrom)}
             >
-              {vm.isCreatingPipeline ? "新增中..." : "确认新增流水线"}
+              {vm.isCreatingPipeline ? t("modal:creating") : t("modal:action.confirmCreate")}
             </button>
           </div>
       </ModalLayer>
@@ -807,10 +823,10 @@ export function ControlPlanePage({
           closeRenamePipelineModal();
         }}
         panelClassName={smallModalPanelClassName}
-        ariaLabel="重命名流水线"
+        ariaLabel={t("modal:renamePipeline")}
       >
           <div className={panelHeaderClassName}>
-            <h2>修改流水线标题</h2>
+            <h2>{t("modal:renamePipeline")}</h2>
             <button
               className={drawerCloseClassName}
               type="button"
@@ -818,22 +834,22 @@ export function ControlPlanePage({
                 blurActiveElement();
                 closeRenamePipelineModal();
               }}
-              aria-label="关闭"
+              aria-label={t("modal:close")}
             >
               <CloseIcon />
             </button>
           </div>
           <p className={modalSublineClassName}>
-            当前流水线 <code>{renamePipelineTarget?.id ?? renamePipelineTargetId ?? "-"}</code>
-            {renamePipelineTarget?.title ? `（当前标题：${renamePipelineTarget.title}）` : ""}。
+            {t("modal:currentPipeline")} <code>{renamePipelineTarget?.id ?? renamePipelineTargetId ?? "-"}</code>
+            {renamePipelineTarget?.title ? ` (${t("modal:currentTitle")}: ${renamePipelineTarget.title})` : ""}.
           </p>
           <div className={fieldClassName}>
-            <label className={fieldLabelClassName}>新标题</label>
+            <label className={fieldLabelClassName}>{t("modal:fieldLabel.newTitle")}</label>
             <input
               className={controlSingleLineClassName}
               value={renamePipelineTitle}
               onChange={(event) => setRenamePipelineTitle(event.target.value)}
-              placeholder="例如 流水线 DAG-A"
+              placeholder={t("modal:placeholder.newTitle")}
             />
           </div>
           {renamePipelineError ? (
@@ -846,7 +862,7 @@ export function ControlPlanePage({
               onClick={() => void submitRenamePipeline()}
               disabled={!renamePipelineTargetId || !renamePipelineTitle.trim() || vm.isRenamingPipeline}
             >
-              {vm.isRenamingPipeline ? "保存中..." : "确认修改标题"}
+              {vm.isRenamingPipeline ? t("modal:saving") : t("modal:action.confirmRename")}
             </button>
           </div>
       </ModalLayer>
@@ -859,10 +875,10 @@ export function ControlPlanePage({
           setDeletePipelineTargetId(null);
         }}
         panelClassName={smallModalPanelClassName}
-        ariaLabel="确认删除流水线"
+        ariaLabel={t("modal:deletePipeline")}
       >
           <div className={panelHeaderClassName}>
-            <h2>确认删除流水线</h2>
+            <h2>{t("modal:deletePipeline")}</h2>
             <button
               className={drawerCloseClassName}
               type="button"
@@ -871,14 +887,14 @@ export function ControlPlanePage({
                 setDeletePipelineError("");
                 setDeletePipelineTargetId(null);
               }}
-              aria-label="关闭"
+              aria-label={t("modal:close")}
             >
               <CloseIcon />
             </button>
           </div>
           <p className={modalSublineClassName}>
-            将删除流水线 <code>{deletePipelineTarget?.id ?? deletePipelineTargetId ?? "-"}</code>
-            {deletePipelineTarget?.title ? `（${deletePipelineTarget.title}）` : ""}。删除后目录会归档到 <code>.data/pipelines/_deleted</code>。
+            {t("modal:deleteConfirm")} <code>{deletePipelineTarget?.id ?? deletePipelineTargetId ?? "-"}</code>
+            {deletePipelineTarget?.title ? ` (${deletePipelineTarget.title})` : ""}. {t("modal:archiveNote")} <code>.data/pipelines/_deleted</code>.
           </p>
           {deletePipelineError ? (
             <p className={`${modalSublineClassName} text-(--bad)`}>{deletePipelineError}</p>
@@ -890,7 +906,7 @@ export function ControlPlanePage({
               onClick={() => deletePipelineTargetId && void confirmDeletePipeline(deletePipelineTargetId)}
               disabled={!deletePipelineTargetId || vm.isDeletingPipeline}
             >
-              {vm.isDeletingPipeline ? "删除中..." : "确认删除流水线"}
+              {vm.isDeletingPipeline ? t("modal:deleting") : t("modal:action.confirmDeletePipeline")}
             </button>
           </div>
       </ModalLayer>
@@ -913,7 +929,7 @@ export function ControlPlanePage({
       >
         <div className={smallModalPanelClassName} onClick={(event) => event.stopPropagation()}>
           <div className={panelHeaderClassName}>
-            <h2>新增对象</h2>
+            <h2>{t("modal:addObject")}</h2>
             <button
               className={drawerCloseClassName}
               type="button"
@@ -921,42 +937,42 @@ export function ControlPlanePage({
                 blurActiveElement();
                 vm.setIsCreateNodeModalOpen(false);
               }}
-              aria-label="关闭"
+              aria-label={t("modal:close")}
             >
               <CloseIcon />
             </button>
           </div>
           <div className={fieldClassName}>
-            <label className={fieldLabelClassName}>创建类型</label>
+            <label className={fieldLabelClassName}>{t("modal:fieldLabel.createType")}</label>
             <InlineSelect
               value={vm.draftCreateKind}
               options={[
-                { value: "node", label: "节点" },
-                { value: "group", label: "并行组" },
+                { value: "node", label: t("modal:fieldLabel.node") },
+                { value: "group", label: t("modal:fieldLabel.group") },
               ]}
               onChange={(next) => vm.setDraftCreateKind(next as "node" | "group")}
               triggerClassName={controlInputMonoClassName}
-              ariaLabel="选择创建类型"
+              ariaLabel={t("modal:fieldLabel.createType")}
             />
           </div>
           {vm.draftCreateKind === "node" ? (
             <>
           <div className={fieldClassName}>
-            <label className={fieldLabelClassName}>节点 ID</label>
+            <label className={fieldLabelClassName}>{t("modal:fieldLabel.nodeId")}</label>
             <input
               className={controlSingleLineMonoClassName}
               value={vm.draftNewNodeId}
               onChange={(event) => vm.setDraftNewNodeId(event.target.value)}
-              placeholder="例如 n5"
+              placeholder={t("modal:placeholder.nodeId")}
             />
           </div>
           <div className={fieldClassName}>
-            <label className={fieldLabelClassName}>节点标题</label>
+            <label className={fieldLabelClassName}>{t("modal:fieldLabel.nodeTitle")}</label>
             <input
               className={controlSingleLineClassName}
               value={vm.draftNewNodeTitle}
               onChange={(event) => vm.setDraftNewNodeTitle(event.target.value)}
-              placeholder="例如 变更汇总"
+              placeholder={t("modal:placeholder.nodeTitle")}
             />
           </div>
           <div className={fieldClassName}>
@@ -975,17 +991,17 @@ export function ControlPlanePage({
             />
           </div>
           <div className={fieldClassName}>
-            <label className={fieldLabelClassName}>节点指令</label>
+            <label className={fieldLabelClassName}>{t("modal:fieldLabel.nodeInstruction")}</label>
             <textarea
               className={controlTextAreaMonoClassName}
               value={vm.draftNewNodeInstruction}
               onChange={(event) => vm.setDraftNewNodeInstruction(event.target.value)}
               rows={4}
-              placeholder="可留空，后续再编辑"
+              placeholder={t("modal:placeholder.nodeInstruction")}
             />
           </div>
           <div className={fieldClassName}>
-            <label className={fieldLabelClassName}>依赖节点（自动识别上游，可多选）</label>
+            <label className={fieldLabelClassName}>{t("modal:fieldLabel.dependsOn")}</label>
             <select
               className={controlInputMonoClassName}
               value={vm.draftNewNodeDependsOn}
@@ -1005,25 +1021,25 @@ export function ControlPlanePage({
                 </option>
               ))}
             </select>
-            <small className={`${monoClassName} mt-1.5 block text-xs text-(--muted)`}>按 Ctrl/Command 可多选</small>
+            <small className={`${monoClassName} mt-1.5 block text-xs text-(--muted)`}>{t("modal:multiSelectHint")}</small>
           </div>
           <button className={actionButtonClassName} type="button" onClick={vm.addTemplateNode} disabled={vm.isAddingNode}>
-            {vm.isAddingNode ? "新增中..." : "确认新增"}
+            {vm.isAddingNode ? t("modal:creating") : t("modal:action.confirmAdd")}
           </button>
             </>
           ) : (
             <>
               <div className={fieldClassName}>
-                <label className={fieldLabelClassName}>组 ID</label>
+                <label className={fieldLabelClassName}>{t("modal:fieldLabel.groupId")}</label>
                 <input
                   className={controlInputMonoClassName}
                   value={vm.draftNewGroupId}
                   onChange={(event) => vm.setDraftNewGroupId(event.target.value)}
-                  placeholder="例如 g_yes_parallel"
+                  placeholder={t("modal:placeholder.groupId")}
                 />
               </div>
               <div className={fieldClassName}>
-                <label className={fieldLabelClassName}>组内成员</label>
+                <label className={fieldLabelClassName}>{t("modal:fieldLabel.members")}</label>
                 <select
                   className={controlInputMonoClassName}
                   value={vm.draftNewGroupMembers}
@@ -1045,7 +1061,7 @@ export function ControlPlanePage({
                 </select>
               </div>
               <div className={fieldClassName}>
-                <label className={fieldLabelClassName}>公共上游</label>
+                <label className={fieldLabelClassName}>{t("modal:fieldLabel.commonUpstream")}</label>
                 <select
                   className={controlInputMonoClassName}
                   value={vm.draftNewGroupUpstreams}
@@ -1067,7 +1083,7 @@ export function ControlPlanePage({
                 </select>
               </div>
               <div className={fieldClassName}>
-                <label className={fieldLabelClassName}>汇聚策略</label>
+                <label className={fieldLabelClassName}>{t("modal:fieldLabel.joinPolicy")}</label>
                 <InlineSelect
                   value={vm.draftNewGroupJoinPolicy}
                   options={[
@@ -1077,11 +1093,11 @@ export function ControlPlanePage({
                   ]}
                   onChange={(next) => vm.setDraftNewGroupJoinPolicy(next as "all" | "any" | "quorum")}
                   triggerClassName={controlInputMonoClassName}
-                  ariaLabel="选择新增并行组汇聚策略"
+                  ariaLabel={t("modal:fieldLabel.joinPolicy")}
                 />
               </div>
               <button className={actionButtonClassName} type="button" onClick={vm.addParallelGroup} disabled={vm.isAddingNode}>
-                {vm.isAddingNode ? "新增中..." : "确认新增并行组"}
+                {vm.isAddingNode ? t("modal:creating") : t("modal:action.confirmAddGroup")}
               </button>
             </>
           )}
@@ -1108,7 +1124,7 @@ export function ControlPlanePage({
       >
         <div className={smallModalPanelClassName} onClick={(event) => event.stopPropagation()}>
           <div className={panelHeaderClassName}>
-            <h2>{vm.deleteTargetGroupId ? "确认删除并行组" : "确认删除节点"}</h2>
+            <h2>{vm.deleteTargetGroupId ? t("modal:deleteGroup") : t("modal:deleteNode")}</h2>
             <button
               className={drawerCloseClassName}
               type="button"
@@ -1117,20 +1133,20 @@ export function ControlPlanePage({
                 vm.setDeleteTargetNodeId("");
                 vm.setDeleteTargetGroupId("");
               }}
-              aria-label="关闭"
+              aria-label={t("modal:close")}
             >
               <CloseIcon />
             </button>
           </div>
           {vm.deleteTargetGroupId ? (
             <p className={modalSublineClassName}>
-              将删除并行组 <code>{deleteTargetGroup?.id ?? vm.deleteTargetGroupId}</code>
-              {deleteTargetGroup ? `，组内成员: ${deleteTargetGroup.members.join(", ")}` : ""}。组成员会恢复为普通节点，汇聚边会被清理。
+              {t("modal:deleteGroupConfirm")} <code>{deleteTargetGroup?.id ?? vm.deleteTargetGroupId}</code>
+              {deleteTargetGroup ? t("modal:deleteGroupNote", { members: deleteTargetGroup.members.join(", ") }) : ""}
             </p>
           ) : (
             <p className={modalSublineClassName}>
-              将删除节点 <code>{deleteTargetNode?.id ?? vm.deleteTargetNodeId}</code>
-              {deleteTargetNode ? `（${deleteTargetNode.title}）` : ""}，并清理其他节点对它的依赖。此操作不可撤销。
+              {t("modal:deleteNodeConfirm")} <code>{deleteTargetNode?.id ?? vm.deleteTargetNodeId}</code>
+              {deleteTargetNode ? ` (${deleteTargetNode.title})` : ""}{t("modal:deleteNodeNote")}
             </p>
           )}
           <button
@@ -1143,7 +1159,7 @@ export function ControlPlanePage({
             }
             disabled={(!vm.deleteTargetNodeId && !vm.deleteTargetGroupId) || vm.isDeletingNode}
           >
-            {vm.isDeletingNode ? "删除中..." : "确认删除"}
+            {vm.isDeletingNode ? t("modal:deleting") : t("modal:action.confirmDelete")}
           </button>
         </div>
       </aside>
@@ -1166,7 +1182,7 @@ export function ControlPlanePage({
       >
         <div className={outputModalPanelClassName} onClick={(event) => event.stopPropagation()}>
           <div className={panelHeaderClassName}>
-            <h2>最终输出内容</h2>
+            <h2>{t("modal:outputContent")}</h2>
             <button
               className={drawerCloseClassName}
               type="button"
@@ -1174,7 +1190,7 @@ export function ControlPlanePage({
                 blurActiveElement();
                 vm.setAgentOutputModalAgentId("");
               }}
-              aria-label="关闭"
+              aria-label={t("modal:close")}
             >
               <CloseIcon />
             </button>
@@ -1184,7 +1200,7 @@ export function ControlPlanePage({
             <span>{outputAgent?.outputRunId ?? "run:unknown"}</span>
           </div>
           <div className="min-h-26.25 max-h-[calc(90vh-160px)] overflow-auto border border-(--line) bg-[#0f171d] max-[760px]:h-full max-[760px]:min-h-0 max-[760px]:max-h-none">
-            <pre className="m-0 whitespace-pre-wrap wrap-break-word p-3 font-[JetBrains_Mono,monospace] text-[13px] leading-[1.45] text-(--text)">{outputAgent?.outputContent || "暂无最终输出内容"}</pre>
+            <pre className="m-0 whitespace-pre-wrap wrap-break-word p-3 font-[JetBrains_Mono,monospace] text-[13px] leading-[1.45] text-(--text)">{outputAgent?.outputContent || t("modal:noOutput")}</pre>
           </div>
         </div>
       </aside>
@@ -1213,7 +1229,7 @@ export function ControlPlanePage({
           setPluginModalPipelineId(null);
         }}
         panelClassName={smallModalPanelClassName}
-        ariaLabel="插件配置"
+        ariaLabel={t("modal:pluginConfig")}
       >
         {pluginModalPipelineId ? (
           <PipelinePluginModal
@@ -1237,10 +1253,10 @@ export function ControlPlanePage({
           setWorkflowJsonModalOpen(false);
         }}
         panelClassName={workflowModalPanelClassName}
-        ariaLabel="编辑工作流 JSON"
+        ariaLabel={t("modal:editWorkflowJson")}
       >
           <div className={panelHeaderClassName}>
-            <h2>Workflow JSON（{vm.activePipelineTitle || vm.activePipelineId || "-"}）</h2>
+            <h2>Workflow JSON ({vm.activePipelineTitle || vm.activePipelineId || "-"})</h2>
             <button
               className={drawerCloseClassName}
               type="button"
@@ -1248,14 +1264,14 @@ export function ControlPlanePage({
                 blurActiveElement();
                 setWorkflowJsonModalOpen(false);
               }}
-              aria-label="关闭"
+              aria-label={t("modal:close")}
             >
               <CloseIcon />
             </button>
           </div>
           <p className={`${modalSublineClassName} ${monoClassName}`}>{vm.workflow ? `nodes=${vm.workflow.nodes.length}` : "-"}</p>
           <div className={fieldClassName}>
-            <label className={fieldLabelClassName}>可编辑整份 workflow（含 edges/groups/scheduler）</label>
+            <label className={fieldLabelClassName}>{t("modal:workflowJsonLabel")}</label>
             <textarea
               className={controlTextAreaMonoClassName}
               rows={18}
@@ -1266,7 +1282,7 @@ export function ControlPlanePage({
           </div>
           <div className={actionRowClassName}>
             <button className={actionButtonClassName} type="button" onClick={() => void vm.saveWorkflowJsonDraft()} disabled={vm.isSavingWorkflowJson}>
-              {vm.isSavingWorkflowJson ? "保存中..." : "保存 Workflow JSON"}
+              {vm.isSavingWorkflowJson ? t("modal:saving") : t("modal:action.saveWorkflow")}
             </button>
           </div>
       </ModalLayer>
@@ -1278,10 +1294,10 @@ export function ControlPlanePage({
           setDispatchBoardOpen(false);
         }}
         panelClassName="overflow-auto border border-[var(--line)] bg-[linear-gradient(180deg,var(--panel)_0%,var(--panel-2)_100%)] p-0 max-h-[88vh] w-[min(760px,94vw)]"
-        ariaLabel="流水线调度管理"
+        ariaLabel={t("modal:schedulerManagement")}
       >
         <div className="flex items-center justify-between px-3 pt-3 pb-2 border-b border-[var(--line)]">
-          <h2 className="text-sm font-semibold text-[var(--text)]">流水线调度管理</h2>
+          <h2 className="text-sm font-semibold text-[var(--text)]">{t("modal:schedulerManagement")}</h2>
           <button
             className={drawerCloseClassName}
             type="button"
@@ -1289,7 +1305,7 @@ export function ControlPlanePage({
               blurActiveElement();
               setDispatchBoardOpen(false);
             }}
-            aria-label="关闭"
+            aria-label={t("modal:close")}
           >
             <CloseIcon />
           </button>

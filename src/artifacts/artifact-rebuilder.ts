@@ -38,7 +38,7 @@ export const rebuildArtifactIndexIncremental = async (
       }
     }
   } catch {
-    warnings.push(`无法扫描产物根目录: ${rootDir}`);
+    warnings.push(`Failed to scan artifact root directory: ${rootDir}`);
   }
 
   for (const dir of dirs) {

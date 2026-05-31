@@ -55,7 +55,7 @@ export const createRuntimeStore = (options: RuntimeStoreOptions) => {
       } catch (error) {
         // Persistence failures should not break pipeline execution.
         pushTimeline(
-          `持久化运行状态失败: ${error instanceof Error ? error.message : String(error)}`,
+          `Failed to persist run state: ${error instanceof Error ? error.message : String(error)}`,
           "warn",
         );
       }
@@ -87,7 +87,7 @@ export const createRuntimeStore = (options: RuntimeStoreOptions) => {
       return savedRun;
     } catch (error) {
       pushTimeline(
-        `加载持久化运行状态失败: ${error instanceof Error ? error.message : String(error)}`,
+        `Failed to load persisted run state: ${error instanceof Error ? error.message : String(error)}`,
         "warn",
       );
       return null;
@@ -129,7 +129,7 @@ export const createRuntimeStore = (options: RuntimeStoreOptions) => {
     options.graph.syncRunGroupsFromWorkflow(run);
     syncRunNodeStatusFromItemRuns(run);
     touchRun(run);
-    pushTimeline(`已恢复上次运行状态: ${run.id}`);
+    pushTimeline(`Restored previous run state: ${run.id}`);
     emitPipeline();
   };
 

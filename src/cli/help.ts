@@ -1,3 +1,4 @@
+import { t } from "./i18n";
 import type { CliArgHelpDefinition, CliOptionHelpDefinition, CliRouteDefinition } from "./types";
 
 type HelpScope = "root" | "group" | "command";
@@ -7,23 +8,23 @@ type HelpInfo = {
   text: string;
 };
 
-const ROOT_USAGE = "taskmeld <resource> <action> [args] [--flags]";
+const ROOT_USAGE = t("help.usage");
 
 const GROUP_DESCRIPTIONS: Record<string, string> = {
-  agent: "智能体管理",
-  artifact: "产物管理",
-  init: "First-time setup",
-  pipeline: "流水线管理",
-  scheduler: "调度控制",
-  server: "后端服务管理",
-  system: "系统信息",
+  agent: t("help.groups.agent"),
+  artifact: t("help.groups.artifact"),
+  init: t("help.groups.init"),
+  pipeline: t("help.groups.pipeline"),
+  scheduler: t("help.groups.scheduler"),
+  server: t("help.groups.server"),
+  system: t("help.groups.system"),
 };
 
 const COMMON_OPTIONS_LINES = [
-  "Common Options:",
-  "  -f, --format <json|md>  输出格式（默认: md）",
-  "  --envelope              仅与 --format json 搭配可用，输出完整包装层",
-  "  -h, --help      显示当前命令帮助",
+  t("help.commonOptions.title"),
+  `  -f, --format <json|md>  ${t("help.commonOptions.format")}`,
+  `  --envelope              ${t("help.commonOptions.envelope")}`,
+  `  -h, --help      ${t("help.commonOptions.help")}`,
 ];
 
 const listPublicRoutes = (routes: CliRouteDefinition[]): CliRouteDefinition[] => {
@@ -50,7 +51,7 @@ const formatArgsBlock = (args: CliArgHelpDefinition[] | undefined): string[] => 
     "Arguments:",
     ...args.map((item) => {
       const printableName = item.name.startsWith("<") ? item.name : `<${item.name}>`;
-      const requiredLabel = item.required ? "必填" : "可选";
+      const requiredLabel = item.required ? t("help.label.required") : t("help.label.optional");
       const detail = item.description ? `，${item.description}` : "";
       return `  ${printableName}  ${requiredLabel}${detail}`;
     }),
@@ -64,7 +65,7 @@ const formatOptionsBlock = (options: CliOptionHelpDefinition[] | undefined): str
     ...options.map((item) => {
       const flagName = item.flags.join(", ");
       const valueHint = item.valueName ? ` <${item.valueName}>` : "";
-      const requiredLabel = item.required ? "必填" : "可选";
+      const requiredLabel = item.required ? t("help.label.required") : t("help.label.optional");
       const detail = item.description ? `，${item.description}` : "";
       return `  ${flagName}${valueHint}  ${requiredLabel}${detail}`;
     }),
@@ -98,8 +99,8 @@ const renderRoot = (routes: CliRouteDefinition[]): string => {
     }),
     "",
     "Tips:",
-    "  taskmeld <resource> -h         查看一级命令帮助",
-    "  taskmeld <resource> <action> -h  查看二级命令帮助",
+    `  taskmeld <resource> -h         ${t("help.tips.groupHelp")}`,
+    `  taskmeld <resource> <action> -h  ${t("help.tips.commandHelp")}`,
   ];
   return lines.join("\n");
 };
