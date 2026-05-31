@@ -14,7 +14,7 @@ export const registerPipelineWsMethods = (registry: WsMethodRegistry): void => {
       return { ok: false, error: "pipeline_id_invalid" };
     }
     const cloneFrom = typeof params.cloneFrom === "string" && params.cloneFrom.trim() ? params.cloneFrom.trim() : undefined;
-    const title = typeof params.title === "string" && params.title.trim() ? params.title.trim() : `流水线 DAG-${pipelineId}`;
+    const title = typeof params.title === "string" && params.title.trim() ? params.title.trim() : `Pipeline ${pipelineId}`;
     try {
       const item = await ctx.app.createPipeline({ id: pipelineId, title, cloneFrom });
       return { ok: true, payload: { ok: true, item: { id: item.id, title: item.title } } };

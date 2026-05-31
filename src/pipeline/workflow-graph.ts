@@ -169,7 +169,7 @@ export const createWorkflowGraph = (initialWorkflow: WorkflowDefinitionRuntime, 
     const current = new Map((run.groups ?? []).map((group) => [group.id, group]));
     run.groups = indices.groups.map((group) => ({
       id: group.id,
-      title: `并行组 ${group.id}`,
+      title: `Group ${group.id}`,
       status: current.get(group.id)?.status ?? "blocked",
       members: group.members,
       joinPolicy: group.joinPolicy,

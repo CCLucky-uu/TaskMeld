@@ -178,16 +178,16 @@ export const createNodeExecutionPrompt = (ctx: {
     return Array.from(grouped.values());
   })();
   const lines = [
-    "# 流水线节点执行指令",
+    "# Pipeline Node Execution Instructions",
     "",
-    "## 输出要求",
-    "- 只能返回一个合法 JSON 对象（ResultEnvelope）。",
-    "- 不要输出任何额外解释、前后缀、Markdown 之外的文本。",
-    "- `status=success` 时，`artifacts` 必须至少 1 条。",
-    "- `artifacts[].content` 支持任意 JSON 值（例如：`\"text\"`、`{\"k\":\"v\"}`、`[{\"k\":\"v1\"},{\"k\":\"v2\"}]`）。",
-    ...(isRouteNode ? ["- 分流节点的 `artifacts[0].content` 必须是数组，数组内每个对象都要包含 `route` 字段。"] : []),
+    "## Output Requirements",
+    "- Return only a valid JSON object (ResultEnvelope).",
+    "- Do not output any extra explanations, prefixes, suffixes, or text outside of Markdown.",
+    "- When `status=success`, `artifacts` must contain at least 1 item.",
+    "- `artifacts[].content` accepts any JSON value (e.g., `\"text\"`, `{\"k\":\"v\"}`, `[{\"k\":\"v1\"},{\"k\":\"v2\"}]`).",
+    ...(isRouteNode ? ["- For routing nodes, `artifacts[0].content` must be an array, and each object in the array must include a `route` field."] : []),
     "",
-    "## ResultEnvelope 固定字段",
+    "## ResultEnvelope Fixed Fields",
     `- version: \`2.0\``,
     `- runId: \`${ctx.runId}\``,
     `- nodeId: \`${ctx.nodeId}\``,
@@ -196,13 +196,13 @@ export const createNodeExecutionPrompt = (ctx: {
     "- status: `success | failed`",
     "- artifacts: `array`",
     "",
-    "## 节点上下文",
-    `- 当前节点: \`${ctx.nodeId}\`（${ctx.nodeTitle}）`,
-    `- 依赖节点: ${ctx.dependencies.length > 0 ? ctx.dependencies.map((id) => `\`${id}\``).join(", ") : "`none`"}`,
+    "## Node Context",
+    `- Current node: \`${ctx.nodeId}\` (${ctx.nodeTitle})`,
+    `- Dependencies: ${ctx.dependencies.length > 0 ? ctx.dependencies.map((id) => `\`${id}\``).join(", ") : "`none`"}`,
   ];
   lines.push(
     "",
-    "## 产物规格",
+    "## Artifact Specification",
     `- type: \`${spec.type}\``,
     `- schemaVersion: \`${spec.schemaVersion}\``,
   );
@@ -210,16 +210,16 @@ export const createNodeExecutionPrompt = (ctx: {
   if (ctx.allowedRoutes.length > 0) {
     lines.push(
       "",
-      "## 分流规则",
-      `- 允许的 route 仅能是: ${ctx.allowedRoutes.map((route) => `\`${route}\``).join(", ")}`,
-      `- \`${MAINLINE_ROUTE_VALUE}\` 表示继续主线，不需要配置分流目标。`,
-      "- `artifacts[0].content` 必须输出为数组。",
-      "- 数组中的每个对象都必须包含 `route` 字段。",
-      "- 每个对象的 `route` 必须命中上述取值。",
-      "- 系统会按 `content[*].route` 自动分组、汇总并推送到对应分支。",
+      "## Routing Rules",
+      `- Allowed routes are: ${ctx.allowedRoutes.map((route) => `\`${route}\``).join(", ")}`,
+      `- \`${MAINLINE_ROUTE_VALUE}\` indicates continuing on the mainline; no routing target configuration needed.`,
+      "- `artifacts[0].content` must be an array.",
+      "- Each object in the array must include a `route` field.",
+      "- Each object's `route` must match one of the allowed values above.",
+      "- The system will automatically group and dispatch items by `content[*].route` to the corresponding branches.",
     );
     if (ctx.routeTargets.length > 0) {
-      lines.push("- 当前配置的 route 目标如下:");
+      lines.push("- The configured route targets are:");
       for (const target of ctx.routeTargets) {
         lines.push(`  - \`${target.route}\` -> \`${target.targetNodeId}\` (${target.targetNodeTitle}, agent:${target.targetAgentId}, lane:${target.lane})`);
       }
@@ -229,25 +229,25 @@ export const createNodeExecutionPrompt = (ctx: {
   if (ctx.allowReject && ctx.dependencies.length > 0) {
     lines.push(
       "",
-      "## 打回配置",
+      "## Rejection Configuration",
       `- allowReject: \`${ctx.allowReject ? "true" : "false"}\``,
       `- maxRejectCount: \`${ctx.maxRejectCount}\``,
       "",
-      "### 打回规则",
-      "- 仅当上游内容不符合你的校验规范时，才允许打回。",
-      "- 打回时必须返回 `status=failed`，且 `error.code=upstream_reject`。",
-      "- 如需指定目标上游，可提供 `error.targets=[\"nodeId\"]`。",
-      "- 不提供 `targets` 时，系统默认打回上一个直接上游节点。",
+      "### Rejection Rules",
+      "- Rejection is only allowed when upstream content does not meet your validation criteria.",
+      "- When rejecting, you must return `status=failed` with `error.code=upstream_reject`.",
+      "- To specify target upstream nodes, provide `error.targets=[\"nodeId\"]`.",
+      "- When `targets` is not provided, the system defaults to rejecting the most recent direct upstream node.",
       "",
       "```json",
-      "{\"code\":\"upstream_reject\",\"message\":\"打回原因\"}",
+      "{\"code\":\"upstream_reject\",\"message\":\"rejection reason\"}",
       "```",
     );
   }
   if (isRouteNode) {
     lines.push(
       "",
-      "## 分流节点 JSON 示例",
+      "## Routing Node JSON Example",
       "```json",
       JSON.stringify(
         {
@@ -285,7 +285,7 @@ export const createNodeExecutionPrompt = (ctx: {
   } else {
     lines.push(
       "",
-      "## JSON 输出示例",
+      "## JSON Output Example",
       "```json",
       JSON.stringify(
         {
@@ -323,23 +323,23 @@ export const createNodeExecutionPrompt = (ctx: {
     const artifact = ctx.externalPipelineArtifact;
     const fence = detectFenceLanguage(artifact.content);
     lines.push(
-      "## 外部流水线上游产物",
+      "## External Pipeline Upstream Artifacts",
       "",
-      `来源: 流水线 ${artifact.sourcePipelineId} 的最终输出`,
+      `Source: final output of pipeline ${artifact.sourcePipelineId}`,
       "",
-      "内容:",
+      "Content:",
       `\`\`\`${fence}`,
       artifact.content,
       "```",
     );
   }
   if (groupedDependencies.length > 0) {
-    lines.push("## 上游输输出结构：");
+    lines.push("## Upstream Output Structure:");
     for (const dep of groupedDependencies) {
       const merged = dep.contents.join("\n");
       const fence = detectFenceLanguage(merged);
       lines.push(
-        `### 节点 \`${dep.sourceNodeId}\`（${dep.sourceNodeTitle}）- agent \`${dep.sourceAgentId}\``,
+        `### Node \`${dep.sourceNodeId}\` (${dep.sourceNodeTitle}) - agent \`${dep.sourceAgentId}\``,
         `\`\`\`${fence}`,
         merged,
         "```",
@@ -349,9 +349,9 @@ export const createNodeExecutionPrompt = (ctx: {
   }
   // 节点目标是执行 prompt 的核心约束，不能因为存在打回反馈或分流说明而被覆盖掉。
   // 这里固定保留“节点目标”段，再额外追加反馈，避免分流节点提示词缺少主任务目标。
-  lines.push("## 节点目标", ctx.instruction || "请按节点职责完成任务");
+  lines.push("## Node Objective", ctx.instruction || "Complete the task according to the node's responsibilities");
   if (ctx.rejectFeedbacks.length > 0) {
-    lines.push("", "## 下游打回反馈（请优先修正）");
+    lines.push("", "## Downstream Rejection Feedback (please prioritize fixes)");
     for (const item of ctx.rejectFeedbacks) {
       lines.push(`- ${item}`);
     }
@@ -379,22 +379,22 @@ export const createNodeCorrectionPrompt = (
   lastViolation: ContractViolationCode,
 ): string =>
   [
-    `结构校验未通过，错误码: ${lastViolation}`,
-    "请严格基于本次请求的固定字段重发完整 ResultEnvelope，不要沿用旧请求的顶层字段。",
-    `固定字段必须为: version="2.0", runId="${ctx.runId}", nodeId="${ctx.nodeId}", requestId="${ctx.requestId}", sessionId="${ctx.sessionId}"`,
-    `产物规格必须为: type="${ctx.outputSpec.type}", schemaVersion=${ctx.outputSpec.schemaVersion}`,
+    `Structural validation failed, error code: ${lastViolation}`,
+    "Resend a complete ResultEnvelope strictly based on the fixed fields of this request. Do not reuse top-level fields from previous requests.",
+    `Fixed fields must be: version="2.0", runId="${ctx.runId}", nodeId="${ctx.nodeId}", requestId="${ctx.requestId}", sessionId="${ctx.sessionId}"`,
+    `Artifact specification must be: type="${ctx.outputSpec.type}", schemaVersion=${ctx.outputSpec.schemaVersion}`,
     ctx.allowedRoutes && ctx.allowedRoutes.length > 0
-      ? `这是分流节点。允许的 route 只有: ${ctx.allowedRoutes.map((route) => `"${route}"`).join(", ")}。请把 route 写进 artifacts[0].content 的每个对象里。`
+      ? `This is a routing node. The only allowed routes are: ${ctx.allowedRoutes.map((route) => `"${route}"`).join(", ")}. Include the route field in each object within artifacts[0].content.`
       : ctx.externalPipelineArtifact
-        ? `本次请求包含来自流水线 ${ctx.externalPipelineArtifact.sourcePipelineId} 的外部上游产物。请继续基于该上游产物修正。`
-        : "请按当前结构输出结果。",
-    "请先把完整 ResultEnvelope 保存为当前工作目录下的 result.json，然后自行运行下面的校验命令，确认 JSON valid 后再继续：",
+        ? `This request contains an external upstream artifact from pipeline ${ctx.externalPipelineArtifact.sourcePipelineId}. Continue corrections based on this upstream artifact.`
+        : "Output the result in the current structure.",
+    "First save the complete ResultEnvelope as result.json in the current working directory, then run the following validation command and confirm JSON valid before continuing:",
     "```bash",
     "cat result.json | python3 -m json.tool > /dev/null && echo \"JSON valid\" || echo \"JSON invalid\"",
     "```",
-    "如果校验结果不是 JSON valid，请继续修正 result.json，直到通过为止。",
-    "必须输出完整 JSON 对象，不要只输出 artifacts 片段。",
-    "只输出修正后的合法 JSON ResultEnvelope，不要输出任何解释。",
+    "If the validation result is not JSON valid, continue fixing result.json until it passes.",
+    "You must output the complete JSON object, not just the artifacts fragment.",
+    "Output only the corrected valid JSON ResultEnvelope. Do not output any explanations.",
   ].join("\n");
 
 export const buildExternalPipelineArtifactInput = async (

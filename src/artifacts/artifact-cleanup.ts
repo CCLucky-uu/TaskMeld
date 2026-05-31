@@ -122,7 +122,7 @@ export const executeCleanup = async (
     // 路径穿越保护：目标必须位于当前 pipeline 的 artifactDir 内
     if (absPath !== rootAbs && !absPath.startsWith(`${rootAbs}${sep}`)) {
       failed += 1;
-      warnings.push(`拒绝删除越界文件 (${definition.id}:${file.relativePath})`);
+      warnings.push(`Refused to delete out-of-bounds file (${definition.id}:${file.relativePath})`);
       continue;
     }
     try {
@@ -131,7 +131,7 @@ export const executeCleanup = async (
     } catch (error) {
       failed += 1;
       warnings.push(
-        `删除失败 (${definition.id}:${file.relativePath}): ${error instanceof Error ? error.message : String(error)}`,
+        `Delete failed (${definition.id}:${file.relativePath}): ${error instanceof Error ? error.message : String(error)}`,
       );
     }
   }
@@ -148,7 +148,7 @@ export const executeCleanup = async (
     const { rebuildArtifactIndex } = await import("./artifact-index.js");
     await rebuildArtifactIndex(definition, (d: PipelineDefinition) => scanStoredArtifacts([d]));
   } catch {
-    warnings.push(`删除后自动重建索引失败 (${definition.id})，请手动执行 rebuild-index`);
+    warnings.push(`Auto-rebuild index after delete failed (${definition.id}), please run rebuild-index manually`);
   }
 
   return { deleted, failed, warnings };
@@ -210,7 +210,7 @@ export const cleanupTempFiles = async (
             cleaned += 1;
           } catch (error) {
             warnings.push(
-              `清理临时文件失败: ${error instanceof Error ? error.message : String(error)}`,
+              `Failed to clean temp files: ${error instanceof Error ? error.message : String(error)}`,
             );
           }
         }

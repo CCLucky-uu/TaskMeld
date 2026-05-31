@@ -11,7 +11,7 @@ export const registerPipelineSchedulerWsMethods = (registry: WsMethodRegistry): 
     if (!toggled.ok) {
       return { ok: false, error: toggled.error };
     }
-    runtime.runtime.pushTimeline(`[${pipelineId}] 调度器已${toggled.scheduler.enabled ? "启用" : "停用"}`);
+    runtime.runtime.pushTimeline(`[${pipelineId}] Scheduler ${toggled.scheduler.enabled ? "enabled" : "disabled"}`);
     return { ok: true, payload: toggled };
   });
 
@@ -25,7 +25,7 @@ export const registerPipelineSchedulerWsMethods = (registry: WsMethodRegistry): 
     if (!updated.ok) {
       return { ok: false, error: updated.error };
     }
-    runtime.runtime.pushTimeline(`[${pipelineId}] 调度器模式切换为: ${updated.scheduler.mode}`);
+    runtime.runtime.pushTimeline(`[${pipelineId}] Scheduler mode switched to: ${updated.scheduler.mode}`);
     return { ok: true, payload: updated };
   });
 

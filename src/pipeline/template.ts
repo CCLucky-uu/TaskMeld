@@ -78,27 +78,27 @@ export const readTemplateNodesFromRaw = (value: unknown): import("./types/workfl
 
 export const migrateWorkflowDefinitionV2RawToV3 = (value: unknown): WorkflowReadResult => {
   if (!isRecord(value) || value.version !== "2.0") {
-    return { ok: false, error: "invalid_workflow_definition", detail: "仅支持从 workflow v2.0 迁移" };
+    return { ok: false, error: "invalid_workflow_definition", detail: "Migration is only supported from workflow v2.0" };
   }
   if (!Array.isArray(value.nodes) || !Array.isArray(value.edges) || !Array.isArray(value.groups)) {
-    return { ok: false, error: "invalid_workflow_definition", detail: "workflow.nodes/edges/groups 必须为数组" };
+    return { ok: false, error: "invalid_workflow_definition", detail: "workflow.nodes/edges/groups must be arrays" };
   }
   const nodes: import("./types/workflow").WorkflowNode[] = [];
   for (const item of value.nodes) {
     const normalized = normalizeWorkflowNode(item);
-    if (!normalized) return { ok: false, error: "invalid_workflow_definition", detail: "workflow.nodes 存在非法节点结构" };
+    if (!normalized) return { ok: false, error: "invalid_workflow_definition", detail: "workflow.nodes contains an invalid node structure" };
     nodes.push(normalized);
   }
   const edges: import("./types/workflow").WorkflowEdge[] = [];
   for (const item of value.edges) {
     const normalized = normalizeWorkflowEdge(item);
-    if (!normalized) return { ok: false, error: "invalid_workflow_definition", detail: "workflow.edges 存在非法边结构" };
+    if (!normalized) return { ok: false, error: "invalid_workflow_definition", detail: "workflow.edges contains an invalid edge structure" };
     edges.push(normalized);
   }
   const groups: import("./types/workflow").WorkflowGroup[] = [];
   for (const item of value.groups) {
     const normalized = normalizeWorkflowGroup(item);
-    if (!normalized) return { ok: false, error: "invalid_workflow_definition", detail: "workflow.groups 存在非法并行组结构" };
+    if (!normalized) return { ok: false, error: "invalid_workflow_definition", detail: "workflow.groups contains an invalid parallel group structure" };
     groups.push(normalized);
   }
   const workflow: WorkflowDefinitionRuntime = {

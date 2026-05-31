@@ -153,7 +153,7 @@ export const createSchedulerService = (deps: SchedulerServiceDeps) => {
       if (schedulerState.mode === "manual") return { executed: 0, hardFailed: false };
     }
     if (drainInFlight) {
-      deps.runtimeStore.pushTimeline(`[调度排水锁] 调用方=${reason} 触发排水，但已有 ${drainInFlightReason} 排水正在执行，本次调用合并至现有排水`, "info");
+      deps.runtimeStore.pushTimeline(`[Scheduling drain lock] caller=${reason} triggered drain, but ${drainInFlightReason} drain is already in progress, merged into existing drain`, "info");
       return drainInFlight;
     }
     drainInFlight = (async () => {
@@ -187,7 +187,7 @@ export const createSchedulerService = (deps: SchedulerServiceDeps) => {
         }
 
         if (executed >= maxIterations) {
-          deps.runtimeStore.pushTimeline(`调度达到全局迭代上限: ${maxIterations}`, "warn");
+          deps.runtimeStore.pushTimeline(`Scheduling reached global iteration limit: ${maxIterations}`, "warn");
           break;
         }
 
@@ -199,7 +199,7 @@ export const createSchedulerService = (deps: SchedulerServiceDeps) => {
           const batchLabel = batch
             .map((item) => ("nodeId" in item ? `${item.nodeId}#${item.itemKey}` : `group:${item.groupId}#${item.itemKey}`))
             .join(", ");
-          deps.runtimeStore.pushTimeline(`流水线自动调度: ${batchLabel} (${reason})`);
+          deps.runtimeStore.pushTimeline(`Pipeline auto-scheduled: ${batchLabel} (${reason})`);
           for (const item of batch) {
             launchItem(item);
           }
@@ -254,7 +254,7 @@ export const createSchedulerService = (deps: SchedulerServiceDeps) => {
       deps.executionService.setActiveBatchKeywordItems([...batchItems]);
       deps.graph.syncRunGroupsFromWorkflow(nextRun);
       deps.runtimeStore.emitPipeline();
-      deps.runtimeStore.pushTimeline(`批量运行开始: 第 ${batchIndex}/${totalBatches} 批, 关键词 ${batchItems.length}/${totalItems}`);
+      deps.runtimeStore.pushTimeline(`Batch run started: batch ${batchIndex}/${totalBatches}, keywords ${batchItems.length}/${totalItems}`);
 
       let drained: { executed: number; hardFailed: boolean };
       try {
@@ -267,7 +267,7 @@ export const createSchedulerService = (deps: SchedulerServiceDeps) => {
       }
 
       if (getRun().status === "running") {
-        deps.runtimeStore.pushTimeline(`批量运行结束: 第 ${batchIndex} 批无后续可执行节点，直接进入下一批`, "warn", {
+        deps.runtimeStore.pushTimeline(`Batch run ended: batch ${batchIndex} has no further executable nodes, proceeding to next batch`, "warn", {
           batchIndex,
           totalBatches,
           drained,
@@ -278,7 +278,7 @@ export const createSchedulerService = (deps: SchedulerServiceDeps) => {
 
       // 仅在硬失败场景停止后续批次；业务型 failed(status=failed) 允许继续下一批。
       if (drained.hardFailed) {
-        deps.runtimeStore.pushTimeline(`批量运行失败: 第 ${batchIndex} 批, 已停止后续批次`, "error", {
+        deps.runtimeStore.pushTimeline(`Batch run failed: batch ${batchIndex}, subsequent batches stopped`, "error", {
           batchIndex,
           totalBatches,
           drained,
@@ -286,7 +286,7 @@ export const createSchedulerService = (deps: SchedulerServiceDeps) => {
         });
         return { ok: false as const, error: `batch_${batchIndex}_failed`, hardStop: true };
       }
-      deps.runtimeStore.pushTimeline(`批量运行完成: 第 ${batchIndex}/${totalBatches} 批, run=${getRun().id}`);
+      deps.runtimeStore.pushTimeline(`Batch run completed: batch ${batchIndex}/${totalBatches}, run=${getRun().id}`);
       return { ok: true as const };
     },
   });
@@ -311,21 +311,21 @@ export const createSchedulerService = (deps: SchedulerServiceDeps) => {
     startBatchRun: (items: string[], batchSize?: number, options?: { startIndex?: number }) => {
       const started = itemBatchController.start(items, batchSize, options);
       if (started.ok) {
-        deps.runtimeStore.pushTimeline(`已启动关键词池批量运行: 共 ${started.snapshot.totalItems} 个, 每批 ${started.snapshot.batchSize} 个`);
+        deps.runtimeStore.pushTimeline(`Batch run started: ${started.snapshot.totalItems} total items, ${started.snapshot.batchSize} per batch`);
       }
       return started;
     },
     stopBatchRun: () => {
       const stopped = itemBatchController.stop();
       if (stopped.ok) {
-        deps.runtimeStore.pushTimeline("已请求停止关键词池批量运行（当前批次结束后生效）", "warn");
+        deps.runtimeStore.pushTimeline("Batch run stop requested (takes effect after current batch completes)", "warn");
       }
       return stopped;
     },
     cancelBatchRun: () => {
       const canceled = itemBatchController.cancel();
       if (canceled.ok) {
-        deps.runtimeStore.pushTimeline("已立即停止关键词池批量运行（插件已关闭）", "warn");
+        deps.runtimeStore.pushTimeline("Batch run cancelled immediately (plugin disabled)", "warn");
       }
       return canceled;
     },

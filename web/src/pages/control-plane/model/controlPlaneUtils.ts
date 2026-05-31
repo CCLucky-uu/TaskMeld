@@ -392,8 +392,8 @@ export const buildAgentCards = (
 ) => {
   const timelineBusyCounts = (() => {
     const counts: Record<string, number> = {};
-    const started = /Agent\s+([^\s]+)\s+开始工作/;
-    const finished = /Agent\s+([^\s]+)\s+结束工作/;
+    const started = /Agent\s+([^\s]+)\s+started/;
+    const finished = /Agent\s+([^\s]+)\s+finished/;
     for (const item of [...timeline].reverse()) {
       const text = item.text ?? "";
       const startMatch = text.match(started);

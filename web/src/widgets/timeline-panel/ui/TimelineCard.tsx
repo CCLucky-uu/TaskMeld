@@ -41,9 +41,9 @@ const levelTagToneClassName: Record<"info" | "warn" | "error", string> = {
   error: "bg-[rgba(255,107,107,0.16)] text-[var(--bad)]",
 };
 
-const AGENT_START_PATTERN = /^Agent\s+([^\s]+)\s+开始工作\b/;
-const AGENT_END_PATTERN = /^Agent\s+([^\s]+)\s+结束工作\b/;
-const AGENT_DETAIL_PATTERN = /^Agent\s+([^\s]+)\s+(?!开始工作\b|结束工作\b).+/;
+const AGENT_START_PATTERN = /^Agent\s+([^\s]+)\s+started\b/;
+const AGENT_END_PATTERN = /^Agent\s+([^\s]+)\s+finished\b/;
+const AGENT_DETAIL_PATTERN = /^Agent\s+([^\s]+)\s+(?!started\b|finished\b).+/;
 const SESSION_AGENT_PATTERN = /^agent:([^:]+):/i;
 
 type TimelineAgentMeta = {

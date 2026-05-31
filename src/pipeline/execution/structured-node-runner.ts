@@ -36,7 +36,7 @@ const injectRuntimeKeywordsToInstruction = (instruction: string, keywords: strin
   if (matchedArray && matchedArray.length > 0) {
     return instruction.replace(arrayPattern, keywordJson);
   }
-  return `${instruction}\n\n本批次关键词(JSON数组)：\n${keywordJson}`;
+  return `${instruction}\n\nKeywords for this batch (JSON array):\n${keywordJson}`;
 };
 
 export const resolveActiveBatchKeywordsForInstruction = (
@@ -322,7 +322,7 @@ export const createStructuredNodeRunner = (options: CreateStructuredNodeRunnerOp
     }
     if (effectiveDependencyIds.length > 0) {
       options.runtimeStore.pushTimeline(
-        `节点 ${node.id} 已加载上游产物 ${dependencyArtifacts.length} 条（来自: ${effectiveDependencyIds.join(",")}）`,
+        `Node ${node.id} loaded ${dependencyArtifacts.length} upstream artifacts (from: ${effectiveDependencyIds.join(",")})`,
       );
     }
     const allowedRoutes = workflowNode?.routePolicy?.allowed ?? [];
@@ -336,7 +336,7 @@ export const createStructuredNodeRunner = (options: CreateStructuredNodeRunnerOp
           route: edge.when ?? "",
           targetNodeId: edge.to,
           targetNodeTitle: targetWorkflowGroup
-            ? `并行组 ${targetWorkflowGroup.id}`
+            ? `Parallel group ${targetWorkflowGroup.id}`
             : targetNode?.title ?? targetWorkflowNode?.name ?? edge.to,
           targetAgentId: targetWorkflowGroup
             ? targetWorkflowGroup.id
@@ -385,12 +385,12 @@ export const createStructuredNodeRunner = (options: CreateStructuredNodeRunnerOp
       );
     } catch (error) {
       options.runtimeStore.pushTimeline(
-        `节点 ${nodeId} 发送失败(chat.send): ${String(error)}`,
+        `Node ${nodeId} send failed (chat.send): ${String(error)}`,
         "error",
       );
       throw new Error(`openclaw_send_failed:chat.send:${String(error)}`);
     }
-    options.runtimeStore.pushTimeline(`节点 ${nodeId} 已发送请求，等待结构化回执...`);
+    options.runtimeStore.pushTimeline(`Node ${nodeId} request sent, waiting for structured receipt...`);
     const envelope = await waitForStructuredEnvelope(
       emitter,
       validationCtx,
@@ -444,12 +444,12 @@ export const createStructuredNodeRunner = (options: CreateStructuredNodeRunnerOp
           lastViolation = violation;
           if (attemptIndex === 0) {
             options.runtimeStore.pushTimeline(
-              `节点 ${node.id} 回执校验失败(${violation})，自动纠正重试中...`, "warn",
+              `Node ${node.id} receipt validation failed (${violation}), auto-correcting...`, "warn",
             );
             continue;
           }
           options.runtimeStore.pushTimeline(
-            `节点 ${node.id} 回执校验失败(${violation})，纠正后仍未通过，标记失败`, "error",
+            `Node ${node.id} receipt validation failed (${violation}), correction still failed, marked as failed`, "error",
           );
         }
         throw error;
