@@ -1,6 +1,6 @@
 import { FormEvent, useState } from "react";
 import { sendSessionMessage as sendSessionMessageReq, SendMode, SessionItem } from "../../../entities/session";
-import { ApiError } from "../../../shared/api/client";
+import { ApiError } from "../../../shared/ws-client";
 
 type UseSessionSendFeatureArgs = {
   reload: () => Promise<void>;

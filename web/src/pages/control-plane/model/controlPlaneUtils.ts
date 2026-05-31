@@ -6,7 +6,7 @@ import {
   WorkflowGroup,
 } from "../../../entities/pipeline";
 import { TimelineItem } from "../../../entities/timeline";
-import type { ApiError } from "../../../shared/api/client";
+import type { ApiError } from "../../../shared/ws-client";
 
 const MAINLINE_ROUTE_VALUE = "yes";
 const DEFAULT_BRANCH_ROUTE_VALUE = "no";

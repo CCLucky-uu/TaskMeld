@@ -5,6 +5,7 @@ dist/
 coverage/
 .vscode/
 .env
+*.tgz
 CLAUDE.local.md
 src/version.ts
 CLAUDE.md
