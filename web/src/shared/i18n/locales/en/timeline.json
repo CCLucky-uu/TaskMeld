@@ -1,0 +1,14 @@
+{
+  "timeline": "Live Timeline",
+  "displayCount": "Showing {{displayed}} / {{total}} entries",
+  "viewFullLog": "View Full Log",
+  "eventDetail": "Event Details",
+  "error": "Error",
+  "warning": "Warning",
+  "info": "Info",
+  "agentStart": "Started",
+  "agentEnd": "Finished",
+  "agentDetail": "Details{{suffix}} ({{count}} items)",
+  "collapsed": "Collapsed",
+  "inProgress": "In progress"
+}

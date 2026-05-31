@@ -1,0 +1,70 @@
+{
+  "app": {
+    "title": "TaskMeld"
+  },
+  "action": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "retry": "Retry",
+    "refresh": "Refresh",
+    "reset": "Reset",
+    "export": "Export",
+    "create": "Create",
+    "apply": "Apply Filters"
+  },
+  "status": {
+    "running": "Running",
+    "success": "Success",
+    "failed": "Failed",
+    "blocked": "Blocked",
+    "waiting": "Waiting",
+    "stopped": "Stopped",
+    "skipped": "Skipped",
+    "rejected": "Rejected",
+    "queued": "Queued",
+    "ready": "Ready",
+    "idle": "Idle",
+    "pending": "Pending",
+    "canceled": "Canceled"
+  },
+  "gateway": {
+    "ready": "Ready",
+    "connecting": "Connecting",
+    "ws_open": "Channel Open",
+    "challenged": "Verifying Challenge",
+    "connect_sent": "Handshake Sent",
+    "failed": "Failed",
+    "success": "Success"
+  },
+  "common": {
+    "loading": "Loading...",
+    "loadingMore": "Load More",
+    "noData": "No data available",
+    "noMatch": "No results",
+    "error": "Error",
+    "warning": "Warning",
+    "info": "Info",
+    "empty": "Empty",
+    "required": "Required",
+    "optional": "Optional",
+    "all": "All",
+    "none": "None",
+    "yes": "Yes",
+    "no": "No",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "searchPlaceholder": "Search..."
+  },
+  "time": {
+    "today": "Today",
+    "last7d": "Last 7 days",
+    "last30d": "Last 30 days",
+    "custom": "Custom",
+    "latestFirst": "Latest First",
+    "earliestFirst": "Earliest First"
+  }
+}

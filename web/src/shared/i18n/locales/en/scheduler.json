@@ -1,0 +1,9 @@
+{
+  "schedulerConfig": "Scheduler Config (DAG-{{pipelineId}})",
+  "disableScheduler": "Disable Scheduler",
+  "enableScheduler": "Enable Scheduler",
+  "switchToMode": "Switch to {{mode}}",
+  "auto": "Auto",
+  "manual": "Manual",
+  "manualStep": "Step Through"
+}
