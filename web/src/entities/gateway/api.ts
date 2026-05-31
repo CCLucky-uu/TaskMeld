@@ -1,5 +1,5 @@
 import { GatewayStatus } from "./types";
-import { requestJson } from "../../shared/api/client";
+import { wsRequest } from "../../shared/api/ws-client";
 
 type GatewayStatusResponse = {
   status: GatewayStatus;
@@ -7,7 +7,7 @@ type GatewayStatusResponse = {
 };
 
 export async function fetchGatewayStatus() {
-  const data = await requestJson<GatewayStatusResponse>("/api/gateway/status");
+  const data = await wsRequest<GatewayStatusResponse>("gateway.status");
   return {
     status: data.status,
     serverVersion: data.hello?.server?.version ?? "-",

@@ -1,4 +1,4 @@
-import { requestJson } from "../../shared/api/client";
+import { wsRequest } from "../../shared/api/ws-client";
 import type { StoredArtifactContent, StoredArtifactExportData, StoredArtifactItem } from "./types";
 
 type ArtifactListResponse = {
@@ -15,16 +15,6 @@ type ArtifactExportResponse = {
   data?: StoredArtifactExportData;
 };
 
-const buildQuery = (params: Record<string, string | number | null | undefined>) => {
-  const query = new URLSearchParams();
-  for (const [key, value] of Object.entries(params)) {
-    if (value === null || value === undefined || value === "") continue;
-    query.set(key, String(value));
-  }
-  const raw = query.toString();
-  return raw ? `?${raw}` : "";
-};
-
 export type ArtifactListParams = {
   pipelineId?: string;
   nodeId?: string;
@@ -38,20 +28,23 @@ export type ArtifactListParams = {
   runId?: string;
 };
 
+const buildWsParams = (params?: ArtifactListParams): Record<string, unknown> => {
+  const wsParams: Record<string, unknown> = {};
+  if (params?.pipelineId) wsParams.pipelineId = params.pipelineId;
+  if (params?.nodeId) wsParams.nodeId = params.nodeId;
+  if (params?.dateFrom) wsParams.dateFrom = params.dateFrom;
+  if (params?.dateTo) wsParams.dateTo = params.dateTo;
+  if (typeof params?.limit === "number") wsParams.limit = params.limit;
+  if (params?.status) wsParams.status = params.status;
+  if (params?.kind) wsParams.kind = params.kind;
+  if (params?.cursor) wsParams.cursor = params.cursor;
+  if (params?.batchRunId) wsParams.batchRunId = params.batchRunId;
+  if (params?.runId) wsParams.runId = params.runId;
+  return wsParams;
+};
+
 export async function fetchStoredArtifacts(params?: ArtifactListParams): Promise<StoredArtifactItem[]> {
-  const query = buildQuery({
-    pipelineId: params?.pipelineId,
-    nodeId: params?.nodeId,
-    dateFrom: params?.dateFrom,
-    dateTo: params?.dateTo,
-    limit: params?.limit,
-    status: params?.status,
-    kind: params?.kind,
-    cursor: params?.cursor,
-    batchRunId: params?.batchRunId,
-    runId: params?.runId,
-  });
-  const data = await requestJson<ArtifactListResponse>(`/api/artifacts${query}`);
+  const data = await wsRequest<ArtifactListResponse>("artifact.list", buildWsParams(params));
   return Array.isArray(data.items) ? data.items : [];
 }
 
@@ -59,26 +52,11 @@ export async function fetchStoredArtifactContent(params: {
   pipelineId: string;
   relativePath: string;
 }): Promise<StoredArtifactContent | null> {
-  const query = buildQuery({
-    pipelineId: params.pipelineId,
-    relativePath: params.relativePath,
-  });
-  const data = await requestJson<ArtifactContentResponse>(`/api/artifacts/content${query}`);
+  const data = await wsRequest<ArtifactContentResponse>("artifact.content.get", { pipelineId: params.pipelineId, relativePath: params.relativePath });
   return data.content ?? null;
 }
 
 export async function fetchStoredArtifactsExport(params?: ArtifactListParams): Promise<StoredArtifactExportData> {
-  const query = buildQuery({
-    pipelineId: params?.pipelineId,
-    nodeId: params?.nodeId,
-    dateFrom: params?.dateFrom,
-    dateTo: params?.dateTo,
-    limit: params?.limit,
-    status: params?.status,
-    kind: params?.kind,
-    batchRunId: params?.batchRunId,
-    runId: params?.runId,
-  });
-  const data = await requestJson<ArtifactExportResponse>(`/api/artifacts/export${query}`);
+  const data = await wsRequest<ArtifactExportResponse>("artifact.export", buildWsParams(params));
   return data.data ?? {};
 }

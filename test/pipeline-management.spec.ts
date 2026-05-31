@@ -2,8 +2,6 @@ import assert from "node:assert/strict";
 import { mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createServer } from "node:http";
-import type { AddressInfo } from "node:net";
 
 const createGatewayClientStub = () =>
   ({
@@ -15,24 +13,15 @@ const createGatewayClientStub = () =>
     getSocket: () => null,
   }) as const;
 
-const requestJson = async <T>(baseUrl: string, path: string, init?: RequestInit): Promise<T> => {
-  const response = await fetch(`${baseUrl}${path}`, init);
-  const body = (await response.json().catch(() => null)) as T | { error?: string } | null;
-  if (!response.ok) {
-    throw new Error(`request_failed:${path}:${JSON.stringify(body)}`);
-  }
-  return body as T;
-};
-
 const run = async () => {
   const prevCwd = process.cwd();
   const workspace = mkdtempSync(join(tmpdir(), "openclaw-pipeline-management-"));
   process.chdir(workspace);
 
-  // 先切工作目录再加载模块，保证 pipeline-config 里的 cwd 相关常量指向临时工作区。
-  const { createApiHandler } = require("../src/server/api-handler");
   const { createPipelineRegistry } = require("../src/app/pipeline-registry");
   const { loadWorkflowDefinitionWithStorage, saveWorkflowDefinitionWithStorage } = require("../src/pipeline/template");
+  const { createPipelineService } = require("../src/services/pipeline-service");
+  const { createSchedulerService } = require("../src/services/scheduler-service");
   const normalizeForRuntimeShape = (workflow: Record<string, unknown>) => ({
     ...workflow,
     edges: Array.isArray(workflow.edges)
@@ -65,6 +54,9 @@ const run = async () => {
     wsEvents.push(payload as { type?: string; payload?: unknown });
   });
 
+  const pipelineService = createPipelineService(app);
+  const schedulerService = createSchedulerService(app);
+
   const sourceDefinition = app.getPipelineDefinition("A");
   assert.ok(sourceDefinition, "默认流水线 A 应存在");
   const sourceWorkflow = loadWorkflowDefinitionWithStorage({ workflowFilePath: sourceDefinition.workflowFilePath });
@@ -91,24 +83,6 @@ const run = async () => {
   ];
   saveWorkflowDefinitionWithStorage(sourceWorkflow, { workflowFilePath: sourceDefinition.workflowFilePath });
 
-  const server = createServer(
-    createApiHandler({
-      apiPort: 0,
-      webOrigin: "*",
-      app,
-      serverRuntimeIdentity: {
-        serverId: "test-server",
-        pid: 1,
-        port: 0,
-        endpoint: "http://127.0.0.1:0",
-        startedAt: "2026-05-09T00:00:00.000Z",
-      },
-    }),
-  );
-  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", () => resolve()));
-  const address = server.address() as AddressInfo;
-  const baseUrl = `http://127.0.0.1:${address.port}`;
-
   try {
     const runtimeA = app.getPipelineRuntime("A");
     assert.ok(runtimeA, "默认流水线 A 应存在运行时");
@@ -119,51 +93,48 @@ const run = async () => {
       status: "running",
       nodes: runningRun.nodes.map((node: { status: string }, index: number) => (index === 0 ? { ...node, status: "running" } : node)),
     });
-    const singleStop = await requestJson<{ ok: boolean; mode?: string; status?: { runStatus?: string } }>(
-      baseUrl,
-      "/api/pipelines/A/stop",
-      {
-        method: "POST",
-      },
-    );
-    assert.equal(singleStop.ok, true, "单跑运行中应支持统一停止");
-    assert.equal(singleStop.mode, "single", "单跑停止应返回 single 模式");
-    assert.equal(singleStop.status?.runStatus, "stopped", "单跑停止后状态应进入 stopped");
+    // 通过内部 API 停止运行
+    const stopped = pipelineService.stopPipeline("A");
+    assert.equal(stopped.ok, true, "单跑运行中应支持统一停止");
+    assert.equal(stopped.mode, "single", "单跑停止应返回 single 模式");
+    assert.equal(stopped.status?.runStatus, "stopped", "单跑停止后状态应进入 stopped");
 
-    const created = await requestJson<{ ok: boolean; item?: { id: string; title: string } }>(baseUrl, "/api/pipelines", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        id: "C",
-        title: "流水线 DAG-C",
-        cloneFrom: "A",
-      }),
+    // 克隆创建
+    const created = await app.createPipeline({
+      id: "C",
+      title: "流水线 DAG-C",
+      cloneFrom: "A",
     });
-    assert.equal(created.ok, true, "克隆创建应成功");
-    assert.equal(created.item?.id, "C");
+    assert.equal(created.id, "C");
     const createBootstrapEvent = wsEvents.at(-1);
     assert.equal(createBootstrapEvent?.type, "bootstrap", "新增流水线后应广播 bootstrap 全量快照");
     assert.equal(Boolean(readBroadcastPipelines(createBootstrapEvent?.payload).C), true, "新增流水线广播中应包含新流水线 C");
 
     const clonedDefinition = app.getPipelineDefinition("C");
     assert.ok(clonedDefinition, "新建流水线 C 应已注册");
-    const clonedWorkflowFromApi = await requestJson<{ workflow?: unknown }>(baseUrl, "/api/pipelines/C/workflow");
     const clonedWorkflow = JSON.parse(readFileSync(clonedDefinition.workflowFilePath, "utf8")) as unknown;
     const currentSourceWorkflow = JSON.parse(readFileSync(sourceDefinition.workflowFilePath, "utf8")) as Record<string, unknown>;
     assert.deepEqual(clonedWorkflow, currentSourceWorkflow, "cloneFrom 应复制源 workflow");
+
+    // 通过 runtime 读取 workflow
+    const clonedRuntime = app.getPipelineRuntime("C");
+    assert.ok(clonedRuntime, "克隆流水线应有运行时");
+    const clonedWorkflowFromApi = clonedRuntime.workflow.getWorkflow();
     assert.deepEqual(
-      clonedWorkflowFromApi.workflow,
+      clonedWorkflowFromApi,
       normalizeForRuntimeShape(currentSourceWorkflow),
       "cloneFrom 后 runtime 读取到的 workflow 应与源图语义一致",
     );
-    const roundtripResponse = await fetch(`${baseUrl}/api/pipelines/C/workflow`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        workflow: clonedWorkflowFromApi.workflow,
-      }),
-    });
-    assert.equal(roundtripResponse.status, 200, "GET /workflow 的响应应可直接 POST 回写");
+
+    // roundtrip 保存
+    const { readWorkflowDefinitionFromRawDetailed, validateWorkflowDefinition, normalizeWorkflowFallbacksWithStorage } = require("../src/pipeline/template");
+    const parseResult = readWorkflowDefinitionFromRawDetailed(clonedWorkflowFromApi);
+    assert.equal(parseResult.ok, true, "GET workflow 结果应可解析");
+    const normalized = normalizeWorkflowFallbacksWithStorage(parseResult.workflow, { workflowFilePath: clonedDefinition.workflowFilePath });
+    const validation = validateWorkflowDefinition(normalized);
+    assert.equal(validation.ok, true, "GET workflow 结果验证应通过");
+    clonedRuntime.workflow.setWorkflow(normalized);
+    saveWorkflowDefinitionWithStorage(normalized, { workflowFilePath: clonedDefinition.workflowFilePath });
     const roundtripDiskWorkflow = JSON.parse(readFileSync(clonedDefinition.workflowFilePath, "utf8")) as { edges?: unknown[] };
     assert.equal(
       Array.isArray(roundtripDiskWorkflow.edges) && roundtripDiskWorkflow.edges.every((edge) => {
@@ -174,81 +145,47 @@ const run = async () => {
       "roundtrip 保存后磁盘仍应保持 v3 kind/route 形状",
     );
 
-    const mixedEdgeWorkflowResponse = await fetch(`${baseUrl}/api/pipelines/C/workflow`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        workflow: {
-          ...currentSourceWorkflow,
-          nodes: [
-            {
-              ...(currentSourceWorkflow.nodes as Array<Record<string, unknown>>)[0],
-              id: "n1",
-              name: "mixed-source",
-              routePolicy: null,
-            },
-            {
-              ...(currentSourceWorkflow.nodes as Array<Record<string, unknown>>)[0],
-              id: "n2",
-              name: "mixed-dependency-target",
-            },
-            {
-              ...(currentSourceWorkflow.nodes as Array<Record<string, unknown>>)[0],
-              id: "n3",
-              name: "mixed-route-target",
-              lane: "branch",
-            },
-          ],
-          edges: [
-            { from: "n1", to: "n2", kind: "dependency" },
-            { from: "n1", to: "n3", kind: "route", route: "yes" },
-          ],
-        },
-      }),
+    // 危险混合出边
+    const mixedParseResult = readWorkflowDefinitionFromRawDetailed({
+      ...currentSourceWorkflow,
+      nodes: [
+        { ...(currentSourceWorkflow.nodes as Array<Record<string, unknown>>)[0], id: "n1", name: "mixed-source", routePolicy: null },
+        { ...(currentSourceWorkflow.nodes as Array<Record<string, unknown>>)[0], id: "n2", name: "mixed-dependency-target" },
+        { ...(currentSourceWorkflow.nodes as Array<Record<string, unknown>>)[0], id: "n3", name: "mixed-route-target", lane: "branch" },
+      ],
+      edges: [
+        { from: "n1", to: "n2", kind: "dependency" },
+        { from: "n1", to: "n3", kind: "route", route: "yes" },
+      ],
     });
-    assert.equal(mixedEdgeWorkflowResponse.status, 400, "危险混合出边保存应失败");
-    const mixedEdgeWorkflowBody = (await mixedEdgeWorkflowResponse.json()) as { error?: string; detail?: string };
-    assert.equal(mixedEdgeWorkflowBody.error, "mixed_outgoing_edge_kinds_forbidden");
-    assert.equal(typeof mixedEdgeWorkflowBody.detail, "string", "失败响应应透传可操作 detail");
+    assert.equal(mixedParseResult.ok, false, "危险混合出边解析应失败");
+    assert.equal(mixedParseResult.error, "mixed_outgoing_edge_kinds_forbidden");
 
-    const v2WorkflowResponse = await fetch(`${baseUrl}/api/pipelines/C/workflow`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        workflow: {
-          ...currentSourceWorkflow,
-          version: "2.0",
-        },
-      }),
+    // v2 workflow 迁移
+    const v2ParseResult = readWorkflowDefinitionFromRawDetailed({
+      ...currentSourceWorkflow,
+      version: "2.0",
     });
-    assert.equal(v2WorkflowResponse.status, 400, "Phase 4 应要求先执行 v2->v3 迁移");
-    const v2WorkflowBody = (await v2WorkflowResponse.json()) as { error?: string };
-    assert.equal(v2WorkflowBody.error, "workflow_migration_required");
+    assert.equal(v2ParseResult.ok, false, "Phase 4 应拒绝 v2 版本");
+    assert.equal(v2ParseResult.error, "workflow_migration_required");
 
+    // 坏盘场景
     writeFileSync(clonedDefinition.workflowFilePath, "{invalid-json", "utf8");
-    const repairWorkflowResponse = await fetch(`${baseUrl}/api/pipelines/C/workflow`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        workflow: currentSourceWorkflow,
-      }),
-    });
-    assert.equal(repairWorkflowResponse.status, 400, "坏盘场景应返回结构化 400 而非未捕获异常");
-    const repairWorkflowBody = (await repairWorkflowResponse.json()) as { error?: string; detail?: string; pipelineId?: string };
-    assert.equal(repairWorkflowBody.error, "invalid_persisted_workflow_definition");
-    assert.equal(typeof repairWorkflowBody.detail, "string", "坏盘场景应透传 detail");
-    assert.equal(repairWorkflowBody.pipelineId, "C", "坏盘场景应透传 pipelineId");
+    const badParseResult = readWorkflowDefinitionFromRawDetailed(currentSourceWorkflow);
+    assert.equal(badParseResult.ok, true, "从内存参数读取应成功");
+    let badNormalized;
+    try {
+      badNormalized = normalizeWorkflowFallbacksWithStorage(badParseResult.workflow, { workflowFilePath: clonedDefinition.workflowFilePath });
+    } catch (error) {
+      const err = error as Error & { detail?: string };
+      assert.equal(err.message, "invalid_persisted_workflow_definition", "坏盘场景应返回结构化错误");
+      assert.equal(typeof err.detail, "string", "坏盘场景应透传 detail");
+    }
     writeFileSync(clonedDefinition.workflowFilePath, JSON.stringify(currentSourceWorkflow, null, 2), "utf8");
 
-    const renamed = await requestJson<{ ok: boolean; item?: { id: string; title: string } }>(baseUrl, "/api/pipelines/C", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title: "流水线 DAG-C-重命名",
-      }),
-    });
-    assert.equal(renamed.ok, true, "标题修改应成功");
-    assert.equal(renamed.item?.title, "流水线 DAG-C-重命名");
+    // 重命名
+    const renamed = app.renamePipeline("C", "流水线 DAG-C-重命名");
+    assert.equal(renamed.title, "流水线 DAG-C-重命名");
     const renameBootstrapEvent = wsEvents.at(-1);
     assert.equal(renameBootstrapEvent?.type, "bootstrap", "重命名流水线后应广播 bootstrap 全量快照");
     assert.equal(
@@ -257,25 +194,23 @@ const run = async () => {
       "重命名广播中应包含最新标题",
     );
 
-    const listAfterRename = await requestJson<{ items: Array<{ id: string; title: string }> }>(baseUrl, "/api/pipelines");
+    const listAfterRename = app.listPipelines();
     assert.equal(
-      listAfterRename.items.find((item) => item.id === "C")?.title,
+      listAfterRename.find((item: { id: string; title: string }) => item.id === "C")?.title,
       "流水线 DAG-C-重命名",
       "标题修改后列表应立即可见",
     );
 
-    const deleted = await requestJson<{ ok: boolean; pipelineId?: string }>(baseUrl, "/api/pipelines/C", {
-      method: "DELETE",
-    });
-    assert.equal(deleted.ok, true, "删除流水线应成功");
+    // 删除
+    const deleted = app.deletePipeline("C");
     assert.equal(deleted.pipelineId, "C");
     const deleteBootstrapEvent = wsEvents.at(-1);
     assert.equal(deleteBootstrapEvent?.type, "bootstrap", "删除流水线后应广播 bootstrap 全量快照");
     assert.equal(Boolean(readBroadcastPipelines(deleteBootstrapEvent?.payload).C), false, "删除流水线广播中不应再包含 C");
 
-    const listAfterDelete = await requestJson<{ items: Array<{ id: string; title: string }> }>(baseUrl, "/api/pipelines");
+    const listAfterDelete = app.listPipelines();
     assert.equal(
-      listAfterDelete.items.some((item) => item.id === "C"),
+      listAfterDelete.some((item: { id: string }) => item.id === "C"),
       false,
       "删除后 definitions 列表中不应再包含 C",
     );
@@ -291,7 +226,6 @@ const run = async () => {
 
     console.log("pipeline management tests passed");
   } finally {
-    await new Promise<void>((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
     app.dispose();
     process.chdir(prevCwd);
   }

@@ -1,4 +1,4 @@
-export const DEFAULT_API_PORT = 3100;
+export const DEFAULT_API_PORT = 54320;
 export const DEFAULT_API_HOST = "0.0.0.0";
 export const DEFAULT_WEB_ORIGIN = "*";
 export const DEFAULT_GATEWAY_SCOPES: string[] = ["operator.read", "operator.write", "operator.admin"];

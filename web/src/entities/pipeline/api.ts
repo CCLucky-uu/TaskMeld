@@ -12,7 +12,7 @@ import {
   WorkflowDefinition,
   WorkflowSchedulerState,
 } from "./types";
-import { requestJson } from "../../shared/api/client";
+import { wsRequest } from "../../shared/api/ws-client";
 
 type PipelineResponse = {
   run?: Run;
@@ -27,37 +27,7 @@ export type CreatePipelinePayload = {
   cloneFrom?: PipelineId;
 };
 
-const buildPipelinePath = (pipelineId: PipelineId, suffix: string) => `/api/pipelines/${pipelineId}${suffix}`;
-
-export async function fetchPipelineList(): Promise<PipelineListItem[]> {
-  const data = await requestJson<{ items?: PipelineListItem[] }>("/api/pipelines");
-  return Array.isArray(data.items) ? data.items : [];
-}
-
-export async function createPipeline(payload: CreatePipelinePayload) {
-  return requestJson<{ ok: boolean; item?: PipelineListItem }>("/api/pipelines", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-}
-
-export async function deletePipeline(pipelineId: PipelineId) {
-  return requestJson<{ ok: boolean; pipelineId?: PipelineId }>(buildPipelinePath(pipelineId, ""), {
-    method: "DELETE",
-  });
-}
-
-export async function renamePipeline(pipelineId: PipelineId, title: string) {
-  return requestJson<{ ok: boolean; item?: PipelineListItem }>(buildPipelinePath(pipelineId, ""), {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ title }),
-  });
-}
-
-export async function fetchCurrentPipeline(pipelineId: PipelineId): Promise<{ run: Run; scheduler: WorkflowSchedulerState | null }> {
-  const data = await requestJson<PipelineResponse>(buildPipelinePath(pipelineId, "/current"));
+const normalizePipelineRun = (data: PipelineResponse): { run: Run; scheduler: WorkflowSchedulerState | null } => {
   if (data.run && Array.isArray(data.run.nodes)) {
     return { run: data.run, scheduler: data.scheduler ?? null };
   }
@@ -77,126 +47,119 @@ export async function fetchCurrentPipeline(pipelineId: PipelineId): Promise<{ ru
       groupItemRuns: [],
     },
   };
-}
-
-export async function fetchWorkflowDefinition(pipelineId: PipelineId): Promise<WorkflowDefinition | null> {
-  const data = await requestJson<{ workflow?: WorkflowDefinition }>(buildPipelinePath(pipelineId, "/workflow"));
-  return data.workflow ?? null;
-}
-
-export async function saveWorkflowDefinition(pipelineId: PipelineId, workflow: WorkflowDefinition) {
-  return requestJson<{ ok: boolean; workflow?: WorkflowDefinition; run?: Run }>(buildPipelinePath(pipelineId, "/workflow"), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ workflow }),
-  });
-}
-
-export async function togglePipelineScheduler(pipelineId: PipelineId, enabled: boolean) {
-  return requestJson<{ ok: boolean; scheduler?: WorkflowSchedulerState }>(buildPipelinePath(pipelineId, "/scheduler/toggle"), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ enabled }),
-  });
-}
-
-export async function setPipelineSchedulerMode(pipelineId: PipelineId, mode: "auto" | "manual") {
-  return requestJson<{ ok: boolean; scheduler?: WorkflowSchedulerState }>(buildPipelinePath(pipelineId, "/scheduler/mode"), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ mode }),
-  });
-}
-
-export async function pipelineManualTick(pipelineId: PipelineId) {
-  return requestJson<{ ok: boolean; run?: Run; drained?: { executed: number } }>(buildPipelinePath(pipelineId, "/tick"), {
-    method: "POST",
-  });
-}
-
-export async function fetchPipelineItems(pipelineId: PipelineId) {
-  return requestJson<{ items?: NodeItemRun[] }>(buildPipelinePath(pipelineId, "/items"));
-}
-
-export async function retryPipelineNode(pipelineId: PipelineId, nodeId: string, itemKey?: string) {
-  return requestJson(buildPipelinePath(pipelineId, `/nodes/${nodeId}/retry`), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(itemKey ? { itemKey } : {}),
-  });
-}
-
-type TemplateResponse = { nodes?: PipelineTemplateNode[] };
-
-export async function fetchPipelineTemplate(pipelineId: PipelineId): Promise<PipelineTemplateNode[]> {
-  const data = await requestJson<TemplateResponse>(buildPipelinePath(pipelineId, "/template"));
-  return Array.isArray(data.nodes) ? data.nodes : [];
-}
-
-export async function startPipelineRun(pipelineId: PipelineId) {
-  return requestJson<{ ok: boolean; run?: Run }>(buildPipelinePath(pipelineId, "/run"), {
-    method: "POST",
-  });
-}
-
-export async function stopPipelineRun(pipelineId: PipelineId) {
-  return requestJson<{
-    ok: boolean;
-    mode?: "single" | "remote_batch";
-    status?: { batchRun?: ItemBatchRunState };
-  }>(buildPipelinePath(pipelineId, "/stop"), {
-    method: "POST",
-  });
-}
-
-export async function fetchBatchRunStatus(pipelineId: PipelineId) {
-  return requestJson<{ ok: boolean; state?: ItemBatchRunState }>(buildPipelinePath(pipelineId, "/batch-run/status"));
-}
-
-export async function startRemoteBatchRun(
-  pipelineId: PipelineId,
-  payload?: { batchSize?: number; url?: string; startBatch?: number; startIndex?: number },
-) {
-  return requestJson<{ ok: boolean; state?: ItemBatchRunState; remoteUrl?: string; totalFetched?: number }>(
-    buildPipelinePath(pipelineId, "/batch-run/start-remote"),
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload ?? {}),
-    },
-  );
-}
-
-export async function stopBatchRun(pipelineId: PipelineId) {
-  return requestJson<{ ok: boolean; state?: ItemBatchRunState }>(buildPipelinePath(pipelineId, "/batch-run/stop"), {
-    method: "POST",
-  });
-}
-
-type ExecutorBindingsResponse = {
-  bindings?: Record<string, unknown>;
 };
 
-export async function fetchPipelineExecutorBindings(pipelineId: PipelineId): Promise<Record<string, string>> {
-  const data = await requestJson<ExecutorBindingsResponse>(buildPipelinePath(pipelineId, "/executor-bindings"));
-  const raw = data.bindings ?? {};
+const normalizeBindings = (raw: Record<string, unknown>): Record<string, string> => {
   const normalized: Record<string, string> = {};
   for (const [agentId, sessionId] of Object.entries(raw)) {
     if (!agentId || typeof sessionId !== "string" || !sessionId.trim()) continue;
     normalized[agentId] = sessionId.trim();
   }
   return normalized;
+};
+
+export async function fetchPipelineList(): Promise<PipelineListItem[]> {
+  const data = await wsRequest<{ items?: PipelineListItem[] }>("pipeline.list");
+  return Array.isArray(data.items) ? data.items : [];
+}
+
+export async function createPipeline(payload: CreatePipelinePayload) {
+  return wsRequest<{ ok: boolean; item?: PipelineListItem }>("pipeline.create", payload as Record<string, unknown>);
+}
+
+export async function deletePipeline(pipelineId: PipelineId) {
+  return wsRequest<{ ok: boolean; pipelineId?: PipelineId }>("pipeline.delete", { pipelineId });
+}
+
+export async function renamePipeline(pipelineId: PipelineId, title: string) {
+  return wsRequest<{ ok: boolean; item?: PipelineListItem }>("pipeline.rename", { pipelineId, title });
+}
+
+export async function fetchCurrentPipeline(pipelineId: PipelineId): Promise<{ run: Run; scheduler: WorkflowSchedulerState | null }> {
+  const data = await wsRequest<PipelineResponse>("pipeline.current", { pipelineId });
+  return normalizePipelineRun(data);
+}
+
+export async function fetchWorkflowDefinition(pipelineId: PipelineId): Promise<WorkflowDefinition | null> {
+  const data = await wsRequest<{ workflow?: WorkflowDefinition }>("pipeline.workflow.get", { pipelineId });
+  return data.workflow ?? null;
+}
+
+export async function saveWorkflowDefinition(pipelineId: PipelineId, workflow: WorkflowDefinition) {
+  return wsRequest<{ ok: boolean; workflow?: WorkflowDefinition; run?: Run }>("pipeline.workflow.save", { pipelineId, workflow });
+}
+
+export async function togglePipelineScheduler(pipelineId: PipelineId, enabled: boolean) {
+  return wsRequest<{ ok: boolean; scheduler?: WorkflowSchedulerState }>("pipeline.scheduler.toggle", { pipelineId, enabled });
+}
+
+export async function setPipelineSchedulerMode(pipelineId: PipelineId, mode: "auto" | "manual") {
+  return wsRequest<{ ok: boolean; scheduler?: WorkflowSchedulerState }>("pipeline.scheduler.mode", { pipelineId, mode });
+}
+
+export async function pipelineManualTick(pipelineId: PipelineId) {
+  return wsRequest<{ ok: boolean; run?: Run; drained?: { executed: number } }>("pipeline.tick", { pipelineId });
+}
+
+export async function fetchPipelineItems(pipelineId: PipelineId) {
+  return wsRequest<{ items?: NodeItemRun[] }>("pipeline.items", { pipelineId });
+}
+
+export async function retryPipelineNode(pipelineId: PipelineId, nodeId: string, itemKey?: string) {
+  return wsRequest("pipeline.node.retry", { pipelineId, nodeId, ...(itemKey ? { itemKey } : {}) });
+}
+
+type TemplateResponse = { nodes?: PipelineTemplateNode[] };
+
+export async function fetchPipelineTemplate(pipelineId: PipelineId): Promise<PipelineTemplateNode[]> {
+  const data = await wsRequest<TemplateResponse>("pipeline.template", { pipelineId });
+  return Array.isArray(data.nodes) ? data.nodes : [];
+}
+
+export async function startPipelineRun(pipelineId: PipelineId) {
+  return wsRequest<{ ok: boolean; run?: Run }>("pipeline.run", { pipelineId });
+}
+
+export async function stopPipelineRun(pipelineId: PipelineId) {
+  return wsRequest<{
+    ok: boolean;
+    mode?: "single" | "remote_batch";
+    status?: { batchRun?: ItemBatchRunState };
+  }>("pipeline.stop", { pipelineId });
+}
+
+export async function fetchBatchRunStatus(pipelineId: PipelineId) {
+  return wsRequest<{ ok: boolean; state?: ItemBatchRunState }>("pipeline.batchRun.status", { pipelineId });
+}
+
+export async function startRemoteBatchRun(
+  pipelineId: PipelineId,
+  payload?: { batchSize?: number; url?: string; startBatch?: number; startIndex?: number },
+) {
+  return wsRequest<{ ok: boolean; state?: ItemBatchRunState; remoteUrl?: string; totalFetched?: number }>(
+    "pipeline.batchRun.startRemote",
+    { pipelineId, ...payload },
+  );
+}
+
+export async function stopBatchRun(pipelineId: PipelineId) {
+  return wsRequest<{ ok: boolean; state?: ItemBatchRunState }>("pipeline.batchRun.stop", { pipelineId });
+}
+
+export async function fetchPipelineExecutorBindings(pipelineId: PipelineId): Promise<Record<string, string>> {
+  const data = await wsRequest<{ bindings?: Record<string, unknown> }>("pipeline.executorBindings", { pipelineId });
+  return normalizeBindings(data.bindings ?? {});
 }
 
 // Pipeline Outputs
 export async function fetchPipelineOutputs(pipelineId: PipelineId): Promise<PipelineOutput[]> {
-  const data = await requestJson<{ ok?: boolean; items?: PipelineOutput[] }>(buildPipelinePath(pipelineId, "/outputs"));
+  const data = await wsRequest<{ ok?: boolean; items?: PipelineOutput[] }>("pipeline.output.list", { pipelineId });
   return Array.isArray(data.items) ? data.items : [];
 }
 
 // Pipeline Links
 export async function fetchPipelineLinks(): Promise<PipelineLink[]> {
-  const data = await requestJson<{ ok?: boolean; items?: PipelineLink[] }>("/api/pipeline-links");
+  const data = await wsRequest<{ ok?: boolean; items?: PipelineLink[] }>("pipeline.link.list");
   return Array.isArray(data.items) ? data.items : [];
 }
 
@@ -208,49 +171,31 @@ export async function createPipelineLink(payload: {
   onJobFailed?: "continue" | "pause";
   maxPendingJobs?: number;
 }) {
-  return requestJson<{ ok: boolean; link?: PipelineLink; error?: string }>("/api/pipeline-links", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+  return wsRequest<{ ok: boolean; link?: PipelineLink; error?: string }>("pipeline.link.create", payload as Record<string, unknown>);
 }
 
 export async function updatePipelineLink(linkId: string, patch: Record<string, unknown>) {
-  return requestJson<{ ok: boolean; link?: PipelineLink; error?: string }>(`/api/pipeline-links/${linkId}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(patch),
-  });
+  return wsRequest<{ ok: boolean; link?: PipelineLink; error?: string }>("pipeline.link.update", { linkId, ...patch });
 }
 
 export async function deletePipelineLink(linkId: string) {
-  return requestJson<{ ok: boolean; error?: string }>(`/api/pipeline-links/${linkId}`, {
-    method: "DELETE",
-  });
+  return wsRequest<{ ok: boolean; error?: string }>("pipeline.link.delete", { linkId });
 }
 
 // Pipeline Queue
 export async function fetchPipelineQueue(pipelineId: PipelineId): Promise<PipelineInboundJob[]> {
-  const data = await requestJson<{ ok?: boolean; items?: PipelineInboundJob[] }>(buildPipelinePath(pipelineId, "/queue"));
+  const data = await wsRequest<{ ok?: boolean; items?: PipelineInboundJob[] }>("pipeline.queue.list", { pipelineId });
   return Array.isArray(data.items) ? data.items : [];
 }
 
 export async function retryPipelineQueueJob(pipelineId: PipelineId, jobId: string) {
-  return requestJson<{ ok: boolean; job?: PipelineInboundJob; error?: string }>(buildPipelinePath(pipelineId, `/queue/${jobId}/retry`), {
-    method: "POST",
-  });
+  return wsRequest<{ ok: boolean; job?: PipelineInboundJob; error?: string }>("pipeline.queue.retry", { pipelineId, jobId });
 }
 
 export async function cancelPipelineQueueJob(pipelineId: PipelineId, jobId: string, reason?: string) {
-  return requestJson<{ ok: boolean; error?: string }>(buildPipelinePath(pipelineId, `/queue/${jobId}/cancel`), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ reason: reason ?? "canceled_by_user" }),
-  });
+  return wsRequest<{ ok: boolean; error?: string }>("pipeline.queue.cancel", { pipelineId, jobId, reason: reason ?? "canceled_by_user" });
 }
 
 export async function drainPipelineQueue(pipelineId: PipelineId) {
-  return requestJson<{ ok: boolean }>(buildPipelinePath(pipelineId, "/queue/drain"), {
-    method: "POST",
-  });
+  return wsRequest<{ ok: boolean }>("pipeline.queue.drain", { pipelineId });
 }

@@ -8,7 +8,12 @@ import { createAppContext } from "./app/create-app-context";
 import { resolveGatewayConfig } from "./app/user-config";
 import { createApiHandler } from "./server/api-handler";
 import { createWsBroker } from "./transport/ws-broker";
+import { createWsRequestHandler } from "./transport/ws-handler";
+import { registerAllWsMethods } from "./transport/ws-methods/register-all";
 import { resolveTaskMeldDataPath } from "./app/data-dir";
+import { createPipelineService } from "./services/pipeline-service";
+import { createSchedulerService } from "./services/scheduler-service";
+import { createRunLogService } from "./logs/run-log-service";
 
 export { createGatewayClient };
 
@@ -59,6 +64,28 @@ if (require.main === module) {
     },
   });
 
+  // 创建共享 services（HTTP 路由 + WS handler 共用）
+  const pipelineService = createPipelineService(app);
+  const schedulerService = createSchedulerService(app);
+  const runLogService = createRunLogService({
+    rootDir: resolveTaskMeldDataPath("logs", "runs"),
+  });
+
+  const wsHandler = createWsRequestHandler(app, {
+    pipelineService,
+    schedulerService,
+    runLogService,
+    client: app.gateway.client,
+    getLatestStatus: app.gateway.getLatestStatus,
+    getLatestHello: app.gateway.getLatestHello,
+    getLastFrame: app.gateway.getLastFrame,
+    getTimeline: app.runtime.getCombinedTimeline,
+    pickArray: app.gateway.pickArray,
+    refreshSessionsFromGateway: app.gateway.refreshSessionsFromGateway,
+    getSessionCache: app.gateway.getSessionCache,
+  });
+  registerAllWsMethods(wsHandler.registry);
+
   const apiServer = createServer(
     createApiHandler({
       apiPort: appContext.api.port,
@@ -78,6 +105,7 @@ if (require.main === module) {
     server: apiServer,
     path: "/api/ws",
     getBootstrapPayload: app.getBootstrapPayload,
+    handleRequest: wsHandler.handleMessage,
   });
   app.runtime.setBroadcast(wsBroker.broadcast);
 

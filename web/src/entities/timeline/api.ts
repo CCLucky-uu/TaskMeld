@@ -1,11 +1,11 @@
 import { TimelineItem } from "./types";
-import { requestJson } from "../../shared/api/client";
+import { wsRequest } from "../../shared/api/ws-client";
 
 type TimelineResponse = {
   items?: TimelineItem[];
 };
 
 export async function fetchTimeline(): Promise<TimelineItem[]> {
-  const data = await requestJson<TimelineResponse>("/api/timeline");
+  const data = await wsRequest<TimelineResponse>("timeline.list");
   return Array.isArray(data.items) ? data.items : [];
 }

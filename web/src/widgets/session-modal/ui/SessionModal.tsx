@@ -6,7 +6,7 @@ import {
 } from "../../../entities/agent";
 import { SendMode, SessionItem } from "../../../entities/session";
 import { fetchSessionHistory, SessionHistoryItem } from "../../../entities/session";
-import { connectGatewayWs } from "../../../shared/api/ws";
+import { onWsEvent } from "../../../shared/api/ws-client";
 import { dispatchGatewayWsEvent } from "../../../shared/realtime/gateway-events";
 import { mergeHistoryEntries } from "../model/merge-history";
 import { mergeAssistantText, readAssistantStreamPatch, readToolStreamPatch } from "../model/stream-patches";
@@ -164,7 +164,7 @@ export function SessionModal({
 
     void loadHistory(true);
 
-    const disconnect = connectGatewayWs((event) => {
+    const disconnect = onWsEvent((event) => {
       dispatchGatewayWsEvent(event, {
         gatewayFrame: (frame) => {
           if (!frame || frame.type !== "event") return;
