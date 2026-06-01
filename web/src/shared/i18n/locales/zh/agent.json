@@ -26,7 +26,7 @@
   "deleteAgentNote": "可同时删除工作区文件。",
   "deleteFiles": "删除工作区文件",
   "fieldLabel": {
-    "agentName": "智能体 ID",
+    "agentName": "智能体名称",
     "agentWorkspace": "工作区路径"
   },
   "placeholder": {

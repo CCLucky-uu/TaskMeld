@@ -1,7 +1,7 @@
 import type { PipelineRegistry } from "../app/pipeline-registry";
 import { resolveDefaultWorkspacePath } from "../app/user-config";
 import type { NormalizedSession } from "../utils/session";
-import { ensureGatewayReadyForReadonly } from "./gateway-read-helpers";
+import { ensureGatewayConnected } from "./gateway-read-helpers";
 
 const asRecord = (value: unknown): Record<string, unknown> | null =>
   value && typeof value === "object" ? (value as Record<string, unknown>) : null;
@@ -66,7 +66,7 @@ export type AgentService = {
 
 export const createAgentService = (app: PipelineRegistry): AgentService => {
   const listAgents = async (): Promise<AgentListItem[]> => {
-    await ensureGatewayReadyForReadonly(app);
+    await ensureGatewayConnected(app);
     const payload = await app.gateway.client.sendReq("agents.list");
     const rawItems = app.gateway.pickArray(payload);
 
@@ -106,7 +106,7 @@ export const createAgentService = (app: PipelineRegistry): AgentService => {
   };
 
   const createAgent = async (params: AgentCreateParams): Promise<unknown> => {
-    await ensureGatewayReadyForReadonly(app);
+    await ensureGatewayConnected(app);
     const workspace = params.workspace?.trim() || await resolveDefaultWorkspacePath(params.name);
     const payload = await app.gateway.client.sendReq("agents.create", {
       name: params.name,
@@ -116,7 +116,7 @@ export const createAgentService = (app: PipelineRegistry): AgentService => {
   };
 
   const updateAgent = async (params: AgentUpdateParams): Promise<unknown> => {
-    await ensureGatewayReadyForReadonly(app);
+    await ensureGatewayConnected(app);
     const updateParams: Record<string, unknown> = { agentId: params.agentId };
     if (params.name?.trim()) updateParams.name = params.name.trim();
     if (params.workspace?.trim()) updateParams.workspace = params.workspace.trim();
@@ -125,7 +125,7 @@ export const createAgentService = (app: PipelineRegistry): AgentService => {
   };
 
   const deleteAgent = async (params: AgentDeleteParams): Promise<unknown> => {
-    await ensureGatewayReadyForReadonly(app);
+    await ensureGatewayConnected(app);
     const deleteParams: Record<string, unknown> = { agentId: params.agentId };
     if (params.deleteFiles !== undefined) deleteParams.deleteFiles = params.deleteFiles;
     const payload = await app.gateway.client.sendReq("agents.delete", deleteParams);

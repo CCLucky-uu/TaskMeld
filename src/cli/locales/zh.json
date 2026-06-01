@@ -84,7 +84,9 @@
       "description": "删除智能体",
       "summary": "从网关删除智能体",
       "argAgentId": "要删除的智能体 ID",
-      "optDeleteFiles": "同时删除智能体的工作区文件"
+      "optDeleteFiles": "同时删除智能体的工作区文件",
+      "optConfirm": "确认删除（必须传入才会实际执行）",
+      "confirmRequired": "仅预览。传入 --confirm 以实际删除智能体。"
     }
   },
   "artifact": {

@@ -114,6 +114,8 @@ export const registerAgentWsMethods = (registry: WsMethodRegistry): void => {
     }
   });
 
+  // Equivalent to CLI-side resolveDefaultWorkspacePath; the frontend uses this WS method
+  // to resolve the default path, avoiding hardcoded path assembly in the browser.
   registry.register("agent.defaultWorkspace", async (params, _ctx) => {
     try {
       const name = typeof params.name === "string" ? params.name.trim() : "";

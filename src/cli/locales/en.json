@@ -84,7 +84,9 @@
       "description": "Delete an agent",
       "summary": "Delete an agent from the gateway",
       "argAgentId": "Agent ID to delete",
-      "optDeleteFiles": "Also delete the agent's workspace files"
+      "optDeleteFiles": "Also delete the agent's workspace files",
+      "optConfirm": "Confirm deletion (required for actual delete)",
+      "confirmRequired": "Dry run only. Pass --confirm to actually delete the agent."
     }
   },
   "artifact": {

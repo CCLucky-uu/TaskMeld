@@ -26,7 +26,7 @@
   "deleteAgentNote": "Optionally also delete workspace files.",
   "deleteFiles": "Delete workspace files",
   "fieldLabel": {
-    "agentName": "Agent ID",
+    "agentName": "Agent Name",
     "agentWorkspace": "Workspace path"
   },
   "placeholder": {

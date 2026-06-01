@@ -118,6 +118,14 @@ export const agentUpdateCommand: CliCommandHandler = async (input, ctx) => {
 export const agentDeleteCommand: CliCommandHandler = async (input, ctx) => {
   const agentId = assertRequiredArg(input.args[0], "agentId");
   const deleteFiles = input.flags["delete-files"] === true;
+  if (input.flags.confirm !== true) {
+    return {
+      dryRun: true,
+      message: t("agent.delete.confirmRequired"),
+      agentId,
+      deleteFiles,
+    };
+  }
   return ctx.app.agentService.deleteAgent({ agentId, deleteFiles });
 };
 
@@ -213,6 +221,7 @@ export const agentRoutes: CliRouteDefinition[] = [
       ],
       options: [
         { flags: ["--delete-files"], description: t("agent.delete.optDeleteFiles") },
+        { flags: ["--confirm"], description: t("agent.delete.optConfirm") },
       ],
     },
   },

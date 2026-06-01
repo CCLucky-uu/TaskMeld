@@ -5,3 +5,6 @@ export const ensureGatewayReadyForReadonly = async (app: PipelineRegistry): Prom
   // When a read-only command hits a gateway method, the link must be established first, otherwise sendReq would fail immediately.
   await app.gateway.client.connect();
 };
+
+// Generic alias for contexts that don't distinguish read-only vs write operations (e.g. agent CRUD mutations).
+export const ensureGatewayConnected = ensureGatewayReadyForReadonly;

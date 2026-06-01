@@ -167,9 +167,13 @@ export const createAppContext = (options: CreateAppContextOptions = {}): AppCont
           if (root) {
             const { isTaskMeldDevRuntime } = await import("./data-dir.js");
             if (isTaskMeldDevRuntime()) {
-              // Dev: write to project .env (next restart) + set in-memory (this session)
-              const { appendFile } = await import("node:fs/promises");
-              await appendFile(".env", `\nOPENCLAW_WORKSPACE_ROOT=${root}\n`, "utf8");
+              // Dev: write to data-dir .env (next restart) + set in-memory (this session)
+              const { resolveTaskMeldDataPath } = await import("./data-dir.js");
+              const envPath = resolveTaskMeldDataPath(".env");
+              const { appendFile, mkdir } = await import("node:fs/promises");
+              const { dirname } = await import("node:path");
+              await mkdir(dirname(envPath), { recursive: true });
+              await appendFile(envPath, `\nOPENCLAW_WORKSPACE_ROOT=${root}\n`, "utf8");
               process.env.OPENCLAW_WORKSPACE_ROOT = root;
             } else {
               // Prod: write to ~/.taskmeld/config.json
