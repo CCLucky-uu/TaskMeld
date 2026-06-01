@@ -752,9 +752,10 @@ export function ControlPlanePage({
                 });
               }}
               onEditAgent={(agentId) => {
+                const agent = vm.agentCards.find((a) => a.id === agentId);
                 setEditAgentId(agentId);
-                setEditAgentName("");
-                setEditAgentWorkspace("");
+                setEditAgentName(agent?.name ?? "");
+                setEditAgentWorkspace(agent?.workspace ?? "");
                 setEditAgentError("");
                 setEditAgentModalOpen(true);
               }}
