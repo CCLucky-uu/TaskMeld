@@ -14,9 +14,9 @@ export function ArtifactBoard({ pipelines, onNavigatePipeline }: ArtifactBoardPr
   const vm = useArtifactBoard(pipelines);
 
   useEffect(() => {
-    // 首次进入页面默认拉当天数据，避免加载历史全量导致首屏过慢。
+    // On first entry, default to today's data to avoid loading the entire history and causing a slow first paint.
     void vm.applyFilters();
-    // 这里故意只在首次挂载触发，后续筛选由用户主动操作驱动。
+    // Intentionally only triggers on mount; subsequent filtering is driven by user actions.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -46,7 +46,7 @@ export function ArtifactBoard({ pipelines, onNavigatePipeline }: ArtifactBoardPr
           }}
         />
       </div>
-      {/* 产物页主体吃满剩余高度，仅允许左右面板内部滚动。 */}
+      {/* Artifact page body fills remaining height; only the left/right panels scroll internally. */}
       <div className="grid min-h-0 min-w-0 gap-3 overflow-hidden px-3 pb-3 lg:grid-cols-[minmax(340px,42%)_minmax(0,1fr)]">
         <ArtifactTreePane
           groups={vm.groups}

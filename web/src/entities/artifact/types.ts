@@ -21,5 +21,5 @@ export type StoredArtifactContent = {
   meta: Record<string, unknown> | null;
 };
 
-// 导出结构固定为: 日期 -> 流水线 -> 节点 -> 产物内容数组
+// Export shape: date -> pipeline -> node -> artifact content array
 export type StoredArtifactExportData = Record<string, Record<string, Record<string, unknown[]>>>;

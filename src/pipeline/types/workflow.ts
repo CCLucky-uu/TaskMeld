@@ -87,11 +87,11 @@ export type WorkflowNode = {
   instruction: string;
   allowReject: boolean;
   maxRejectCount: number;
-  /** 显式支线作用域标识（如 "router:a"），替代基于入边形状的推断。null 或缺失表示主线。 */
+  /** Explicit branch scope identifier (e.g. "router:a"), replacing inference from incoming edge shapes. null or missing means mainline. */
   branchScopeId?: string | null;
-  /** 产生该支线的路由节点 ID。null 或缺失表示主线节点。 */
+  /** The routing node ID that produces this branch. null or missing means a mainline node. */
   routeSourceNodeId?: string | null;
-  /** 命中该支线的路由值。null 或缺失表示未通过路由到达。 */
+  /** The route value that matches this branch. null or missing means not reached via routing. */
   routeValue?: string | null;
 };
 

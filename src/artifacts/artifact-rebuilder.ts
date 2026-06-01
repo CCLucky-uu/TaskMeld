@@ -5,8 +5,8 @@ import { readIndexRecords, appendIndexRecord, type StoredArtifactIndexRecord } f
 import { scanStoredArtifacts } from "./storage-service";
 
 /**
- * 增量重建产物索引 — 扫描磁盘目录，仅对缺失索引的文件补充记录。
- * 已有索引记录的文件（按 relativePath 匹配）不会重复添加。
+ * Incrementally rebuild artifact index — scan the disk directory, only append records for files missing from the index.
+ * Files already present in the index (matched by relativePath) are not re-added.
  */
 export const rebuildArtifactIndexIncremental = async (
   rootDir: string,
@@ -38,7 +38,7 @@ export const rebuildArtifactIndexIncremental = async (
       }
     }
   } catch {
-    warnings.push(`无法扫描产物根目录: ${rootDir}`);
+    warnings.push(`Failed to scan artifact root directory: ${rootDir}`);
   }
 
   for (const dir of dirs) {

@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { controlInputElevatedMonoClassName } from "../../../shared/ui/surfaceClassNames";
 
 type RemoteBatchPanelProps = {
@@ -17,9 +18,10 @@ export function RemoteBatchPanel({
   isOperating,
   onChangeStartBatch,
 }: RemoteBatchPanelProps) {
+  const { t } = useTranslation("pipeline");
   return (
     <div className="mb-3 grid p-3 pt-0 gap-2 border-b border-(--line) bg-transparent">
-      {/* 远程批跑单独做成组件，避免每条流水线卡片重复堆叠同一段表单/状态布局。 */}
+      {/* Remote batch panel is a separate component so every pipeline card doesn't duplicate the same form/status layout. */}
       <div className={`${monoClassName} text-xs text-(--muted)`}>{title}</div>
       <code className="block max-h-30 overflow-auto whitespace-pre-wrap wrap-break-word border border-(--line) bg-[#0f171d] p-2.5 text-xs">
         {statusText}
@@ -29,7 +31,7 @@ export function RemoteBatchPanel({
           className={`${controlInputElevatedMonoClassName} min-w-0 text-[13px]`}
           value={startBatch}
           onChange={(event) => onChangeStartBatch(event.target.value)}
-          placeholder="起始批次"
+          placeholder={t("startBatchPlaceholder")}
           inputMode="numeric"
           disabled={isOperating}
         />

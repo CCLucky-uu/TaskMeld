@@ -1,0 +1,244 @@
+{
+  "help": {
+    "usage": "taskmeld <resource> <action> [args] [--flags]",
+    "groups": {
+      "agent": "智能体管理",
+      "artifact": "产物管理",
+      "init": "首次配置",
+      "pipeline": "流水线管理",
+      "scheduler": "调度控制",
+      "server": "后端服务管理",
+      "system": "系统信息"
+    },
+    "commonOptions": {
+      "title": "通用选项:",
+      "format": "输出格式（默认: md）",
+      "envelope": "仅与 --format json 搭配可用，输出完整包装层",
+      "help": "显示当前命令帮助"
+    },
+    "tips": {
+      "title": "提示:",
+      "groupHelp": "查看一级命令帮助",
+      "commandHelp": "查看二级命令帮助"
+    },
+    "label": {
+      "required": "必填",
+      "optional": "可选"
+    }
+  },
+  "init": {
+    "firstTimeSetup": "首次配置",
+    "greeting": "配置您的 OpenClaw Gateway 连接以开始使用。",
+    "configSavedTo": "配置  {{path}}",
+    "languageLabel": "语言",
+    "gatewayUrlLabel": "Gateway URL",
+    "gatewayUrlHint": "OpenClaw Gateway 的 ws:// 或 wss:// 地址",
+    "gatewayTokenLabel": "Gateway Token",
+    "gatewayTokenHint": "Gateway 认证令牌",
+    "success": "Gateway 配置成功",
+    "nextStep": "运行 \"taskmeld server start\" 以开始使用。",
+    "urlLabel": "URL",
+    "description": "OpenClaw Gateway 连接引导设置",
+    "usage": "taskmeld init [--url <url>] [--token <token>]",
+    "summary": "引导式首次配置 — 设置 OpenClaw Gateway 连接。",
+    "optUrlDesc": "Gateway WebSocket URL（ws:// 或 wss://）",
+    "optTokenDesc": "Gateway 认证令牌",
+    "example1": "taskmeld init",
+    "example2": "taskmeld init --url ws://127.0.0.1:18789 --token your-token",
+    "note1": "不带参数运行时启动交互式引导设置。",
+    "note2": "配置保存在 ~/.taskmeld/config.json。",
+    "note3": "环境变量（OPENCLAW_GATEWAY_URL/TOKEN）的优先级高于此配置。"
+  },
+  "agent": {
+    "list": {
+      "description": "输出智能体列表",
+      "summary": "输出智能体列表"
+    },
+    "session": {
+      "description": "输出会话列表（全部或按 agent 过滤）",
+      "summary": "输出会话列表（全部或按 agent 过滤）",
+      "argAgentId": "按 Agent ID 过滤会话"
+    },
+    "send": {
+      "description": "向指定 agent 会话发送消息",
+      "summary": "向指定 agent 会话发送消息并等待回复",
+      "argAgentId": "Agent ID",
+      "argMessage": "消息内容",
+      "optSession": "会话 ID（默认 main）",
+      "optStream": "流式输出回复内容"
+    }
+  },
+  "artifact": {
+    "index": {
+      "description": "重建产物索引",
+      "summary": "扫描产物目录并重建 index.jsonl，用于升级后纳入历史文件或修复索引不一致",
+      "argRebuild": "重建 index.jsonl",
+      "optPipeline": "只重建指定流水线"
+    },
+    "list": {
+      "description": "输出产物列表",
+      "summary": "输出产物列表，支持状态/类型/批跑/游标分页",
+      "optPipeline": "按流水线过滤",
+      "optNode": "按节点过滤",
+      "optBatch": "按批跑ID过滤",
+      "optRun": "按运行RunId过滤",
+      "optCursor": "分页游标"
+    },
+    "show": {
+      "description": "输出产物内容",
+      "summary": "输出指定产物的文件内容",
+      "argPipelineId": "流水线 ID",
+      "argRelativePath": "产物相对路径"
+    },
+    "export": {
+      "description": "导出产物内容",
+      "summary": "导出产物内容为 日期->流水线->节点 三层JSON",
+      "optPipeline": "按流水线过滤",
+      "optNode": "按节点过滤",
+      "optBatch": "按批跑ID过滤",
+      "optFrom": "开始日期 YYYY-MM-DD",
+      "optTo": "结束日期 YYYY-MM-DD",
+      "optLimit": "最大导出条数，默认20000"
+    },
+    "cleanup": {
+      "description": "清理旧产物",
+      "summary": "清理旧产物文件，默认 dry-run 只展示候选不删除，传 --confirm 执行真实删除并重建索引",
+      "argPipelineId": "流水线 ID",
+      "optOlderThan": "保留天数，默认 success=30/failed=90/rejected=90",
+      "optConfirm": "必须显式传入才执行真实删除，否则 dry-run",
+      "dryRunMessage": "dry-run 模式，候选文件不会删除。传入 --confirm 执行真实删除。"
+    }
+  },
+  "pipeline": {
+    "list": {
+      "description": "输出流水线列表",
+      "summary": "输出流水线列表"
+    },
+    "get": {
+      "description": "输出指定流水线详情",
+      "summary": "输出指定流水线详情",
+      "argId": "流水线 ID"
+    },
+    "start": {
+      "description": "发起指定流水线运行（不承诺已完成）",
+      "summary": "发起指定流水线运行（不承诺已完成）",
+      "argPipelineId": "流水线 ID",
+      "optWatch": "启动后继续等待运行完成",
+      "optTimeout": "watch 超时时间，默认 600000",
+      "optInterval": "watch 轮询间隔，默认 1200",
+      "noteOnlyStart": "start 只负责发起运行请求，不承诺命令返回时业务已执行完成。",
+      "noteWatch": "--watch 会在发起成功后进入等待流程。"
+    },
+    "status": {
+      "description": "输出指定流水线当前运行状态",
+      "summary": "输出指定流水线当前运行状态",
+      "argPipelineId": "兼容入口，按流水线 ID 查询当前运行",
+      "optRunId": "按单次运行 ID 精确查询",
+      "optBatchRunId": "按批跑 ID 精确查询",
+      "noteNeedSelector": "需要至少提供 <pipelineId>、--run-id、--batch-run-id 之一。",
+      "noteDefaultQuery": "未提供 selector 时，默认按 pipelineId 查询当前活动运行。"
+    },
+    "watch": {
+      "description": "监听指定流水线直到结束或超时",
+      "summary": "监听指定流水线直到结束或超时",
+      "argPipelineId": "兼容入口，监听该流水线当前运行",
+      "optRunId": "按单次运行 ID 精确监听",
+      "optBatchRunId": "按批跑 ID 精确监听",
+      "optTimeout": "watch 超时时间，默认 600000",
+      "optInterval": "watch 轮询间隔，默认 1200",
+      "noteIsWatch": "watch 是监听命令，不负责发起新运行。",
+      "noteNeedSelector": "需要至少提供 <pipelineId>、--run-id、--batch-run-id 之一。",
+      "notePollingFallback": "当前 watch 语义为事件流优先，轮询作为兜底路径。"
+    },
+    "stop": {
+      "description": "停止指定流水线批跑任务",
+      "summary": "停止指定流水线批跑任务",
+      "argPipelineId": "兼容入口，停止该流水线当前运行",
+      "optRunId": "按单次运行 ID 精确停止",
+      "optBatchRunId": "按批跑 ID 精确停止",
+      "noteNeedSelector": "需要至少提供 <pipelineId>、--run-id、--batch-run-id 之一。",
+      "noteBatchOnly": "当前 stop 主要用于停止批跑任务。",
+      "noteNonBatch": "对非批跑运行会返回业务错误，而不是静默成功。"
+    },
+    "retryNode": {
+      "description": "重试指定节点或节点条目",
+      "summary": "重试指定节点或节点条目",
+      "argPipelineId": "流水线 ID",
+      "argNodeId": "节点 ID",
+      "optItem": "指定重试的条目键"
+    },
+    "diagnose": {
+      "description": "诊断指定节点依赖状态，输出阻塞原因",
+      "summary": "诊断指定节点依赖状态，输出阻塞原因",
+      "argPipelineId": "流水线 ID",
+      "argNodeId": "节点 ID",
+      "optItem": "可选，指定条目键精确诊断"
+    },
+    "result": {
+      "description": "输出流水线运行结果",
+      "summary": "输出流水线运行后各节点的产物内容",
+      "argPipelineId": "流水线 ID",
+      "optNode": "过滤到指定节点",
+      "optLogs": "同时展示处理日志",
+      "optFormat": "输出格式，默认 md"
+    },
+    "output": {
+      "description": "查询流水线最终产物",
+      "summary": "查询流水线最终产物",
+      "argPipelineId": "流水线 ID",
+      "optRun": "按 runId 精确查询"
+    },
+    "linkList": {
+      "description": "列出所有流水线投递链接",
+      "summary": "列出所有流水线投递链接"
+    },
+    "queue": {
+      "description": "查询流水线接收队列",
+      "summary": "查询流水线接收队列",
+      "argPipelineId": "流水线 ID"
+    }
+  },
+  "scheduler": {
+    "toggle": {
+      "description": "启用或停用调度器",
+      "summary": "启用或停用调度器",
+      "argPipelineId": "流水线 ID",
+      "optEnabled": "是否启用调度器",
+      "note": "<pipelineId> 与 --enabled 均为必填控制项。"
+    },
+    "mode": {
+      "description": "切换调度器模式",
+      "summary": "切换调度器模式",
+      "argPipelineId": "流水线 ID",
+      "optMode": "调度器模式",
+      "note": "<pipelineId> 与 --mode 均为必填控制项。"
+    }
+  },
+  "server": {
+    "ensure": {
+      "description": "确保本地控制面后端已启动并健康",
+      "summary": "确保本地 control-plane daemon 已启动并健康",
+      "noteDaemonFirst": "daemon-first 语义：优先复用已存在且健康的本地实例。",
+      "noteNewDaemon": "仅在没有可复用健康实例时，才会启动新的 daemon。"
+    },
+    "start": {
+      "description": "显式启动本地控制面后端",
+      "summary": "显式启动本地 control-plane daemon"
+    },
+    "status": {
+      "description": "输出本地控制面后端状态",
+      "summary": "查看本地 control-plane daemon 的健康、ownership 与 pid 信息",
+      "note": "状态输出用于确认本地 daemon 是否可复用以及当前 owner 元数据是否一致。"
+    },
+    "stop": {
+      "description": "停止本地控制面后端",
+      "summary": "停止本地 control-plane daemon"
+    }
+  },
+  "system": {
+    "snapshot": {
+      "description": "输出系统全局快照",
+      "summary": "输出系统全局快照"
+    }
+  }
+}

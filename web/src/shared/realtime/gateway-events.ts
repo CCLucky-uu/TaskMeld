@@ -21,7 +21,7 @@ export type GatewayBootstrapPayload = {
   timelineHasMore?: boolean;
   hello?: { server?: { version?: string } };
   scheduler?: WorkflowSchedulerState;
-  // bootstrap 现在允许服务端返回任意 pipelineId 的映射，不再限制固定联合类型 key。
+  // bootstrap now allows the server to return mappings for arbitrary pipelineIds, not limited to fixed union-type keys.
   pipelines?: Record<string, PipelineBootstrapEntry>;
 };
 

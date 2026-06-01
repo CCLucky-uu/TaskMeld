@@ -61,7 +61,7 @@ const buildArchivedPipelineDirPath = (pipelineId: PipelineId) => {
   mkdirSync(deletedRootDir, { recursive: true });
   let archiveDirPath = join(deletedRootDir, createArchivedPipelineDirName(pipelineId));
   let suffix = 1;
-  // 归档目录需要保证唯一，避免同秒内重复删除时互相覆盖。
+  // Archive directory must be unique to avoid collisions when multiple deletes happen within the same second.
   while (existsSync(archiveDirPath)) {
     archiveDirPath = join(deletedRootDir, `${createArchivedPipelineDirName(pipelineId)}-${suffix}`);
     suffix += 1;
@@ -251,7 +251,7 @@ export const createPipelineRegistry = (options: CreatePipelineRegistryOptions) =
         return;
       }
 
-      // 网关状态/握手是全局共享事件，只透传主流水线的一份，避免前端收到重复广播。
+      // Gateway status/handshake is a globally shared event; only relay one copy from the primary pipeline to avoid duplicate broadcasts to frontends.
       if (
         (event.type === "gateway.status" || event.type === "gateway.ready" || event.type === "gateway.frame") &&
         definition.id !== getPrimaryPipelineId()
@@ -324,7 +324,7 @@ export const createPipelineRegistry = (options: CreatePipelineRegistryOptions) =
       timelineHasMore: combined.length > MAX_BOOTSTRAP_TIMELINE,
       status: getPrimaryRuntime().gateway.getLatestStatus() ?? options.client.getStatus(),
       hello: getPrimaryRuntime().gateway.getLatestHello(),
-      // 保留旧字段兜底，避免前端分阶段改造时直接失效。
+      // Keep the old top-level fields as a fallback to avoid breaking frontends during phased migration.
       run: primary?.run,
       pipeline: primary?.pipeline,
       runId: primary?.runId,
@@ -333,8 +333,8 @@ export const createPipelineRegistry = (options: CreatePipelineRegistryOptions) =
   };
 
   const broadcastBootstrapPayload = () => {
-    // 流水线资源发生新增、删除、重命名时，直接广播完整 bootstrap；
-    // 这样已连接前端可以一次性拿到最新 definitions + 运行态快照，避免自己拼补丁遗漏字段。
+    // When pipeline resources are added, deleted, or renamed, broadcast a full bootstrap immediately;
+    // this way connected frontends get the latest definitions + runtime snapshot in one message, avoiding hand-rolled patch merging with missing fields.
     broadcast({
       type: "bootstrap",
       payload: getBootstrapPayload(),
@@ -374,7 +374,7 @@ export const createPipelineRegistry = (options: CreatePipelineRegistryOptions) =
 
   const initializePipelineWorkflowFile = (definition: PipelineDefinition, cloneFrom?: PipelineDefinition) => {
     if (cloneFrom) {
-      // 克隆只复制 workflow 定义，运行态和产物目录仍由新流水线独立初始化。
+      // Clone only copies the workflow definition; runtime state and artifact directories are independently initialized for the new pipeline.
       const sourceWorkflow = loadWorkflowDefinitionWithStorage({ workflowFilePath: cloneFrom.workflowFilePath });
       saveWorkflowDefinitionWithStorage(sourceWorkflow, { workflowFilePath: definition.workflowFilePath });
       return;
@@ -398,7 +398,7 @@ export const createPipelineRegistry = (options: CreatePipelineRegistryOptions) =
         if (!runtime) continue;
         await runtime.initialize();
       }
-      // 启动时扫描所有流水线，对已有 pending job 的队列触发 drain
+      // On startup, scan all pipelines and trigger drain for any queue that already has pending jobs.
       for (const definition of pipelineDefinitions) {
         const pendingCount = inboundQueue.getPendingCount(definition.id);
         if (pendingCount > 0) {
@@ -446,8 +446,8 @@ export const createPipelineRegistry = (options: CreatePipelineRegistryOptions) =
       let runtime: PipelineRuntime | null = null;
 
       try {
-        // 先把目标流水线的 workflow 文件初始化到位，再创建 runtime；
-        // 否则 runtime 构造阶段会先读到默认 workflow，导致“磁盘已克隆、内存仍是默认”的假克隆问题。
+        // Initialize the target pipeline's workflow file on disk first, then create the runtime;
+        // otherwise the runtime constructor would read the default workflow, causing a "disk already cloned, memory still default" phantom-clone issue.
         initializePipelineWorkflowFile(definition, cloneSourceDefinition ?? undefined);
         runtime = createRuntimeForDefinition(definition);
         bindRuntimeBroadcast(definition, runtime);
@@ -514,7 +514,7 @@ export const createPipelineRegistry = (options: CreatePipelineRegistryOptions) =
       try {
         archivePipelineDirectory(pipelineDefinitions[definitionIndex]);
       } catch (error) {
-        // 归档失败时立即回滚 definitions，避免页面列表先把流水线删掉但目录仍保持原位。
+        // If archiving fails, immediately rollback definitions so the page listing doesn't remove the pipeline while the directory stays in place.
         savePipelineDefinitions(currentDocument);
         throw error;
       }
@@ -576,7 +576,7 @@ export const createPipelineRegistry = (options: CreatePipelineRegistryOptions) =
         }
         if (routed) return;
       }
-      // 无法判定 sessionKey 或无匹配 runtime 时，投递全部
+      // When sessionKey can't be determined or no runtime matches, deliver to all
       for (const runtime of runtimeById.values()) {
         runtime.onGatewayRawFrame(rawFrame);
       }

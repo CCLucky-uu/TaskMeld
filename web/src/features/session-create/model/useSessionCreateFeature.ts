@@ -1,4 +1,5 @@
 import { FormEvent, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { createSession as createSessionReq } from "../../../entities/session";
 import { ApiError } from "../../../shared/ws-client";
 
@@ -7,6 +8,7 @@ type UseSessionCreateFeatureArgs = {
 };
 
 export function useSessionCreateFeature({ reload }: UseSessionCreateFeatureArgs) {
+  const { t } = useTranslation("session");
   const [sessionCreatePayload, setSessionCreatePayload] = useState("{}");
 
   const createSession = async (event: FormEvent) => {
@@ -17,10 +19,10 @@ export function useSessionCreateFeature({ reload }: UseSessionCreateFeatureArgs)
       await reload();
     } catch (error) {
       if (error instanceof ApiError) {
-        alert(`新建会话失败: HTTP ${error.status}`);
+        alert(t("createSessionFailed", { status: error.status }));
         return;
       }
-      alert("新建会话 JSON 格式不正确");
+      alert(t("invalidJson"));
     }
   };
 

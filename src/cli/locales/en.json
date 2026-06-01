@@ -1,0 +1,244 @@
+{
+  "help": {
+    "usage": "taskmeld <resource> <action> [args] [--flags]",
+    "groups": {
+      "agent": "Agent management",
+      "artifact": "Artifact management",
+      "init": "First-time setup",
+      "pipeline": "Pipeline management",
+      "scheduler": "Scheduler control",
+      "server": "Server management",
+      "system": "System info"
+    },
+    "commonOptions": {
+      "title": "Common Options:",
+      "format": "Output format (default: md)",
+      "envelope": "Only available with --format json, outputs full envelope wrapper",
+      "help": "Show help for current command"
+    },
+    "tips": {
+      "title": "Tips:",
+      "groupHelp": "View group-level help",
+      "commandHelp": "View command-level help"
+    },
+    "label": {
+      "required": "Required",
+      "optional": "Optional"
+    }
+  },
+  "init": {
+    "firstTimeSetup": "First-time Setup",
+    "greeting": "Configure your OpenClaw Gateway connection to get started.",
+    "configSavedTo": "Config  {{path}}",
+    "languageLabel": "Language",
+    "gatewayUrlLabel": "Gateway URL",
+    "gatewayUrlHint": "ws:// or wss:// address of your OpenClaw Gateway",
+    "gatewayTokenLabel": "Gateway Token",
+    "gatewayTokenHint": "Authentication token for the Gateway",
+    "success": "Gateway configured successfully",
+    "nextStep": "Run \"taskmeld server start\" to begin.",
+    "urlLabel": "URL",
+    "description": "Guided setup for OpenClaw Gateway connection",
+    "usage": "taskmeld init [--url <url>] [--token <token>]",
+    "summary": "Guided first-time setup — configure the OpenClaw Gateway connection.",
+    "optUrlDesc": "Gateway WebSocket URL (ws:// or wss://)",
+    "optTokenDesc": "Gateway authentication token",
+    "example1": "taskmeld init",
+    "example2": "taskmeld init --url ws://127.0.0.1:18789 --token your-token",
+    "note1": "Running without flags starts an interactive guided setup.",
+    "note2": "Config is saved to ~/.taskmeld/config.json.",
+    "note3": "Environment variables (OPENCLAW_GATEWAY_URL/TOKEN) take precedence over this config."
+  },
+  "agent": {
+    "list": {
+      "description": "List agents",
+      "summary": "List agents"
+    },
+    "session": {
+      "description": "List sessions (all or filtered by agent)",
+      "summary": "List sessions (all or filtered by agent)",
+      "argAgentId": "Filter sessions by Agent ID"
+    },
+    "send": {
+      "description": "Send message to agent session",
+      "summary": "Send message to agent session and wait for reply",
+      "argAgentId": "Agent ID",
+      "argMessage": "Message content",
+      "optSession": "Session ID (default: main)",
+      "optStream": "Stream reply content"
+    }
+  },
+  "artifact": {
+    "index": {
+      "description": "Rebuild artifact index",
+      "summary": "Scan artifact directory and rebuild index.jsonl, used to include historical files after upgrade or fix index inconsistency",
+      "argRebuild": "Rebuild index.jsonl",
+      "optPipeline": "Only rebuild for specified pipeline"
+    },
+    "list": {
+      "description": "List artifacts",
+      "summary": "List artifacts with status/type/batch/cursor pagination support",
+      "optPipeline": "Filter by pipeline",
+      "optNode": "Filter by node",
+      "optBatch": "Filter by batch run ID",
+      "optRun": "Filter by run ID",
+      "optCursor": "Pagination cursor"
+    },
+    "show": {
+      "description": "Show artifact content",
+      "summary": "Show content of specified artifact",
+      "argPipelineId": "Pipeline ID",
+      "argRelativePath": "Artifact relative path"
+    },
+    "export": {
+      "description": "Export artifact content",
+      "summary": "Export artifacts as date->pipeline->node three-level JSON",
+      "optPipeline": "Filter by pipeline",
+      "optNode": "Filter by node",
+      "optBatch": "Filter by batch run ID",
+      "optFrom": "Start date YYYY-MM-DD",
+      "optTo": "End date YYYY-MM-DD",
+      "optLimit": "Max export count, default 20000"
+    },
+    "cleanup": {
+      "description": "Clean up old artifacts",
+      "summary": "Clean up old artifact files, default dry-run shows candidates without deleting, pass --confirm to execute real deletion and rebuild index",
+      "argPipelineId": "Pipeline ID",
+      "optOlderThan": "Retention days, default success=30/failed=90/rejected=90",
+      "optConfirm": "Must be explicitly passed to execute real deletion, otherwise dry-run",
+      "dryRunMessage": "Dry-run mode, candidate files will not be deleted. Pass --confirm to execute real deletion."
+    }
+  },
+  "pipeline": {
+    "list": {
+      "description": "List pipelines",
+      "summary": "List pipelines"
+    },
+    "get": {
+      "description": "Show pipeline details",
+      "summary": "Show pipeline details",
+      "argId": "Pipeline ID"
+    },
+    "start": {
+      "description": "Start a pipeline run (completion not guaranteed)",
+      "summary": "Start a pipeline run (completion not guaranteed)",
+      "argPipelineId": "Pipeline ID",
+      "optWatch": "Continue waiting for run completion after start",
+      "optTimeout": "Watch timeout in ms, default 600000",
+      "optInterval": "Watch polling interval in ms, default 1200",
+      "noteOnlyStart": "start only initiates the run request, does not guarantee completion when the command returns.",
+      "noteWatch": "--watch enters the wait flow after a successful start."
+    },
+    "status": {
+      "description": "Show current pipeline run status",
+      "summary": "Show current pipeline run status",
+      "argPipelineId": "Compatibility entry, query current run by pipeline ID",
+      "optRunId": "Query by specific run ID",
+      "optBatchRunId": "Query by specific batch run ID",
+      "noteNeedSelector": "At least one of <pipelineId>, --run-id, --batch-run-id must be provided.",
+      "noteDefaultQuery": "When no selector is provided, defaults to querying current active run by pipelineId."
+    },
+    "watch": {
+      "description": "Watch pipeline until completion or timeout",
+      "summary": "Watch pipeline until completion or timeout",
+      "argPipelineId": "Compatibility entry, watch current run of this pipeline",
+      "optRunId": "Watch by specific run ID",
+      "optBatchRunId": "Watch by specific batch run ID",
+      "optTimeout": "Watch timeout in ms, default 600000",
+      "optInterval": "Watch polling interval in ms, default 1200",
+      "noteIsWatch": "watch is a monitoring command, it does not start new runs.",
+      "noteNeedSelector": "At least one of <pipelineId>, --run-id, --batch-run-id must be provided.",
+      "notePollingFallback": "Current watch semantics prioritize event streams with polling as fallback."
+    },
+    "stop": {
+      "description": "Stop pipeline batch run",
+      "summary": "Stop pipeline batch run",
+      "argPipelineId": "Compatibility entry, stop current run of this pipeline",
+      "optRunId": "Stop by specific run ID",
+      "optBatchRunId": "Stop by specific batch run ID",
+      "noteNeedSelector": "At least one of <pipelineId>, --run-id, --batch-run-id must be provided.",
+      "noteBatchOnly": "Currently stop is mainly used for stopping batch runs.",
+      "noteNonBatch": "Non-batch runs will return a business error instead of silent success."
+    },
+    "retryNode": {
+      "description": "Retry a node or node item",
+      "summary": "Retry a node or node item",
+      "argPipelineId": "Pipeline ID",
+      "argNodeId": "Node ID",
+      "optItem": "Specify the item key to retry"
+    },
+    "diagnose": {
+      "description": "Diagnose node dependency status, output blocking reason",
+      "summary": "Diagnose node dependency status, output blocking reason",
+      "argPipelineId": "Pipeline ID",
+      "argNodeId": "Node ID",
+      "optItem": "Optional, specify item key for precise diagnosis"
+    },
+    "result": {
+      "description": "Show pipeline run results",
+      "summary": "Show artifact content of each node after pipeline run",
+      "argPipelineId": "Pipeline ID",
+      "optNode": "Filter to specific node",
+      "optLogs": "Also show processing logs",
+      "optFormat": "Output format, default md"
+    },
+    "output": {
+      "description": "Query pipeline final output",
+      "summary": "Query pipeline final output",
+      "argPipelineId": "Pipeline ID",
+      "optRun": "Query by specific run ID"
+    },
+    "linkList": {
+      "description": "List all pipeline dispatch links",
+      "summary": "List all pipeline dispatch links"
+    },
+    "queue": {
+      "description": "Query pipeline inbound queue",
+      "summary": "Query pipeline inbound queue",
+      "argPipelineId": "Pipeline ID"
+    }
+  },
+  "scheduler": {
+    "toggle": {
+      "description": "Enable or disable scheduler",
+      "summary": "Enable or disable scheduler",
+      "argPipelineId": "Pipeline ID",
+      "optEnabled": "Whether to enable scheduler",
+      "note": "Both <pipelineId> and --enabled are required."
+    },
+    "mode": {
+      "description": "Switch scheduler mode",
+      "summary": "Switch scheduler mode",
+      "argPipelineId": "Pipeline ID",
+      "optMode": "Scheduler mode",
+      "note": "Both <pipelineId> and --mode are required."
+    }
+  },
+  "server": {
+    "ensure": {
+      "description": "Ensure local control-plane backend is started and healthy",
+      "summary": "Ensure local control-plane daemon is started and healthy",
+      "noteDaemonFirst": "Daemon-first semantics: prefer reusing an existing healthy local instance.",
+      "noteNewDaemon": "Only starts a new daemon when no reusable healthy instance is available."
+    },
+    "start": {
+      "description": "Explicitly start local control-plane backend",
+      "summary": "Explicitly start local control-plane daemon"
+    },
+    "status": {
+      "description": "Show local control-plane backend status",
+      "summary": "View local control-plane daemon health, ownership and pid info",
+      "note": "Status output is used to confirm whether local daemon is reusable and current owner metadata is consistent."
+    },
+    "stop": {
+      "description": "Stop local control-plane backend",
+      "summary": "Stop local control-plane daemon"
+    }
+  },
+  "system": {
+    "snapshot": {
+      "description": "Show system global snapshot",
+      "summary": "Show system global snapshot"
+    }
+  }
+}

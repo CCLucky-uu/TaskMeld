@@ -39,17 +39,17 @@ export type DependencyDiagnostic = {
 export type ReasonMessage = Record<ReasonCode, string>;
 
 export const REASON_MESSAGES: ReasonMessage = {
-  dependency_satisfied: "依赖已满足",
-  source_not_success: "上游节点未成功（当前状态不满足依赖）",
-  source_failed: "上游节点执行失败",
-  source_skipped: "上游节点已跳过",
-  route_mismatch: "路由不匹配（上游路由值与边要求不一致）",
-  cross_branch_edge_blocked: "跨支线边已被阻断",
-  group_not_success: "上游并行组未成功",
-  source_disabled_dependency_satisfied: "上游节点已禁用（视为依赖满足）",
-  source_disabled_route_impossible: "上游节点已禁用但路由边无法满足",
-  missing_source_item_run: "缺少上游节点条目运行记录",
-  missing_group_item_run: "缺少上游并行组条目运行记录",
+  dependency_satisfied: "Dependency satisfied",
+  source_not_success: "Upstream node not successful (dependency not met)",
+  source_failed: "Upstream node execution failed",
+  source_skipped: "Upstream node was skipped",
+  route_mismatch: "Route mismatch (upstream route value does not match edge requirement)",
+  cross_branch_edge_blocked: "Cross-branch edge is blocked",
+  group_not_success: "Upstream parallel group not successful",
+  source_disabled_dependency_satisfied: "Upstream node is disabled (dependency treated as satisfied)",
+  source_disabled_route_impossible: "Upstream node is disabled but route edge cannot be satisfied",
+  missing_source_item_run: "Missing upstream node item run record",
+  missing_group_item_run: "Missing upstream parallel group item run record",
 };
 
 const resolveOutcome = (

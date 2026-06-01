@@ -1,4 +1,5 @@
 import { CliError, assertRequiredArg } from "../errors";
+import { t } from "../i18n";
 import type { CliCommandHandler, CliRouteDefinition } from "../types";
 
 const readFlagAsPositiveInteger = (value: string | boolean | undefined, fallback: number): number => {
@@ -93,42 +94,42 @@ export const agentRoutes: CliRouteDefinition[] = [
   {
     key: "agent.list",
     path: ["agent", "list"],
-    description: "输出智能体列表",
+    description: t("agent.list.description"),
     handler: agentListCommand,
     bootstrap: { gateway: "required" },
     help: {
       usage: "taskmeld agent list [--format <json|md>]",
-      summary: "输出智能体列表",
+      summary: t("agent.list.summary"),
     },
   },
   {
     key: "agent.session",
     path: ["agent", "session"],
-    description: "输出会话列表（全部或按 agent 过滤）",
+    description: t("agent.session.description"),
     handler: agentSessionCommand,
     bootstrap: { gateway: "required" },
     help: {
       usage: "taskmeld agent session [agentId] [--format <json|md>]",
-      summary: "输出会话列表（全部或按 agent 过滤）",
-      args: [{ name: "agentId", required: false, description: "按 Agent ID 过滤会话" }],
+      summary: t("agent.session.summary"),
+      args: [{ name: "agentId", required: false, description: t("agent.session.argAgentId") }],
     },
   },
   {
     key: "agent.send",
     path: ["agent", "send"],
-    description: "向指定 agent 会话发送消息",
+    description: t("agent.send.description"),
     handler: agentSendCommand,
     bootstrap: { gateway: "required" },
     help: {
       usage: "taskmeld agent send <agentId> <message> [--session <id>] [--format <json|md>]",
-      summary: "向指定 agent 会话发送消息并等待回复",
+      summary: t("agent.send.summary"),
       args: [
-        { name: "agentId", required: true, description: "Agent ID" },
-        { name: "message", required: true, description: "消息内容" },
+        { name: "agentId", required: true, description: t("agent.send.argAgentId") },
+        { name: "message", required: true, description: t("agent.send.argMessage") },
       ],
       options: [
-        { flags: ["--session"], valueName: "id", description: "会话 ID（默认 main）" },
-        { flags: ["--stream"], description: "流式输出回复内容" },
+        { flags: ["--session"], valueName: "id", description: t("agent.send.optSession") },
+        { flags: ["--stream"], description: t("agent.send.optStream") },
       ],
     },
   },

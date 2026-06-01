@@ -30,8 +30,8 @@ export const detectFenceLanguage = (content: string): "json" | "text" => {
 const extractBalancedJsonObjectCandidates = (text: string): string[] => {
   const candidates: string[] = [];
   const seen = new Set<string>();
-  // 流式输出常出现“说明文字 + JSON”拼接在同一段文本中的情况。
-  // 这里通过括号平衡扫描抽取内嵌 JSON 对象，避免整段 JSON.parse 直接失败。
+  // Streaming output often has "explanatory text + JSON" concatenated in the same text segment.
+  // Use bracket-balanced scanning to extract embedded JSON objects, avoiding direct JSON.parse failure on the whole segment.
   for (let start = text.indexOf("{"); start >= 0; start = text.indexOf("{", start + 1)) {
     let depth = 0;
     let inString = false;
@@ -115,7 +115,7 @@ const tryParseEnvelopeObject = (value: unknown): ResultEnvelope | null => {
     if (!isRecord(rawArtifact)) continue;
     const normalized = normalizeSchemaVersion(rawArtifact.schemaVersion);
     if (normalized !== null) {
-      // 解析阶段先做宽松纠正，后续统一走 number 语义校验与持久化。
+      // Loosely correct at parse stage; subsequent processing uniformly uses number semantic validation and persistence.
       rawArtifact.schemaVersion = normalized;
     }
   }
@@ -134,7 +134,7 @@ const tryParseEnvelopeText = (text: string): ResultEnvelope | null => {
   if (text.length > ENVELOPE_TEXT_SCAN_TAIL_CHARS) {
     const headLen = text.length - ENVELOPE_TEXT_SCAN_TAIL_CHARS;
     const headPart = text.slice(0, headLen);
-    // 向前回溯到最近的 {，防止 JSON 起始被窗口切断
+    // Backtrack to the nearest { to prevent the JSON start from being cut off by the window
     const lastBrace = headPart.lastIndexOf("{");
     scanText = lastBrace >= 0 ? text.slice(lastBrace) : text.slice(-ENVELOPE_TEXT_SCAN_TAIL_CHARS);
   }
@@ -151,7 +151,7 @@ const tryParseEnvelopeText = (text: string): ResultEnvelope | null => {
         const envelope = tryParseEnvelopeObject(parsed);
         if (envelope) return envelope;
       } catch {
-        // 继续尝试后续候选
+        // Continue trying subsequent candidates
       }
     }
     return null;

@@ -55,8 +55,8 @@ export const createPipelineInboundQueue = (): PipelineInboundQueue => {
     } catch {
       // File not found, start empty
     }
-    // 重放后自动回收"running"状态的 job：这些 job 属于上次进程崩溃前已启动但未完成的任务，
-    // 恢复为 pending 并清空 targetRunId，让 drainer 重新调度执行。
+    // After replay, auto-reclaim jobs stuck in "running" status: these jobs were started but not completed before the last process crash,
+    // restore them to pending and clear targetRunId so the drainer can re-schedule execution.
     for (const [jobId, job] of newSnapshot) {
       if (job.status === "running") {
         newSnapshot.set(jobId, {

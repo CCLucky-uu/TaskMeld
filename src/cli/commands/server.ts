@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import type { CliCommandHandler, CliRouteDefinition } from "../types";
 
 export const serverEnsureCommand: CliCommandHandler = async (_input, ctx) => {
@@ -20,50 +21,50 @@ export const serverRoutes: CliRouteDefinition[] = [
   {
     key: "server.ensure",
     path: ["server", "ensure"],
-    description: "确保本地控制面后端已启动并健康",
+    description: t("server.ensure.description"),
     handler: serverEnsureCommand,
     bootstrap: { runtimeApiOnly: true },
     help: {
       usage: "taskmeld server ensure [--format <json|md>]",
-      summary: "确保本地 control-plane daemon 已启动并健康",
+      summary: t("server.ensure.summary"),
       notes: [
-        "daemon-first 语义：优先复用已存在且健康的本地实例。",
-        "仅在没有可复用健康实例时，才会启动新的 daemon。",
+        t("server.ensure.noteDaemonFirst"),
+        t("server.ensure.noteNewDaemon"),
       ],
     },
   },
   {
     key: "server.start",
     path: ["server", "start"],
-    description: "显式启动本地控制面后端",
+    description: t("server.start.description"),
     handler: serverStartCommand,
     bootstrap: { runtimeApiOnly: true },
     help: {
       usage: "taskmeld server start [--format <json|md>]",
-      summary: "显式启动本地 control-plane daemon",
+      summary: t("server.start.summary"),
     },
   },
   {
     key: "server.status",
     path: ["server", "status"],
-    description: "输出本地控制面后端状态",
+    description: t("server.status.description"),
     handler: serverStatusCommand,
     bootstrap: { runtimeApiOnly: true },
     help: {
       usage: "taskmeld server status [--format <json|md>]",
-      summary: "查看本地 control-plane daemon 的健康、ownership 与 pid 信息",
-      notes: ["状态输出用于确认本地 daemon 是否可复用以及当前 owner 元数据是否一致。"],
+      summary: t("server.status.summary"),
+      notes: [t("server.status.note")],
     },
   },
   {
     key: "server.stop",
     path: ["server", "stop"],
-    description: "停止本地控制面后端",
+    description: t("server.stop.description"),
     handler: serverStopCommand,
     bootstrap: { runtimeApiOnly: true },
     help: {
       usage: "taskmeld server stop [--format <json|md>]",
-      summary: "停止本地 control-plane daemon",
+      summary: t("server.stop.summary"),
     },
   },
 ];

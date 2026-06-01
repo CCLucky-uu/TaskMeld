@@ -93,8 +93,8 @@ export const createAppContext = (options: CreateAppContextOptions = {}): AppCont
   const ensureGatewayClient = (): GatewayClient => {
     if (clientRef) return clientRef;
 
-    // dev/server 进程允许先在“网关未配置/未就绪”状态下启动 HTTP/WS，
-    // 真正触发 connect/sendReq 时再校验凭据，才能兼容本地调试与需要网关的命令两类路径。
+    // dev/server processes allow HTTP/WS to start even before gateway is configured/ready,
+    // deferring credential validation to when connect/sendReq actually fires, to support both local debugging and gateway-required commands.
     const credentials = resolveGatewayCredentials(options, env);
     clientRef = createGatewayClient({
       gatewayUrl: credentials.url,
@@ -143,7 +143,7 @@ export const createAppContext = (options: CreateAppContextOptions = {}): AppCont
   appRef = app;
   const appServices = createAppServices(app);
 
-  // 网关握手成功后需要把 hello 回灌到 registry，保证运行态上下文完整。
+  // After the gateway handshake succeeds, feed the hello payload back into the registry so runtime context stays complete.
   const connect = async (): Promise<HelloOkPayload> => {
     const hello = await client.connect();
     app.onGatewayReady(hello);

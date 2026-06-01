@@ -2,7 +2,7 @@ import type { CliError } from "./errors";
 import type { CliGlobalOptions } from "./types";
 import { renderErrorByMode, renderSuccessByMode } from "./renderers";
 
-// 成功输出由 renderer 统一分发，命令层不直接拼接文本。
+// Success output is dispatched uniformly by the renderer; command layer does not assemble text directly.
 export const writeResult = (
   stream: NodeJS.WritableStream,
   command: string,
@@ -12,12 +12,12 @@ export const writeResult = (
   stream.write(`${renderSuccessByMode(command, data, global)}\n`);
 };
 
-// 错误统一写 stderr，避免污染 stdout 结果流。
+// Errors are consistently written to stderr to avoid polluting the stdout result stream.
 export const writeError = (stream: NodeJS.WritableStream, error: CliError, command: string | undefined, global: { format: string }): void => {
   stream.write(`${renderErrorByMode(command, error, global)}\n`);
 };
 
-// 帮助信息输出纯文本到 stdout，便于人类直接阅读。
+// Help info is output as plain text to stdout for easy human reading.
 export const writeHelp = (stream: NodeJS.WritableStream, helpText: string): void => {
   stream.write(`${helpText}\n`);
 };

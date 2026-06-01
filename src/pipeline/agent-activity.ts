@@ -81,10 +81,10 @@ export const createAgentActivityTracker = (deps: AgentActivityTrackerDeps) => {
       stateVersion: frame.stateVersion ?? null,
     };
     if (lifecycle === "start") {
-      deps.pushTimeline(`Agent ${agentId} 开始工作 (${runLabel(runId)}, ${source})`, "info", detail);
+      deps.pushTimeline(`Agent ${agentId} started (${runLabel(runId)}, ${source})`, "info", detail);
       return;
     }
-    deps.pushTimeline(`Agent ${agentId} 结束工作 (${runLabel(runId)}, ${source})`, "info", detail);
+    deps.pushTimeline(`Agent ${agentId} finished (${runLabel(runId)}, ${source})`, "info", detail);
   };
 
   const refreshAgentActivity = (agentId: string, source: string, runId: string | null, frame: GatewayEventFrame) => {

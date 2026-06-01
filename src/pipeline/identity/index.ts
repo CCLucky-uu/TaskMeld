@@ -18,18 +18,18 @@ export const buildRequestId = (nodeId: string): string => `node-${nodeId}-${rand
 export const buildItemKeyFromKeywords = (keywords: string[]): string[] =>
   [...new Set(keywords.map((item) => item.trim()).filter(Boolean))];
 
-/** 从 Run 和 pipelineId 构造身份快照 */
+/** Build an identity snapshot from a Run and pipelineId */
 export const toRunIdentity = (pipelineId: string, run: Run): PipelineRunIdentity => ({
   pipelineId,
   runId: run.id,
   batchRunId: null,
 });
 
-/** 格式化身份为可读字符串 */
+/** Format an identity into a human-readable string */
 export const formatIdentity = (id: PipelineRunIdentity): string =>
   `pipeline=${id.pipelineId} run=${id.runId}${id.batchRunId ? ` batch=${id.batchRunId}` : ""}`;
 
-/** 校验身份匹配：pipelineId 必须相等，runId 必须相等，batchRunId 任一方为 null 时放行 */
+/** Verify identity match: pipelineId must be equal, runId must be equal, allow when either batchRunId is null */
 export const matchIdentity = (target: PipelineRunIdentity, candidate: PipelineRunIdentity): boolean =>
   target.pipelineId === candidate.pipelineId &&
   target.runId === candidate.runId &&

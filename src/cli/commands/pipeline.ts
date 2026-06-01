@@ -1,4 +1,5 @@
 import { CliError, assertRequiredArg } from "../errors";
+import { t } from "../i18n";
 import type { CliCommandHandler, CliRouteDefinition } from "../types";
 import { throwSelectorScopedError } from "./pipeline/errors";
 import { pipelineResultRoutes } from "./pipeline/result";
@@ -166,56 +167,56 @@ export const pipelineRoutes: CliRouteDefinition[] = [
   {
     key: "pipeline.list",
     path: ["pipeline", "list"],
-    description: "输出流水线列表",
+    description: t("pipeline.list.description"),
     handler: pipelineListCommand,
     help: {
       usage: "taskmeld pipeline list [--format <json|md>]",
-      summary: "输出流水线列表",
+      summary: t("pipeline.list.summary"),
     },
   },
   {
     key: "pipeline.get",
     path: ["pipeline", "get"],
-    description: "输出指定流水线详情",
+    description: t("pipeline.get.description"),
     handler: pipelineGetCommand,
     help: {
       usage: "taskmeld pipeline get <id> [--format <json|md>]",
-      args: [{ name: "id", required: true, description: "流水线 ID" }],
-      summary: "输出指定流水线详情",
+      args: [{ name: "id", required: true, description: t("pipeline.get.argId") }],
+      summary: t("pipeline.get.summary"),
     },
   },
   {
     key: "pipeline.start",
     path: ["pipeline", "start"],
-    description: "发起指定流水线运行（不承诺已完成）",
+    description: t("pipeline.start.description"),
     handler: pipelineStartCommand,
     bootstrap: { runtimeApiOnly: true, ensureServerReady: true },
     help: {
       usage: "taskmeld pipeline start <pipelineId> [--watch] [--timeout <ms>] [--interval <ms>] [--format <json|md>]",
-      args: [{ name: "pipelineId", required: true, description: "流水线 ID" }],
+      args: [{ name: "pipelineId", required: true, description: t("pipeline.start.argPipelineId") }],
       options: [
-        { flags: ["--watch"], description: "启动后继续等待运行完成" },
-        { flags: ["--timeout"], valueName: "ms", description: "watch 超时时间，默认 600000" },
-        { flags: ["--interval"], valueName: "ms", description: "watch 轮询间隔，默认 1200" },
+        { flags: ["--watch"], description: t("pipeline.start.optWatch") },
+        { flags: ["--timeout"], valueName: "ms", description: t("pipeline.start.optTimeout") },
+        { flags: ["--interval"], valueName: "ms", description: t("pipeline.start.optInterval") },
       ],
       notes: [
-        "start 只负责发起运行请求，不承诺命令返回时业务已执行完成。",
-        "--watch 会在发起成功后进入等待流程。",
+        t("pipeline.start.noteOnlyStart"),
+        t("pipeline.start.noteWatch"),
       ],
     },
   },
   {
     key: "pipeline.status",
     path: ["pipeline", "status"],
-    description: "输出指定流水线当前运行状态",
+    description: t("pipeline.status.description"),
     handler: pipelineStatusCommand,
     bootstrap: { runtimeApiOnly: true, ensureServerReady: true },
     help: {
       usage: "taskmeld pipeline status [<pipelineId>] [--run-id <id>] [--batch-run-id <id>] [--format <json|md>]",
-      args: [{ name: "pipelineId", description: "兼容入口，按流水线 ID 查询当前运行" }],
+      args: [{ name: "pipelineId", description: t("pipeline.status.argPipelineId") }],
       options: [
-        { flags: ["--run-id"], valueName: "id", description: "按单次运行 ID 精确查询" },
-        { flags: ["--batch-run-id"], valueName: "id", description: "按批跑 ID 精确查询" },
+        { flags: ["--run-id"], valueName: "id", description: t("pipeline.status.optRunId") },
+        { flags: ["--batch-run-id"], valueName: "id", description: t("pipeline.status.optBatchRunId") },
       ],
       examples: [
         "taskmeld pipeline status A",
@@ -223,25 +224,25 @@ export const pipelineRoutes: CliRouteDefinition[] = [
         "taskmeld pipeline status A --batch-run-id batch:A:2026-05-08T18:34:08.978Z",
       ],
       notes: [
-        "需要至少提供 <pipelineId>、--run-id、--batch-run-id 之一。",
-        "未提供 selector 时，默认按 pipelineId 查询当前活动运行。",
+        t("pipeline.status.noteNeedSelector"),
+        t("pipeline.status.noteDefaultQuery"),
       ],
     },
   },
   {
     key: "pipeline.watch",
     path: ["pipeline", "watch"],
-    description: "监听指定流水线直到结束或超时",
+    description: t("pipeline.watch.description"),
     handler: pipelineWatchCommand,
     bootstrap: { runtimeApiOnly: true, ensureServerReady: true },
     help: {
       usage: "taskmeld pipeline watch [<pipelineId>] [--run-id <id>] [--batch-run-id <id>] [--timeout <ms>] [--interval <ms>] [--format <json|md>]",
-      args: [{ name: "pipelineId", description: "兼容入口，监听该流水线当前运行" }],
+      args: [{ name: "pipelineId", description: t("pipeline.watch.argPipelineId") }],
       options: [
-        { flags: ["--run-id"], valueName: "id", description: "按单次运行 ID 精确监听" },
-        { flags: ["--batch-run-id"], valueName: "id", description: "按批跑 ID 精确监听" },
-        { flags: ["--timeout"], valueName: "ms", description: "watch 超时时间，默认 600000" },
-        { flags: ["--interval"], valueName: "ms", description: "watch 轮询间隔，默认 1200" },
+        { flags: ["--run-id"], valueName: "id", description: t("pipeline.watch.optRunId") },
+        { flags: ["--batch-run-id"], valueName: "id", description: t("pipeline.watch.optBatchRunId") },
+        { flags: ["--timeout"], valueName: "ms", description: t("pipeline.watch.optTimeout") },
+        { flags: ["--interval"], valueName: "ms", description: t("pipeline.watch.optInterval") },
       ],
       examples: [
         "taskmeld pipeline watch A",
@@ -249,68 +250,68 @@ export const pipelineRoutes: CliRouteDefinition[] = [
         "taskmeld pipeline watch --batch-run-id batch:A:2026-05-08T18:34:08.978Z --timeout 900000",
       ],
       notes: [
-        "watch 是监听命令，不负责发起新运行。",
-        "需要至少提供 <pipelineId>、--run-id、--batch-run-id 之一。",
-        "当前 watch 语义为事件流优先，轮询作为兜底路径。",
+        t("pipeline.watch.noteIsWatch"),
+        t("pipeline.watch.noteNeedSelector"),
+        t("pipeline.watch.notePollingFallback"),
       ],
     },
   },
   {
     key: "pipeline.stop",
     path: ["pipeline", "stop"],
-    description: "停止指定流水线批跑任务",
+    description: t("pipeline.stop.description"),
     handler: pipelineStopCommand,
     bootstrap: { runtimeApiOnly: true, ensureServerReady: true },
     help: {
       usage: "taskmeld pipeline stop [<pipelineId>] [--run-id <id>] [--batch-run-id <id>] [--format <json|md>]",
-      args: [{ name: "pipelineId", description: "兼容入口，停止该流水线当前运行" }],
+      args: [{ name: "pipelineId", description: t("pipeline.stop.argPipelineId") }],
       options: [
-        { flags: ["--run-id"], valueName: "id", description: "按单次运行 ID 精确停止" },
-        { flags: ["--batch-run-id"], valueName: "id", description: "按批跑 ID 精确停止" },
+        { flags: ["--run-id"], valueName: "id", description: t("pipeline.stop.optRunId") },
+        { flags: ["--batch-run-id"], valueName: "id", description: t("pipeline.stop.optBatchRunId") },
       ],
       notes: [
-        "需要至少提供 <pipelineId>、--run-id、--batch-run-id 之一。",
-        "当前 stop 主要用于停止批跑任务。",
-        "对非批跑运行会返回业务错误，而不是静默成功。",
+        t("pipeline.stop.noteNeedSelector"),
+        t("pipeline.stop.noteBatchOnly"),
+        t("pipeline.stop.noteNonBatch"),
       ],
     },
   },
   {
     key: "pipeline.retry-node",
     path: ["pipeline", "retry-node"],
-    description: "重试指定节点或节点条目",
+    description: t("pipeline.retryNode.description"),
     handler: pipelineRetryNodeCommand,
     bootstrap: { gateway: "required" },
     help: {
       usage: "taskmeld pipeline retry-node <pipelineId> <nodeId> [--item <itemKey>] [--format <json|md>]",
       args: [
-        { name: "pipelineId", required: true, description: "流水线 ID" },
-        { name: "nodeId", required: true, description: "节点 ID" },
+        { name: "pipelineId", required: true, description: t("pipeline.retryNode.argPipelineId") },
+        { name: "nodeId", required: true, description: t("pipeline.retryNode.argNodeId") },
       ],
-      options: [{ flags: ["--item"], valueName: "itemKey", description: "指定重试的条目键" }],
-      summary: "重试指定节点或节点条目",
+      options: [{ flags: ["--item"], valueName: "itemKey", description: t("pipeline.retryNode.optItem") }],
+      summary: t("pipeline.retryNode.summary"),
     },
   },
   {
     key: "pipeline.diagnose",
     path: ["pipeline", "diagnose"],
-    description: "诊断指定节点依赖状态，输出阻塞原因",
+    description: t("pipeline.diagnose.description"),
     handler: pipelineDiagnoseCommand,
     bootstrap: { runtimeApiOnly: true, ensureServerReady: true },
     help: {
       usage: "taskmeld pipeline diagnose <pipelineId> <nodeId> [--item <itemKey>] [--format <json|md>]",
       args: [
-        { name: "pipelineId", required: true, description: "流水线 ID" },
-        { name: "nodeId", required: true, description: "节点 ID" },
+        { name: "pipelineId", required: true, description: t("pipeline.diagnose.argPipelineId") },
+        { name: "nodeId", required: true, description: t("pipeline.diagnose.argNodeId") },
       ],
-      options: [{ flags: ["--item"], valueName: "itemKey", description: "可选，指定条目键精确诊断" }],
-      summary: "诊断指定节点依赖状态，输出阻塞原因",
+      options: [{ flags: ["--item"], valueName: "itemKey", description: t("pipeline.diagnose.optItem") }],
+      summary: t("pipeline.diagnose.summary"),
     },
   },
   {
     key: "pipeline.output",
     path: ["pipeline", "output"],
-    description: "查询流水线最终产物",
+    description: t("pipeline.output.description"),
     handler: async (input, ctx) => {
       const pipelineId = assertRequiredArg(input.args[0], "pipelineId");
       const runId = pickOptionalStringFlag(input.flags.run);
@@ -323,28 +324,28 @@ export const pipelineRoutes: CliRouteDefinition[] = [
     },
     help: {
       usage: "taskmeld pipeline output <pipelineId> [--run <runId>]",
-      args: [{ name: "pipelineId", required: true, description: "流水线 ID" }],
-      options: [{ flags: ["--run"], valueName: "runId", description: "按 runId 精确查询" }],
-      summary: "查询流水线最终产物",
+      args: [{ name: "pipelineId", required: true, description: t("pipeline.output.argPipelineId") }],
+      options: [{ flags: ["--run"], valueName: "runId", description: t("pipeline.output.optRun") }],
+      summary: t("pipeline.output.summary"),
     },
   },
   {
     key: "pipeline.link-list",
     path: ["pipeline", "link", "list"],
-    description: "列出所有流水线投递链接",
+    description: t("pipeline.linkList.description"),
     handler: async (_input, ctx) => {
       const links = await ctx.app.pipelineService.listLinks();
       return { ok: true, items: links };
     },
     help: {
       usage: "taskmeld pipeline link list",
-      summary: "列出所有流水线投递链接",
+      summary: t("pipeline.linkList.summary"),
     },
   },
   {
     key: "pipeline.queue",
     path: ["pipeline", "queue"],
-    description: "查询流水线接收队列",
+    description: t("pipeline.queue.description"),
     handler: async (input, ctx) => {
       const pipelineId = assertRequiredArg(input.args[0], "pipelineId");
       const items = ctx.app.pipelineService.getQueue(pipelineId);
@@ -352,8 +353,8 @@ export const pipelineRoutes: CliRouteDefinition[] = [
     },
     help: {
       usage: "taskmeld pipeline queue <pipelineId>",
-      args: [{ name: "pipelineId", required: true, description: "流水线 ID" }],
-      summary: "查询流水线接收队列",
+      args: [{ name: "pipelineId", required: true, description: t("pipeline.queue.argPipelineId") }],
+      summary: t("pipeline.queue.summary"),
     },
   },
 ];

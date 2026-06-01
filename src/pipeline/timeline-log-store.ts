@@ -20,8 +20,8 @@ const LOG_FILE_NAME = "timeline.log";
 const stringifyTimelineEntry = (entry: TimelineLogEntry) => {
   const seen = new WeakSet<object>();
   return JSON.stringify(entry, (_key, value: unknown) => {
-    // 允许完整保留 detail 内容，但循环引用对象本身无法直接 JSON 化，
-    // 这里仅做兜底，避免日志持久化因为异常对象而中断主流程。
+    // Allow keeping the full detail content, but cyclic-referencing objects themselves can't be directly JSON-serialized;
+    // this is purely a safety net to prevent log persistence from being interrupted by an anomalous object in the main flow.
     if (typeof value !== "object" || value === null) return value;
     if (seen.has(value)) return "[Circular]";
     seen.add(value);
@@ -45,7 +45,7 @@ export const createTimelineLogStore = (options: TimelineLogStoreOptions) => {
       ...(item.detail === undefined ? {} : { detail: item.detail }),
     })}\n`;
 
-    // 单行大小兜底，防止超大 detail 撑爆日志文件
+    // Per-line size safety net to prevent oversized details from blowing up the log file
     const MAX_LOG_LINE_BYTES = 512 * 1024;
     if (Buffer.byteLength(line, "utf8") > MAX_LOG_LINE_BYTES) {
       const truncated = line.slice(0, MAX_LOG_LINE_BYTES);
@@ -56,7 +56,7 @@ export const createTimelineLogStore = (options: TimelineLogStoreOptions) => {
 
     writeChain = writeChain
       .catch(() => {
-        // 前一次写盘失败后继续后续写入，避免整个队列永久卡死。
+        // Continue subsequent writes after a previous flush failure to avoid permanently deadlocking the entire queue.
       })
       .then(async () => {
         await mkdir(dirname(logFile), { recursive: true });
@@ -64,7 +64,7 @@ export const createTimelineLogStore = (options: TimelineLogStoreOptions) => {
       });
 
     return writeChain.catch(() => {
-      // 日志持久化失败不能影响流水线运行，这里吞掉异常交给调用方按需记录。
+      // Log persistence failure must not affect pipeline execution; swallow the exception here and let the caller record it as needed.
     });
   };
 

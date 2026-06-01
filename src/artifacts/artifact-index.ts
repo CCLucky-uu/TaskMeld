@@ -57,7 +57,7 @@ type IndexCursorV2 = { v: 2; updatedAt: string; artifactId: string; indexUpdated
 const encodeCursorV2 = (cursor: IndexCursorV2): string =>
   `v2:${Buffer.from(JSON.stringify(cursor), "utf8").toString("base64url")}`;
 
-/** 兼容解码 v2 和旧版 cursor。返回 null 表示无效。 */
+/** Compatible decoding for v2 and legacy cursors. Returns null for invalid input. */
 const decodeAnyCursor = (cursor: string): { updatedAt: string; artifactId: string; indexUpdatedAt?: string } | null => {
   if (cursor.startsWith("v2:")) {
     try {
@@ -68,7 +68,7 @@ const decodeAnyCursor = (cursor: string): { updatedAt: string; artifactId: strin
       return null;
     } catch { return null; }
   }
-  // 旧 v1 cursor 格式: base64url(updatedAt|artifactId)
+  // Legacy v1 cursor format: base64url(updatedAt|artifactId)
   try {
     const raw = Buffer.from(cursor, "base64url").toString("utf8");
     const idx = raw.lastIndexOf("|");
@@ -96,7 +96,7 @@ export type AppendIndexRecordResult =
   | { ok: true }
   | { ok: false; warning: ArtifactIndexWarning };
 
-/** 追加一条索引记录到 index.jsonl。追加失败不抛异常，返回失败信息供调用方观测。 */
+/** Append one index record to index.jsonl. Does not throw on failure; returns failure info for caller observation. */
 export const appendIndexRecord = async (
   artifactDir: string,
   record: StoredArtifactIndexRecord,
@@ -119,7 +119,7 @@ export const appendIndexRecord = async (
   }
 };
 
-/** 读取索引文件所有行，损坏行跳过。使用流式读取避免大索引一次性内存占用。 */
+/** Read all lines from the index file, skipping corrupt lines. Uses streaming reads to avoid loading a large index entirely into memory. */
 export const readIndexRecords = async (
   artifactDir: string,
 ): Promise<StoredArtifactIndexRecord[]> => {
@@ -135,7 +135,7 @@ export const readIndexRecords = async (
       try {
         records.push(JSON.parse(line) as StoredArtifactIndexRecord);
       } catch {
-        // 损坏行跳过
+        // Skip corrupt lines
       }
     }
   } catch {
@@ -155,7 +155,7 @@ const dedupeLatestByArtifactId = (records: StoredArtifactIndexRecord[]): StoredA
   return [...latest.values()];
 };
 
-/** 从索引读取、过滤、排序、分页。基于 readIndexRecords 之上提供查询能力。 */
+/** Read from index, filter, sort, paginate. Builds on top of readIndexRecords to provide query capabilities. */
 export const listIndexRecords = async (
   artifactDir: string,
   filter: IndexListFilter,
@@ -184,7 +184,7 @@ export const listIndexRecords = async (
     matched.push(record);
   }
 
-  // 按 updatedAt DESC, artifactId ASC 排序
+  // Sort by updatedAt DESC, artifactId ASC
   matched.sort((a, b) => {
     const dateDiff = Date.parse(b.updatedAt) - Date.parse(a.updatedAt);
     if (dateDiff !== 0) return dateDiff;
@@ -193,13 +193,13 @@ export const listIndexRecords = async (
 
   const total = matched.length;
 
-  // cursor 分页：v2 cursor 含 indexUpdatedAt，索引重建后旧 cursor 自动从头开始
+  // cursor pagination: v2 cursor includes indexUpdatedAt; after index rebuild, old cursors automatically restart from the beginning
   let startIndex = 0;
   const currentIndexUpdatedAt = await getIndexUpdatedAt(artifactDir);
   if (filter.cursor) {
     const decoded = decodeAnyCursor(filter.cursor);
     if (decoded) {
-      // 索引代际变化 → cursor 过期，从头开始
+      // Index generation changed → cursor expired, restart from the beginning
       if (decoded.indexUpdatedAt && decoded.indexUpdatedAt !== currentIndexUpdatedAt) {
         startIndex = 0;
       } else {
@@ -220,7 +220,7 @@ export const listIndexRecords = async (
   return { items: page, nextCursor, total };
 };
 
-/** 从 StoredArtifactIndexRecord 转换为 StoredArtifactItem。 */
+/** Convert from StoredArtifactIndexRecord to StoredArtifactItem. */
 export const toStoredArtifactItem = (
   record: StoredArtifactIndexRecord,
   pipelineId: string,
@@ -240,7 +240,7 @@ export const toStoredArtifactItem = (
 });
 
 /**
- * 扫描一条流水线的产物目录，重建 index.jsonl。
+ * Scan a single pipeline's artifact directory and rebuild its index.jsonl.
  */
 export const rebuildArtifactIndex = async (
   definition: PipelineDefinition,
@@ -270,14 +270,14 @@ export const rebuildArtifactIndex = async (
     await rename(tmpPath, indexPath);
   } catch (error) {
     warnings.push(
-      `重建索引失败 (pipeline ${definition.id}): ${error instanceof Error ? error.message : String(error)}`,
+      `Failed to rebuild index (pipeline ${definition.id}): ${error instanceof Error ? error.message : String(error)}`,
     );
   }
 
   return { indexed, skipped, warnings };
 };
 
-/** 从 StoredArtifactItem + 读取文件内容 补充为完整的 IndexRecord。 */
+/** Enrich a StoredArtifactItem with its file content to produce a complete IndexRecord. */
 const enrichItemToIndexRecord = async (
   item: StoredArtifactItem,
   definition: PipelineDefinition,
@@ -288,7 +288,7 @@ const enrichItemToIndexRecord = async (
     const raw = await readFile(filePath, "utf8");
     parsed = JSON.parse(raw) as Record<string, unknown>;
   } catch {
-    // 无法读取时用路径启发式信息
+    // When unreadable, use path-based heuristics
   }
 
   const artifactObj =

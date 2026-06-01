@@ -1,0 +1,15 @@
+{
+  "overview": "Overview",
+  "agents": "Agents",
+  "pipeline": "Pipelines",
+  "pipelineRuns": "Run History",
+  "artifacts": "Artifacts",
+  "logs": "Logs",
+  "schedulerPanel": "Scheduler",
+  "home": "Home",
+  "collapseNav": "Collapse Navigation",
+  "expandNav": "Expand Navigation",
+  "backToHome": "Back to Home",
+  "skipToContent": "Skip to Content",
+  "settings": "Settings"
+}

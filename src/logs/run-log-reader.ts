@@ -9,7 +9,7 @@ const isRunLogLevel = (value: unknown): value is RunLogEntry["level"] =>
   value === "info" || value === "warn" || value === "error";
 
 const normalizeLimit = (value: number | undefined) => {
-  // 服务端必须兜底分页，避免前端漏传 limit 时把大型日志一次性读入 V8 堆。
+  // Server must enforce pagination as a safety net, to avoid loading huge logs into the V8 heap when the frontend omits the limit parameter.
   if (value === undefined) return MAX_LIMIT;
   if (!Number.isFinite(value)) return MAX_LIMIT;
   return Math.max(1, Math.min(MAX_LIMIT, Math.trunc(value)));

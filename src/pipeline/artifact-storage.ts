@@ -17,8 +17,8 @@ export const buildArtifactStorageDirs = (
   savedAt = new Date(),
   batchRunId?: string | null,
 ) => {
-  // 运行产物需要按"结果状态/日期/runId"归档，避免目录长期平铺后难以按日排障或批量清理。
-  // envelopes 与 artifacts 分桶存放，是为了把节点回执和实际产物内容分开，减少误读与误删风险。
+  // Run artifacts are archived by "result status / date / runId" so flat directories don't become hard to troubleshoot by date or batch-clean.
+  // Envelopes and artifacts are bucketed separately to keep node receipts apart from actual artifact content, reducing misread/misdelete risk.
   const dateBucket = formatLocalDateBucket(savedAt);
   const runDir = batchRunId
     ? join(rootDir, status, dateBucket, batchRunId, runId)
@@ -33,7 +33,7 @@ export const buildArtifactStorageDirs = (
 
 export type StoredArtifactKind = "artifact" | "envelope" | "adapter" | "group";
 
-/** 产物写入上下文，所有调用方通过此结构提供元数据。 */
+/** Artifact write context — all callers provide metadata through this structure. */
 export type ArtifactWriteContext = {
   pipelineId: string;
   runId: string;
@@ -55,8 +55,8 @@ const sanitizeFileSegment = (value: string): string => {
 };
 
 /**
- * 产物文件统一写入入口。
- * 负责：目录创建、原子写入（临时文件 + rename）、真实 SHA-256 哈希计算、索引追加、ArtifactManifest 构造。
+ * Unified artifact file write entry point.
+ * Responsibilities: directory creation, atomic write (temp file + rename), real SHA-256 hash computation, index append, ArtifactManifest construction.
  */
 export const persistArtifactFile = async (
   rootDir: string,
@@ -69,7 +69,7 @@ export const persistArtifactFile = async (
   const persistDirs = buildArtifactStorageDirs(rootDir, ctx.runId, status, savedAt, ctx.batchRunId);
   await mkdir(persistDirs.artifactsDir, { recursive: true });
 
-  // 统一的文件序列化格式，kind 字段供读取端分发
+  // Unified file serialization format; the kind field is used by readers to dispatch
   const fileContent = {
     schemaVersion: 1,
     runId: ctx.runId,
@@ -87,7 +87,7 @@ export const persistArtifactFile = async (
   if (opts?.fileNameSuffix) fileNameSegments.push(sanitizeFileSegment(opts.fileNameSuffix));
   const fileName = `${fileNameSegments.join("-")}.json`;
 
-  // 原子写入: 先写临时文件，计算 hash，再 rename 到最终路径
+  // Atomic write: write to temp file first, compute hash, then rename to final path
   const tmpFileName = `.tmp-${randomUUID()}.json`;
   const tmpPath = join(persistDirs.artifactsDir, tmpFileName);
   const json = JSON.stringify(fileContent, null, 2);
@@ -103,7 +103,7 @@ export const persistArtifactFile = async (
   const updatedAt = fileStat.mtime.toISOString();
   const relativePath = relative(rootDir, finalPath).replaceAll("\\", "/");
 
-  // 追加索引记录（best-effort，失败不阻断产物写入）
+  // Append index record (best-effort; a failure here must not block the artifact write)
   const pipelineId = ctx.pipelineId;
   const indexRecord: StoredArtifactIndexRecord = {
     schemaVersion: 1,
@@ -127,7 +127,7 @@ export const persistArtifactFile = async (
     createdAt,
     updatedAt,
   };
-  // 追加索引记录：文件已通过 tmp+rename 原子写入磁盘，索引追加失败不丢失产物文件
+  // Append index record: the file is already atomically written (tmp+rename); index append failure does not lose the artifact file
   const _ir = await appendIndexRecord(rootDir, indexRecord); void _ir;
 
   return {
@@ -151,7 +151,7 @@ export type MovedArtifactIndexInput = {
   pipelineId: string;
 };
 
-/** 产物移动（如 rejected 归档）后补记索引，使查询端通过 artifactId 去重拿到最新位置。 */
+/** After moving an artifact (e.g. rejected archiving), append an index record so queries can use artifactId deduplication to get the latest location. */
 export const appendMovedArtifactIndexRecord = async (
   rootDir: string,
   input: MovedArtifactIndexInput,
@@ -188,7 +188,7 @@ export const appendMovedArtifactIndexRecord = async (
   });
 };
 
-/** 保存 envelope 回执文件到 envelopes 子目录并追加索引，使 kind=envelope 可在列表中查询。 */
+/** Save envelope receipt file to the envelopes sub-directory and append index, so kind=envelope is queryable in the list. */
 export const persistEnvelopeFile = async (
   rootDir: string,
   status: ArtifactStorageStatus,
@@ -251,7 +251,7 @@ export const persistEnvelopeFile = async (
     createdAt,
     updatedAt,
   };
-  // 追加索引记录：文件已通过 tmp+rename 原子写入磁盘，索引追加失败不丢失产物文件
+  // Append index record: the file is already atomically written (tmp+rename); index append failure does not lose the artifact file
   const _ir = await appendIndexRecord(rootDir, indexRecord); void _ir;
 
   return {

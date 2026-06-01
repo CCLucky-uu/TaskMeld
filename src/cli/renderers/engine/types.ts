@@ -53,7 +53,7 @@ export type RenderSpec = ListRenderSpec | DetailRenderSpec | TextRenderSpec;
 
 export type RenderSpecMap = Record<string, RenderSpec>;
 
-// 中间表示类型（格式无关）
+// Intermediate representation type (format-agnostic)
 export type KeyValueRow = { field: string; value: unknown };
 
 export type SectionIR =

@@ -2,7 +2,7 @@ import { createReadStream, existsSync } from "node:fs";
 import { join, extname } from "node:path";
 import type { IncomingMessage, ServerResponse } from "node:http";
 
-// 服务器运行时元数据类型
+// Server runtime metadata type
 export type ServerRuntimeMetadata = {
   serverId: string;
   pid: number;
@@ -11,7 +11,7 @@ export type ServerRuntimeMetadata = {
   startedAt: string;
 };
 
-// 静态文件 MIME 类型映射
+// Static file MIME type map
 const MIME: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
   ".css": "text/css; charset=utf-8",
@@ -24,13 +24,13 @@ const MIME: Record<string, string> = {
   ".woff2": "font/woff2",
 };
 
-// 解析 Web 静态资源目录
+// Resolve the web static assets directory
 const resolveWebDist = (): string =>
-  join(__dirname, "..", "..", "web", "dist");
+  join(__dirname, "..", "..", "..", "web", "dist");
 
 const webDistRoot = resolveWebDist();
 
-// 静态文件服务（SPA 回退到 index.html）
+// Static file serving (SPA falls back to index.html)
 const serveStatic = (req: IncomingMessage, res: ServerResponse): boolean => {
   if (!existsSync(webDistRoot)) return false;
 
@@ -55,7 +55,7 @@ const serveStatic = (req: IncomingMessage, res: ServerResponse): boolean => {
   return true;
 };
 
-// HTTP 请求处理器选项
+// HTTP request handler options
 export type ApiHandlerOptions = {
   apiPort: number;
   webOrigin: string;
@@ -63,7 +63,7 @@ export type ApiHandlerOptions = {
   serverRuntimeIdentity: ServerRuntimeMetadata;
 };
 
-// 创建 HTTP 请求处理器（健康检查 + CORS + 静态文件）
+// Create HTTP request handler (health check + CORS + static files)
 export const createApiHandler = (options: ApiHandlerOptions) => {
   return (req: IncomingMessage, res: ServerResponse) => {
     const url = req.url ?? "/";

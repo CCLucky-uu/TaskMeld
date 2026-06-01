@@ -5,6 +5,6 @@ type CloseIconProps = {
 };
 
 export function CloseIcon({ size = 14 }: CloseIconProps) {
-  // 按 Iconify 官方 React SVG+CSS 方案，直接使用独立图标组件。
+  // Use Iconify's official React SVG+CSS approach — standalone icon component, no wrapper.
   return <XIcon width={String(size)} height={String(size)} />;
 }

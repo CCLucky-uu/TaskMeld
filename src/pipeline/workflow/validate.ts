@@ -8,11 +8,11 @@ export const validateWorkflowGraph = (workflow: WorkflowDefinitionRuntime): Work
   if (workflow.nodes.length === 0) {
     return workflow.edges.length === 0 && workflow.groups.length === 0
       ? { ok: true }
-      : { ok: false, error: "invalid_workflow_definition", detail: "空 workflow 不能包含 edges 或 groups" };
+      : { ok: false, error: "invalid_workflow_definition", detail: "Empty workflow cannot contain edges or groups" };
   }
   const nodeIds = new Set(workflow.nodes.map((node) => node.id));
   if (nodeIds.size !== workflow.nodes.length) {
-    return { ok: false, error: "invalid_workflow_definition", detail: "workflow.nodes 存在重复 id" };
+    return { ok: false, error: "invalid_workflow_definition", detail: "workflow.nodes contains duplicate IDs" };
   }
   const groupIds = new Set(workflow.groups.map((group) => group.id));
   const entityIds = new Set<string>([...nodeIds, ...groupIds]);
@@ -31,14 +31,14 @@ export const validateWorkflowGraph = (workflow: WorkflowDefinitionRuntime): Work
   const edgeDedupe = new Set<string>();
   for (const edge of workflow.edges) {
     if (!entityIds.has(edge.from) || !entityIds.has(edge.to)) {
-      return { ok: false, error: "invalid_workflow_definition", detail: `边引用了不存在实体: ${edge.from} -> ${edge.to}` };
+      return { ok: false, error: "invalid_workflow_definition", detail: `Edge references non-existent entity: ${edge.from} -> ${edge.to}` };
     }
     if (edge.from === edge.to) {
-      return { ok: false, error: "invalid_workflow_definition", detail: `检测到自环边: ${edge.from} -> ${edge.to}` };
+      return { ok: false, error: "invalid_workflow_definition", detail: `Self-loop edge detected: ${edge.from} -> ${edge.to}` };
     }
     const key = `${edge.from}|${edge.when ?? ""}|${edge.to}`;
     if (edgeDedupe.has(key)) {
-      return { ok: false, error: "invalid_workflow_definition", detail: `检测到重复边: ${edge.from} -> ${edge.to}` };
+      return { ok: false, error: "invalid_workflow_definition", detail: `Duplicate edge detected: ${edge.from} -> ${edge.to}` };
     }
     edgeDedupe.add(key);
     outgoing.set(edge.from, [...(outgoing.get(edge.from) ?? []), edge.to]);
@@ -58,16 +58,16 @@ export const validateWorkflowGraph = (workflow: WorkflowDefinitionRuntime): Work
     if (kinds.size <= 1) continue;
     const sourceNode = workflow.nodes.find((node) => node.id === sourceId);
     if (sourceNode?.routePolicy) continue;
-    // 非分流节点仍禁止同一节点混合依赖边和路由边，避免无条件放行导致重复执行。
+    // Non-routing nodes are still forbidden from mixing dependency and route edges on the same node, to prevent unconditional passthrough leading to double execution.
     return {
       ok: false,
       error: "mixed_outgoing_edge_kinds_forbidden",
-      detail: `节点 ${sourceId} 同时存在 dependency 与 route 出边，已禁止保存`,
+      detail: `Node ${sourceId} has both dependency and route outgoing edges, which is not allowed`,
     };
   }
 
-  // Phase 2: 基于显式 scope 的跨支线边检测。
-  // computeNodeScopes + isCrossBranchEdgeByScope 使用显式 branchScopeId（缺失时从 route 边推导）。
+  // Phase 2: Cross-branch edge detection based on explicit scope.
+  // computeNodeScopes + isCrossBranchEdgeByScope use explicit branchScopeId (derived from route edges when missing).
   {
     const explicitScopes = new Map<string, string | null>();
     const mergeNodeIds = new Set<string>();
@@ -75,13 +75,13 @@ export const validateWorkflowGraph = (workflow: WorkflowDefinitionRuntime): Work
       if (node.branchScopeId != null) {
         explicitScopes.set(node.id, node.branchScopeId);
       }
-      // merge 节点（dependencyPolicy !== "all"）是显式分支汇聚点，接受来自不同 scope 的依赖边
+      // merge nodes (dependencyPolicy !== "all") are explicit branch convergence points, accepting dependency edges from different scopes
       if (node.dependencyPolicy && node.dependencyPolicy !== "all") {
         mergeNodeIds.add(node.id);
       }
     }
     const nodeScopes = computeNodeScopes(workflow.nodes, workflow.edges, explicitScopes);
-    // 对 merge 节点清除 scope，避免其被误判为跨支线（与 workflow-graph.ts 的 buildIndices 保持一致）
+    // Clear scope for merge nodes to avoid them being misjudged as cross-branch (consistent with buildIndices in workflow-graph.ts)
     for (const nodeId of mergeNodeIds) {
       nodeScopes.set(nodeId, null);
     }
@@ -93,7 +93,7 @@ export const validateWorkflowGraph = (workflow: WorkflowDefinitionRuntime): Work
       return {
         ok: false,
         error: "cross_branch_edge_forbidden",
-        detail: `禁止跨支线无条件边: ${scopeCrossEdges[0].from} -> ${scopeCrossEdges[0].to}（from 分支 ${nodeScopes.get(scopeCrossEdges[0].from) ?? "main"} -> to 分支 ${nodeScopes.get(scopeCrossEdges[0].to) ?? "main"}，跨支线依赖边需要显式 merge 节点）`,
+        detail: `Cross-branch unconditional edge is not allowed: ${scopeCrossEdges[0].from} -> ${scopeCrossEdges[0].to} (from branch ${nodeScopes.get(scopeCrossEdges[0].from) ?? "main"} -> to branch ${nodeScopes.get(scopeCrossEdges[0].to) ?? "main"}, cross-branch dependency edges require an explicit merge node)`,
       };
     }
   }
@@ -102,13 +102,13 @@ export const validateWorkflowGraph = (workflow: WorkflowDefinitionRuntime): Work
   const explicitGroupById = new Map(workflow.groups.map((group) => [group.id, group]));
   for (const group of workflow.groups) {
     if (uniqueGroupIds.has(group.id)) {
-      return { ok: false, error: "invalid_workflow_definition", detail: `并行组 id 重复: ${group.id}` };
+      return { ok: false, error: "invalid_workflow_definition", detail: `Duplicate parallel group ID: ${group.id}` };
     }
     uniqueGroupIds.add(group.id);
 
     for (const member of group.members) {
       if (!nodeIds.has(member)) {
-        return { ok: false, error: "invalid_workflow_definition", detail: `并行组 ${group.id} 引用了不存在成员 ${member}` };
+        return { ok: false, error: "invalid_workflow_definition", detail: `Parallel group ${group.id} references non-existent member ${member}` };
       }
     }
   }
@@ -117,9 +117,9 @@ export const validateWorkflowGraph = (workflow: WorkflowDefinitionRuntime): Work
     const groupId = node.parallelGroupId?.trim();
     if (!groupId) continue;
     const group = explicitGroupById.get(groupId);
-    if (!group) return { ok: false, error: "invalid_workflow_definition", detail: `节点 ${node.id} 引用了不存在并行组 ${groupId}` };
+    if (!group) return { ok: false, error: "invalid_workflow_definition", detail: `Node ${node.id} references non-existent parallel group ${groupId}` };
     if (!group.members.includes(node.id)) {
-      return { ok: false, error: "invalid_workflow_definition", detail: `节点 ${node.id} 未加入其声明的并行组 ${groupId}` };
+      return { ok: false, error: "invalid_workflow_definition", detail: `Node ${node.id} is not a member of its declared parallel group ${groupId}` };
     }
   }
 
@@ -135,19 +135,19 @@ export const validateWorkflowGraph = (workflow: WorkflowDefinitionRuntime): Work
       if (edge.when !== null) continue;
       if (!memberSet.has(edge.to)) continue;
       if (edge.to === group.id) continue;
-      if (edge.from === group.id) return { ok: false, error: "invalid_workflow_definition", detail: `并行组 ${group.id} 不能直接连入成员节点` };
-      if (memberSet.has(edge.from)) return { ok: false, error: "invalid_workflow_definition", detail: `并行组 ${group.id} 成员之间禁止直接依赖` };
-      if (groupIncoming.has(edge.from)) return { ok: false, error: "invalid_workflow_definition", detail: `并行组 ${group.id} 的入口节点不能直连成员` };
+      if (edge.from === group.id) return { ok: false, error: "invalid_workflow_definition", detail: `Parallel group ${group.id} cannot directly connect to member nodes` };
+      if (memberSet.has(edge.from)) return { ok: false, error: "invalid_workflow_definition", detail: `Direct dependencies between members of parallel group ${group.id} are not allowed` };
+      if (groupIncoming.has(edge.from)) return { ok: false, error: "invalid_workflow_definition", detail: `The entry node of parallel group ${group.id} cannot directly connect to members` };
     }
   }
 
   for (const group of workflow.groups) {
-    // joinPolicy 仅支持 "all"；any/quorum 运行时未实现，保存时显式拒绝
+    // joinPolicy only supports "all"; any/quorum are not implemented at runtime, explicitly reject on save
     if (group.joinPolicy !== "all") {
       return {
         ok: false,
         error: "join_policy_not_supported",
-        detail: `并行组 ${group.id} 的 joinPolicy "${group.joinPolicy}" 未支持，当前仅支持 "all"`,
+        detail: `Parallel group ${group.id} has unsupported joinPolicy "${group.joinPolicy}", only "all" is currently supported`,
       };
     }
   }
@@ -156,24 +156,24 @@ export const validateWorkflowGraph = (workflow: WorkflowDefinitionRuntime): Work
     if (node.routePolicy) {
       const { allowed } = node.routePolicy;
       if (allowed.length < 2 || allowed.length > 5) {
-        return { ok: false, error: "invalid_workflow_definition", detail: `节点 ${node.id} 的路由集合长度非法` };
+        return { ok: false, error: "invalid_workflow_definition", detail: `Node ${node.id} has an invalid route set size` };
       }
       if (!allowed.includes(MAINLINE_ROUTE_VALUE) || !allowed.includes(DEFAULT_BRANCH_ROUTE_VALUE)) {
-        return { ok: false, error: "invalid_workflow_definition", detail: `节点 ${node.id} 开启分流后必须包含 yes 和 no` };
+        return { ok: false, error: "invalid_workflow_definition", detail: `Node ${node.id} must include "yes" and "no" routes when routing is enabled` };
       }
       const outgoingEdges = edgesBySource.get(node.id) ?? [];
       const dependencyEdges = outgoingEdges.filter((edge) => edge.when === null);
       if (dependencyEdges.length > 1) {
-        return { ok: false, error: "invalid_workflow_definition", detail: `节点 ${node.id} 的 yes 主线依赖边最多只能有 1 条` };
+        return { ok: false, error: "invalid_workflow_definition", detail: `Node ${node.id} can have at most 1 "yes" mainline dependency edge` };
       }
       const routeEdgeCounts = new Map<string, number>();
       for (const edge of outgoingEdges.filter((item) => item.when !== null)) {
         routeEdgeCounts.set(edge.when ?? "", (routeEdgeCounts.get(edge.when ?? "") ?? 0) + 1);
         if (edge.when === MAINLINE_ROUTE_VALUE) {
-          return { ok: false, error: "invalid_workflow_definition", detail: `节点 ${node.id} 的 yes 不能保存为路由边` };
+          return { ok: false, error: "invalid_workflow_definition", detail: `Node ${node.id} cannot save "yes" as a route edge` };
         }
         if (!allowed.includes(edge.when ?? "")) {
-          return { ok: false, error: "invalid_workflow_definition", detail: `节点 ${node.id} 存在未声明的路由边: ${edge.when}` };
+          return { ok: false, error: "invalid_workflow_definition", detail: `Node ${node.id} has an undeclared route edge: ${edge.when}` };
         }
         const targetNode = workflow.nodes.find((candidate) => candidate.id === edge.to);
         const targetGroup = workflow.groups.find((group) => group.id === edge.to);
@@ -182,17 +182,17 @@ export const validateWorkflowGraph = (workflow: WorkflowDefinitionRuntime): Work
           : [];
         const isBranchTarget = targetNode?.lane === "branch" || (targetGroupMembers.length > 0 && targetGroupMembers.every((member) => member?.lane === "branch"));
         if (!isBranchTarget) {
-          return { ok: false, error: "invalid_workflow_definition", detail: `节点 ${node.id} 的路由 ${edge.when} 只能指向支线节点或支线并行组` };
+          return { ok: false, error: "invalid_workflow_definition", detail: `Node ${node.id} route "${edge.when}" can only target branch nodes or branch parallel groups` };
         }
       }
       for (const route of allowed.filter((item) => item !== MAINLINE_ROUTE_VALUE)) {
         if ((routeEdgeCounts.get(route) ?? 0) !== 1) {
-          return { ok: false, error: "invalid_workflow_definition", detail: `节点 ${node.id} 的路由 ${route} 必须配置且只能配置 1 个支线目标` };
+          return { ok: false, error: "invalid_workflow_definition", detail: `Node ${node.id} route "${route}" must have exactly 1 branch target` };
         }
       }
     }
     if (node.dependencyPolicy !== undefined && node.dependencyPolicy !== "all" && node.dependencyPolicy !== "any") {
-      return { ok: false, error: "invalid_workflow_definition", detail: `节点 ${node.id} 的 dependencyPolicy 非法` };
+      return { ok: false, error: "invalid_workflow_definition", detail: `Node ${node.id} has an invalid dependencyPolicy` };
     }
   }
 
@@ -211,7 +211,7 @@ export const validateWorkflowGraph = (workflow: WorkflowDefinitionRuntime): Work
   }
 
   if (visited !== entityIds.size) {
-    return { ok: false, error: "invalid_workflow_definition", detail: "工作流存在环路，无法拓扑排序" };
+    return { ok: false, error: "invalid_workflow_definition", detail: "Workflow contains a cycle, cannot perform topological sort" };
   }
 
   return { ok: true };
@@ -221,25 +221,25 @@ export const validateWorkflowOutputConfig = (workflow: WorkflowDefinitionRuntime
   const output = workflow.output ?? { mode: "mainline_last" as const, nodeId: null };
   if (workflow.nodes.length === 0) {
     return output.mode === "explicit" && output.nodeId
-      ? { ok: false, error: "invalid_workflow_output_config", detail: "空 workflow 不能指定输出节点" }
+      ? { ok: false, error: "invalid_workflow_output_config", detail: "Empty workflow cannot specify an output node" }
       : { ok: true };
   }
   if (output.mode === "explicit") {
     if (!output.nodeId) {
-      return { ok: false, error: "invalid_workflow_output_config", detail: "mode=explicit 时 nodeId 必填" };
+      return { ok: false, error: "invalid_workflow_output_config", detail: "nodeId is required when mode=explicit" };
     }
     const node = workflow.nodes.find((n) => n.id === output.nodeId);
     if (!node) {
-      return { ok: false, error: "invalid_workflow_output_config", detail: `输出节点 ${output.nodeId} 不存在` };
+      return { ok: false, error: "invalid_workflow_output_config", detail: `Output node ${output.nodeId} does not exist` };
     }
     if (!node.enabled) {
-      return { ok: false, error: "invalid_workflow_output_config", detail: `输出节点 ${output.nodeId} 必须 enabled` };
+      return { ok: false, error: "invalid_workflow_output_config", detail: `Output node ${output.nodeId} must be enabled` };
     }
     if (node.lane !== "main") {
-      return { ok: false, error: "invalid_workflow_output_config", detail: `输出节点 ${output.nodeId} 必须是主线节点` };
+      return { ok: false, error: "invalid_workflow_output_config", detail: `Output node ${output.nodeId} must be a mainline node` };
     }
     if (node.branchScopeId) {
-      return { ok: false, error: "invalid_workflow_output_config", detail: `输出节点 ${output.nodeId} 不能属于支线 scope` };
+      return { ok: false, error: "invalid_workflow_output_config", detail: `Output node ${output.nodeId} cannot belong to a branch scope` };
     }
     return { ok: true };
   }
@@ -252,7 +252,7 @@ export const validateWorkflowOutputConfig = (workflow: WorkflowDefinitionRuntime
   );
 
   if (mainlineNodeIds.size === 0) {
-    return { ok: false, error: "invalid_workflow_output_config", detail: "没有可用的主线节点" };
+    return { ok: false, error: "invalid_workflow_output_config", detail: "No available mainline nodes" };
   }
 
   // Build full adjacency (all nodes, all edges) for reachability DFS
@@ -318,13 +318,13 @@ export const validateWorkflowOutputConfig = (workflow: WorkflowDefinitionRuntime
     : sinkNodes.filter((id) => !orphanIds.has(id)); // exclude orphans
 
   if (effectiveSinks.length === 0) {
-    return { ok: false, error: "invalid_workflow_output_config", detail: "无法推导唯一主线 sink 节点" };
+    return { ok: false, error: "invalid_workflow_output_config", detail: "Cannot derive a unique mainline sink node" };
   }
   if (effectiveSinks.length > 1) {
     return {
       ok: false,
       error: "invalid_workflow_output_config",
-      detail: `存在多个主线 sink 节点: ${effectiveSinks.join(", ")}，请切换到 mode=explicit 并指定 nodeId`,
+      detail: `Multiple mainline sink nodes found: ${effectiveSinks.join(", ")}, switch to mode=explicit and specify nodeId`,
     };
   }
   return { ok: true };
