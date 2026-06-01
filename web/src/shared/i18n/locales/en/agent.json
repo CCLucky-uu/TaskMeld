@@ -40,5 +40,9 @@
     "confirmCreate": "Create Agent",
     "confirmUpdate": "Update Agent",
     "confirmDelete": "Delete Agent"
+  },
+  "error": {
+    "nameRequired": "Agent name is required",
+    "atLeastOne": "At least one field must be provided"
   }
 }

@@ -117,7 +117,7 @@ export const agentUpdateCommand: CliCommandHandler = async (input, ctx) => {
 
 export const agentDeleteCommand: CliCommandHandler = async (input, ctx) => {
   const agentId = assertRequiredArg(input.args[0], "agentId");
-  const deleteFiles = input.flags["delete-files"] === true || input.flags.deleteFiles === true;
+  const deleteFiles = input.flags["delete-files"] === true;
   return ctx.app.agentService.deleteAgent({ agentId, deleteFiles });
 };
 

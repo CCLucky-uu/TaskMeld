@@ -1,4 +1,5 @@
 import type { PipelineRegistry } from "../app/pipeline-registry";
+import { resolveDefaultWorkspacePath } from "../app/user-config";
 import type { NormalizedSession } from "../utils/session";
 import { ensureGatewayReadyForReadonly } from "./gateway-read-helpers";
 
@@ -104,19 +105,9 @@ export const createAgentService = (app: PipelineRegistry): AgentService => {
     });
   };
 
-  const resolveDefaultWorkspace = async (name: string): Promise<string> => {
-    // Priority: OPENCLAW_WORKSPACE_ROOT env → ~/.taskmeld/config.json workspaceRoot
-    try {
-      const { resolveWorkspaceRoot } = await import("../app/user-config.js");
-      const root = await resolveWorkspaceRoot();
-      if (root) return `${root}/workspace-${name}`;
-    } catch { /* fall through */ }
-    return `workspace-${name}`;
-  };
-
   const createAgent = async (params: AgentCreateParams): Promise<unknown> => {
     await ensureGatewayReadyForReadonly(app);
-    const workspace = params.workspace?.trim() || await resolveDefaultWorkspace(params.name);
+    const workspace = params.workspace?.trim() || await resolveDefaultWorkspacePath(params.name);
     const payload = await app.gateway.client.sendReq("agents.create", {
       name: params.name,
       workspace,

@@ -320,7 +320,7 @@ export function ControlPlanePage({
   };
   const submitEditAgent = async () => {
     if (!editAgentName.trim() && !editAgentWorkspace.trim()) {
-      setEditAgentError("At least one field must be provided");
+      setEditAgentError(t("agent:error.atLeastOne"));
       return;
     }
     setIsUpdatingAgent(true);
@@ -358,7 +358,7 @@ export function ControlPlanePage({
   };
   const submitCreateAgent = async () => {
     if (!createAgentName.trim()) {
-      setCreateAgentError(t("agent:fieldLabel.agentName") + " is required");
+      setCreateAgentError(t("agent:error.nameRequired"));
       return;
     }
     setIsCreatingAgent(true);
@@ -491,6 +491,24 @@ export function ControlPlanePage({
         setWorkflowJsonModalOpen(false);
         return;
       }
+      if (createAgentModalOpen) {
+        blurActiveElement();
+        setCreateAgentModalOpen(false);
+        resetCreateAgentDraft();
+        return;
+      }
+      if (editAgentModalOpen) {
+        blurActiveElement();
+        setEditAgentModalOpen(false);
+        setEditAgentError("");
+        return;
+      }
+      if (deleteAgentModalOpen) {
+        blurActiveElement();
+        setDeleteAgentModalOpen(false);
+        setDeleteAgentError("");
+        return;
+      }
       if (pluginModalPipelineId) {
         blurActiveElement();
         setPluginModalPipelineId(null);
@@ -499,6 +517,9 @@ export function ControlPlanePage({
     window.addEventListener("keydown", handleKeydown);
     return () => window.removeEventListener("keydown", handleKeydown);
   }, [
+    createAgentModalOpen,
+    editAgentModalOpen,
+    deleteAgentModalOpen,
     createPipelineModalOpen,
     renamePipelineTargetId,
     deletePipelineTargetId,

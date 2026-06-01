@@ -1,6 +1,6 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { access, mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 
 export type UserConfig = {
   gatewayUrl?: string;
@@ -46,4 +46,9 @@ export const resolveWorkspaceRoot = async (): Promise<string | null> => {
   }
   const userConfig = await readUserConfig();
   return userConfig.workspaceRoot?.trim() || null;
+};
+
+export const resolveDefaultWorkspacePath = async (name: string): Promise<string> => {
+  const root = await resolveWorkspaceRoot();
+  return root ? `${root}/workspace-${name}` : `workspace-${name}`;
 };

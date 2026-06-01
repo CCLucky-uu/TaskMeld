@@ -40,5 +40,9 @@
     "confirmCreate": "确认创建",
     "confirmUpdate": "确认更新",
     "confirmDelete": "确认删除"
+  },
+  "error": {
+    "nameRequired": "智能体名称不能为空",
+    "atLeastOne": "至少需要提供一个字段"
   }
 }

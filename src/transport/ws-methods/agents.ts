@@ -1,5 +1,6 @@
 import type { WsMethodRegistry } from "./types";
 import { asRecord, formatError } from "./utils";
+import { resolveDefaultWorkspacePath } from "../../app/user-config";
 
 const toEpochMs = (value: unknown): number | null => {
   if (typeof value === "number" && Number.isFinite(value)) return value;
@@ -113,15 +114,10 @@ export const registerAgentWsMethods = (registry: WsMethodRegistry): void => {
     }
   });
 
-  registry.register("agent.defaultWorkspace", async (params, ctx) => {
+  registry.register("agent.defaultWorkspace", async (params, _ctx) => {
     try {
       const name = typeof params.name === "string" ? params.name.trim() : "";
-      let workspace = `workspace-${name}`;
-      try {
-        const { resolveWorkspaceRoot } = await import("../../app/user-config.js");
-        const root = await resolveWorkspaceRoot();
-        if (root) workspace = `${root}/workspace-${name}`;
-      } catch { /* fall through */ }
+      const workspace = await resolveDefaultWorkspacePath(name);
       return { ok: true, payload: { workspace } };
     } catch (error) {
       return { ok: false, error: formatError(error) };
@@ -136,12 +132,7 @@ export const registerAgentWsMethods = (registry: WsMethodRegistry): void => {
       if (typeof params.workspace === "string" && params.workspace.trim()) {
         workspace = params.workspace.trim();
       } else {
-        workspace = `workspace-${name}`;
-        try {
-          const { resolveWorkspaceRoot } = await import("../../app/user-config.js");
-          const root = await resolveWorkspaceRoot();
-          if (root) workspace = `${root}/workspace-${name}`;
-        } catch { /* fall through */ }
+        workspace = await resolveDefaultWorkspacePath(name);
       }
       const payload = await ctx.services.client.sendReq(
         "agents.create", { name, workspace },

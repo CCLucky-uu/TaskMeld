@@ -37,7 +37,9 @@ export type agentKey =
   | "deleting"
   | "action.confirmCreate"
   | "action.confirmUpdate"
-  | "action.confirmDelete";
+  | "action.confirmDelete"
+  | "error.nameRequired"
+  | "error.atLeastOne";
 
 export type artifactKey =
   | "artifactDirectory"
@@ -597,6 +599,8 @@ export type TranslationKey =
   | "agent:action.confirmCreate"
   | "agent:action.confirmUpdate"
   | "agent:action.confirmDelete"
+  | "agent:error.nameRequired"
+  | "agent:error.atLeastOne"
   | "artifact:artifactDirectory"
   | "artifact:loading"
   | "artifact:loadFailed"
