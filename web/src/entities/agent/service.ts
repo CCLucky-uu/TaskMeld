@@ -82,3 +82,37 @@ export async function setAgentCoreFileContent(params: {
   const data = await wsRequest<AgentFileGetResponse>("agent.files.set", { agentId: params.agentId, name: params.name, content: params.content });
   return extractFileContent(data, params.name);
 }
+
+export async function createAgent(params: {
+  name: string;
+  workspace?: string;
+}): Promise<unknown> {
+  return wsRequest("agent.create", { name: params.name, workspace: params.workspace });
+}
+
+export async function updateAgent(params: {
+  agentId: string;
+  name?: string;
+  workspace?: string;
+}): Promise<unknown> {
+  return wsRequest("agent.update", { agentId: params.agentId, name: params.name, workspace: params.workspace });
+}
+
+export async function deleteAgent(params: {
+  agentId: string;
+  deleteFiles?: boolean;
+}): Promise<unknown> {
+  return wsRequest("agent.delete", { agentId: params.agentId, deleteFiles: params.deleteFiles });
+}
+
+export async function resolveDefaultWorkspace(name: string): Promise<string> {
+  try {
+    const data = await wsRequest<{ workspace?: string }>("agent.defaultWorkspace", { name });
+    if (typeof data?.workspace === "string" && data.workspace.trim()) {
+      return data.workspace.trim();
+    }
+  } catch {
+    // Fall through to default.
+  }
+  return `workspace-${name}`;
+}

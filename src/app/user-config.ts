@@ -5,6 +5,7 @@ import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 export type UserConfig = {
   gatewayUrl?: string;
   gatewayToken?: string;
+  workspaceRoot?: string;
 };
 
 const userConfigDir = join(homedir(), ".taskmeld");
@@ -17,6 +18,7 @@ export const readUserConfig = async (): Promise<UserConfig> => {
     return {
       gatewayUrl: typeof parsed.gatewayUrl === "string" ? parsed.gatewayUrl.trim() : undefined,
       gatewayToken: typeof parsed.gatewayToken === "string" ? parsed.gatewayToken.trim() : undefined,
+      workspaceRoot: typeof parsed.workspaceRoot === "string" ? parsed.workspaceRoot.trim() : undefined,
     };
   } catch {
     return {};
@@ -36,4 +38,12 @@ export const resolveGatewayConfig = async (): Promise<{ url: string | null; toke
     url: process.env.OPENCLAW_GATEWAY_URL?.trim() || userConfig.gatewayUrl || null,
     token: process.env.OPENCLAW_GATEWAY_TOKEN?.trim() || userConfig.gatewayToken || null,
   };
+};
+
+export const resolveWorkspaceRoot = async (): Promise<string | null> => {
+  if (process.env.OPENCLAW_WORKSPACE_ROOT?.trim()) {
+    return process.env.OPENCLAW_WORKSPACE_ROOT.trim();
+  }
+  const userConfig = await readUserConfig();
+  return userConfig.workspaceRoot?.trim() || null;
 };

@@ -15,5 +15,30 @@
   "noEvent": "暂无相关事件",
   "viewOutput": "查看输出",
   "openSession": "打开会话",
-  "noMatch": "未匹配到智能体"
+  "noMatch": "未匹配到智能体",
+  "editAgent": "编辑",
+  "deleteAgent": "删除",
+  "createAgent": "新增智能体",
+  "createAgentTitle": "创建智能体",
+  "editAgentTitle": "编辑智能体",
+  "deleteAgentTitle": "删除智能体",
+  "deleteAgentConfirm": "将删除此智能体。",
+  "deleteAgentNote": "可同时删除工作区文件。",
+  "deleteFiles": "删除工作区文件",
+  "fieldLabel": {
+    "agentName": "智能体 ID",
+    "agentWorkspace": "工作区路径"
+  },
+  "placeholder": {
+    "agentName": "例如 my-agent",
+    "agentWorkspace": "从已有智能体自动检测生成"
+  },
+  "creating": "创建中...",
+  "updating": "更新中...",
+  "deleting": "删除中...",
+  "action": {
+    "confirmCreate": "确认创建",
+    "confirmUpdate": "确认更新",
+    "confirmDelete": "确认删除"
+  }
 }

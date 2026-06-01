@@ -163,7 +163,7 @@ export function ControlPlanePage({
   onNavigateHome,
   focusPipelineId,
 }: ControlPlanePageProps) {
-  const { t } = useTranslation(["modal", "common", "nav", "pipeline"]);
+  const { t } = useTranslation(["modal", "common", "nav", "pipeline", "agent"]);
   const translatedStatusLabel = useMemo(() => Object.fromEntries(
     Object.entries(statusLabel).map(([key, val]) => [key, t(`common:status.${val}`)]),
   ), [t]);
@@ -221,6 +221,23 @@ export function ControlPlanePage({
   const [renamePipelineError, setRenamePipelineError] = useState("");
   const [deletePipelineTargetId, setDeletePipelineTargetId] = useState<string | null>(null);
   const [deletePipelineError, setDeletePipelineError] = useState("");
+  const [createAgentModalOpen, setCreateAgentModalOpen] = useState(false);
+  const [createAgentName, setCreateAgentName] = useState("");
+  const [createAgentWorkspace, setCreateAgentWorkspace] = useState("");
+  const [createAgentWorkspaceRoot, setCreateAgentWorkspaceRoot] = useState("");
+  const [createAgentError, setCreateAgentError] = useState("");
+  const [isCreatingAgent, setIsCreatingAgent] = useState(false);
+  const [editAgentModalOpen, setEditAgentModalOpen] = useState(false);
+  const [editAgentId, setEditAgentId] = useState("");
+  const [editAgentName, setEditAgentName] = useState("");
+  const [editAgentWorkspace, setEditAgentWorkspace] = useState("");
+  const [editAgentError, setEditAgentError] = useState("");
+  const [isUpdatingAgent, setIsUpdatingAgent] = useState(false);
+  const [deleteAgentModalOpen, setDeleteAgentModalOpen] = useState(false);
+  const [deleteAgentId, setDeleteAgentId] = useState("");
+  const [deleteAgentFiles, setDeleteAgentFiles] = useState(false);
+  const [deleteAgentError, setDeleteAgentError] = useState("");
+  const [isDeletingAgent, setIsDeletingAgent] = useState(false);
   const [dispatchBoardOpen, setDispatchBoardOpen] = useState(false);
   const renamePipelineTarget = vm.pipelineList.find((item) => item.id === renamePipelineTargetId) ?? null;
   const deletePipelineTarget = vm.pipelineList.find((item) => item.id === deletePipelineTargetId) ?? null;
@@ -283,6 +300,12 @@ export function ControlPlanePage({
       setDetailCollapsed(true);
     }
   };
+  const resetCreateAgentDraft = () => {
+    setCreateAgentName("");
+    setCreateAgentWorkspace("");
+    setCreateAgentWorkspaceRoot("");
+    setCreateAgentError("");
+  };
   const resetCreatePipelineDraft = () => {
     setCreatePipelineId("");
     setCreatePipelineTitle("");
@@ -294,6 +317,67 @@ export function ControlPlanePage({
     setRenamePipelineError("");
     setRenamePipelineTargetId(null);
     setRenamePipelineTitle("");
+  };
+  const submitEditAgent = async () => {
+    if (!editAgentName.trim() && !editAgentWorkspace.trim()) {
+      setEditAgentError("At least one field must be provided");
+      return;
+    }
+    setIsUpdatingAgent(true);
+    setEditAgentError("");
+    try {
+      const { updateAgent } = await import("../../../entities/agent/service");
+      await updateAgent({
+        agentId: editAgentId,
+        name: editAgentName.trim() || undefined,
+        workspace: editAgentWorkspace.trim() || undefined,
+      });
+      blurActiveElement();
+      setEditAgentModalOpen(false);
+      void vm.refreshAgents();
+    } catch (err) {
+      setEditAgentError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      setIsUpdatingAgent(false);
+    }
+  };
+  const submitDeleteAgent = async () => {
+    setIsDeletingAgent(true);
+    setDeleteAgentError("");
+    try {
+      const { deleteAgent } = await import("../../../entities/agent/service");
+      await deleteAgent({ agentId: deleteAgentId, deleteFiles: deleteAgentFiles });
+      blurActiveElement();
+      setDeleteAgentModalOpen(false);
+      void vm.refreshAgents();
+    } catch (err) {
+      setDeleteAgentError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      setIsDeletingAgent(false);
+    }
+  };
+  const submitCreateAgent = async () => {
+    if (!createAgentName.trim()) {
+      setCreateAgentError(t("agent:fieldLabel.agentName") + " is required");
+      return;
+    }
+    setIsCreatingAgent(true);
+    setCreateAgentError("");
+    try {
+      const { createAgent } = await import("../../../entities/agent/service");
+      await createAgent({
+        name: createAgentName.trim(),
+        workspace: createAgentWorkspace.trim() || undefined,
+      });
+      blurActiveElement();
+      setCreateAgentModalOpen(false);
+      resetCreateAgentDraft();
+      void vm.refreshAgents();
+    } catch (err) {
+      setCreateAgentError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      setIsCreatingAgent(false);
+    }
   };
   const submitCreatePipeline = async () => {
     const result = await vm.createPipeline({
@@ -630,6 +714,35 @@ export function ControlPlanePage({
               agents={vm.agentCards}
               onOpenAgentSession={vm.openSessionModalForAgent}
               onOpenAgentOutput={(agentId) => vm.setAgentOutputModalAgentId(agentId)}
+              onCreateAgent={() => {
+                setCreateAgentName("");
+                setCreateAgentWorkspace("Detecting...");
+                setCreateAgentWorkspaceRoot("");
+                setCreateAgentError("");
+                setCreateAgentModalOpen(true);
+                import("../../../entities/agent/service").then(({ resolveDefaultWorkspace }) => {
+                  resolveDefaultWorkspace("").then((prefix) => {
+                    const root = prefix.endsWith("workspace-") ? prefix.slice(0, -"workspace-".length) : "";
+                    setCreateAgentWorkspaceRoot(root);
+                    setCreateAgentWorkspace(prefix);
+                  }).catch(() => {
+                    setCreateAgentWorkspace("workspace-");
+                  });
+                });
+              }}
+              onEditAgent={(agentId) => {
+                setEditAgentId(agentId);
+                setEditAgentName("");
+                setEditAgentWorkspace("");
+                setEditAgentError("");
+                setEditAgentModalOpen(true);
+              }}
+              onDeleteAgent={(agentId) => {
+                setDeleteAgentId(agentId);
+                setDeleteAgentFiles(false);
+                setDeleteAgentError("");
+                setDeleteAgentModalOpen(true);
+              }}
             />
           ) : effectivePageRoute === "artifacts" ? (
             <ArtifactBoard
@@ -916,6 +1029,192 @@ export function ControlPlanePage({
               disabled={!deletePipelineTargetId || vm.isDeletingPipeline}
             >
               {vm.isDeletingPipeline ? t("modal:deleting") : t("modal:action.confirmDeletePipeline")}
+            </button>
+          </div>
+      </ModalLayer>
+
+      <ModalLayer
+        open={createAgentModalOpen}
+        onClose={() => {
+          blurActiveElement();
+          setCreateAgentModalOpen(false);
+          resetCreateAgentDraft();
+        }}
+        panelClassName={smallModalPanelClassName}
+        ariaLabel={t("agent:createAgentTitle")}
+      >
+          <div className={panelHeaderClassName}>
+            <h2>{t("agent:createAgentTitle")}</h2>
+            <button
+              className={drawerCloseClassName}
+              type="button"
+              onClick={() => {
+                blurActiveElement();
+                setCreateAgentModalOpen(false);
+                resetCreateAgentDraft();
+              }}
+              aria-label={t("modal:close")}
+            >
+              <CloseIcon />
+            </button>
+          </div>
+          <div className={fieldClassName}>
+            <label className={fieldLabelClassName}>{t("agent:fieldLabel.agentName")}</label>
+            <input
+              className={controlSingleLineMonoClassName}
+              value={createAgentName}
+              onChange={(event) => {
+                const name = event.target.value;
+                setCreateAgentName(name);
+                // Auto-sync workspace when root is known and user hasn't manually edited workspace
+                if (createAgentWorkspaceRoot && createAgentWorkspace === `${createAgentWorkspaceRoot}workspace-${createAgentName}`) {
+                  setCreateAgentWorkspace(`${createAgentWorkspaceRoot}workspace-${name}`);
+                }
+              }}
+              onFocus={(event) => {
+                // If workspace still shows the bare prefix, append name on focus
+                if (createAgentWorkspaceRoot && createAgentWorkspace === `${createAgentWorkspaceRoot}workspace-` && createAgentName) {
+                  setCreateAgentWorkspace(`${createAgentWorkspaceRoot}workspace-${createAgentName}`);
+                }
+              }}
+              placeholder={t("agent:placeholder.agentName")}
+            />
+          </div>
+          <div className={fieldClassName}>
+            <label className={fieldLabelClassName}>{t("agent:fieldLabel.agentWorkspace")}</label>
+            <input
+              className={controlSingleLineMonoClassName}
+              value={createAgentWorkspace}
+              onChange={(event) => setCreateAgentWorkspace(event.target.value)}
+              placeholder={t("agent:placeholder.agentWorkspace")}
+            />
+          </div>
+          {createAgentError ? (
+            <p className={`${modalSublineClassName} text-(--bad)`}>{createAgentError}</p>
+          ) : null}
+          <div className={actionRowClassName}>
+            <button
+              className={actionButtonClassName}
+              type="button"
+              onClick={() => void submitCreateAgent()}
+              disabled={isCreatingAgent || !createAgentName.trim()}
+            >
+              {isCreatingAgent ? t("agent:creating") : t("agent:action.confirmCreate")}
+            </button>
+          </div>
+      </ModalLayer>
+
+      <ModalLayer
+        open={editAgentModalOpen}
+        onClose={() => {
+          blurActiveElement();
+          setEditAgentModalOpen(false);
+          setEditAgentError("");
+        }}
+        panelClassName={smallModalPanelClassName}
+        ariaLabel={t("agent:editAgentTitle")}
+      >
+          <div className={panelHeaderClassName}>
+            <h2>{t("agent:editAgentTitle")}</h2>
+            <button
+              className={drawerCloseClassName}
+              type="button"
+              onClick={() => {
+                blurActiveElement();
+                setEditAgentModalOpen(false);
+                setEditAgentError("");
+              }}
+              aria-label={t("modal:close")}
+            >
+              <CloseIcon />
+            </button>
+          </div>
+          <p className={modalSublineClassName}>
+            Agent ID: <code>{editAgentId}</code>
+          </p>
+          <div className={fieldClassName}>
+            <label className={fieldLabelClassName}>{t("agent:fieldLabel.agentName")}</label>
+            <input
+              className={controlSingleLineMonoClassName}
+              value={editAgentName}
+              onChange={(event) => setEditAgentName(event.target.value)}
+              placeholder={t("agent:placeholder.agentName")}
+            />
+          </div>
+          <div className={fieldClassName}>
+            <label className={fieldLabelClassName}>{t("agent:fieldLabel.agentWorkspace")}</label>
+            <input
+              className={controlSingleLineMonoClassName}
+              value={editAgentWorkspace}
+              onChange={(event) => setEditAgentWorkspace(event.target.value)}
+              placeholder={t("agent:placeholder.agentWorkspace")}
+            />
+          </div>
+          {editAgentError ? (
+            <p className={`${modalSublineClassName} text-(--bad)`}>{editAgentError}</p>
+          ) : null}
+          <div className={actionRowClassName}>
+            <button
+              className={actionButtonClassName}
+              type="button"
+              onClick={() => void submitEditAgent()}
+              disabled={isUpdatingAgent || (!editAgentName.trim() && !editAgentWorkspace.trim())}
+            >
+              {isUpdatingAgent ? t("agent:updating") : t("agent:action.confirmUpdate")}
+            </button>
+          </div>
+      </ModalLayer>
+
+      <ModalLayer
+        open={deleteAgentModalOpen}
+        onClose={() => {
+          blurActiveElement();
+          setDeleteAgentModalOpen(false);
+          setDeleteAgentError("");
+        }}
+        panelClassName={smallModalPanelClassName}
+        ariaLabel={t("agent:deleteAgentTitle")}
+      >
+          <div className={panelHeaderClassName}>
+            <h2>{t("agent:deleteAgentTitle")}</h2>
+            <button
+              className={drawerCloseClassName}
+              type="button"
+              onClick={() => {
+                blurActiveElement();
+                setDeleteAgentModalOpen(false);
+                setDeleteAgentError("");
+              }}
+              aria-label={t("modal:close")}
+            >
+              <CloseIcon />
+            </button>
+          </div>
+          <p className={modalSublineClassName}>
+            {t("agent:deleteAgentConfirm")} <code>{deleteAgentId}</code>.
+          </p>
+          <p className={modalSublineClassName}>{t("agent:deleteAgentNote")}</p>
+          <div className={fieldClassName}>
+            <label className="flex items-center gap-2 text-xs text-[var(--muted)] cursor-pointer">
+              <input
+                type="checkbox"
+                checked={deleteAgentFiles}
+                onChange={(event) => setDeleteAgentFiles(event.target.checked)}
+              />
+              {t("agent:deleteFiles")}
+            </label>
+          </div>
+          {deleteAgentError ? (
+            <p className={`${modalSublineClassName} text-(--bad)`}>{deleteAgentError}</p>
+          ) : null}
+          <div className={actionRowClassName}>
+            <button
+              className={actionButtonClassName}
+              type="button"
+              onClick={() => void submitDeleteAgent()}
+              disabled={isDeletingAgent}
+            >
+              {isDeletingAgent ? t("agent:deleting") : t("agent:action.confirmDelete")}
             </button>
           </div>
       </ModalLayer>

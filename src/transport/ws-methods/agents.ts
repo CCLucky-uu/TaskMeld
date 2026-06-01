@@ -113,6 +113,76 @@ export const registerAgentWsMethods = (registry: WsMethodRegistry): void => {
     }
   });
 
+  registry.register("agent.defaultWorkspace", async (params, ctx) => {
+    try {
+      const name = typeof params.name === "string" ? params.name.trim() : "";
+      let workspace = `workspace-${name}`;
+      try {
+        const { resolveWorkspaceRoot } = await import("../../app/user-config.js");
+        const root = await resolveWorkspaceRoot();
+        if (root) workspace = `${root}/workspace-${name}`;
+      } catch { /* fall through */ }
+      return { ok: true, payload: { workspace } };
+    } catch (error) {
+      return { ok: false, error: formatError(error) };
+    }
+  });
+
+  registry.register("agent.create", async (params, ctx) => {
+    try {
+      const name = typeof params.name === "string" ? params.name.trim() : "";
+      if (!name) return { ok: false, error: "invalid_agent_name" };
+      let workspace: string;
+      if (typeof params.workspace === "string" && params.workspace.trim()) {
+        workspace = params.workspace.trim();
+      } else {
+        workspace = `workspace-${name}`;
+        try {
+          const { resolveWorkspaceRoot } = await import("../../app/user-config.js");
+          const root = await resolveWorkspaceRoot();
+          if (root) workspace = `${root}/workspace-${name}`;
+        } catch { /* fall through */ }
+      }
+      const payload = await ctx.services.client.sendReq(
+        "agents.create", { name, workspace },
+      );
+      return { ok: true, payload: payload ?? {} };
+    } catch (error) {
+      return { ok: false, error: formatError(error) };
+    }
+  });
+
+  registry.register("agent.update", async (params, ctx) => {
+    try {
+      const agentId = typeof params.agentId === "string" ? params.agentId.trim() : "";
+      if (!agentId) return { ok: false, error: "invalid_agent_id" };
+      const updateParams: Record<string, unknown> = { agentId };
+      if (typeof params.name === "string" && params.name.trim()) updateParams.name = params.name.trim();
+      if (typeof params.workspace === "string" && params.workspace.trim()) updateParams.workspace = params.workspace.trim();
+      const payload = await ctx.services.client.sendReq(
+        "agents.update", updateParams,
+      );
+      return { ok: true, payload: payload ?? {} };
+    } catch (error) {
+      return { ok: false, error: formatError(error) };
+    }
+  });
+
+  registry.register("agent.delete", async (params, ctx) => {
+    try {
+      const agentId = typeof params.agentId === "string" ? params.agentId.trim() : "";
+      if (!agentId) return { ok: false, error: "invalid_agent_id" };
+      const deleteParams: Record<string, unknown> = { agentId };
+      if (typeof params.deleteFiles === "boolean") deleteParams.deleteFiles = params.deleteFiles;
+      const payload = await ctx.services.client.sendReq(
+        "agents.delete", deleteParams,
+      );
+      return { ok: true, payload: payload ?? {} };
+    } catch (error) {
+      return { ok: false, error: formatError(error) };
+    }
+  });
+
   registry.register("agent.files.set", async (params, ctx) => {
     try {
       const agentId = typeof params.agentId === "string" ? params.agentId.trim() : "";

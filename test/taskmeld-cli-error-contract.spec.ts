@@ -39,7 +39,7 @@ const createReadonlyBootstrap = (): CliBootstrap => {
         listLinks: async () => [],
         getQueue: async () => [],
       },
-      agentService: { listAgents: async () => [], listSessions: async () => [], filterSessionsByAgent: async () => [], sendMessage: async () => ({ ok: true }), getSessionHistory: async () => [], sendMessageAndWaitForReply: async () => ({ sent: {}, reply: null }) },
+      agentService: { listAgents: async () => [], listSessions: async () => [], filterSessionsByAgent: async () => [], sendMessage: async () => ({ ok: true }), getSessionHistory: async () => [], sendMessageAndWaitForReply: async () => ({ sent: {}, reply: null }), createAgent: async () => ({}), updateAgent: async () => ({}), deleteAgent: async () => ({}) },
       sessionService: { listSessions: async () => [], sendMessage: async () => ({ ok: true }) },
       artifactService: { listArtifacts: async () => ({ items: [] }), getArtifactContent: async () => null, exportArtifacts: async () => ({}), planCleanup: async () => ({ files: [], totalSizeBytes: 0, oldestDate: null, newestDate: null }), executeCleanup: async () => ({ deleted: 0, failed: 0, warnings: [] }), rebuildIndex: async () => ({ indexed: 0, skipped: 0, warnings: [] }), },
       schedulerService: { toggleScheduler: async () => ({ ok: true }), setSchedulerMode: async () => ({ ok: true }) },

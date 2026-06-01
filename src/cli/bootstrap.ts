@@ -88,6 +88,9 @@ const buildCliAppContext = (appContext: AppContext): CliAppContext => {
       sendMessage: async (input) => writableServices.session.sendMessage(input),
       getSessionHistory: async (sessionId: string) => readonlyServices.session.getSessionHistory(sessionId),
       sendMessageAndWaitForReply: async (input, options) => writableServices.session.sendMessageAndWaitForReply(input, options),
+      createAgent: async (params) => readonlyServices.agent.createAgent(params),
+      updateAgent: async (params) => readonlyServices.agent.updateAgent(params),
+      deleteAgent: async (params) => readonlyServices.agent.deleteAgent(params),
     },
     sessionService: {
       listSessions: async () => readonlyServices.session.listSessions(),
@@ -169,6 +172,9 @@ const buildRuntimeApiOnlyContext = (): CliAppContext => {
       sendMessage: unsupported,
       getSessionHistory: unsupported,
       sendMessageAndWaitForReply: unsupported,
+      createAgent: unsupported,
+      updateAgent: unsupported,
+      deleteAgent: unsupported,
     },
     sessionService: {
       listSessions: unsupported,

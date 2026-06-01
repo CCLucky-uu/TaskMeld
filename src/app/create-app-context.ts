@@ -147,6 +147,42 @@ export const createAppContext = (options: CreateAppContextOptions = {}): AppCont
   const connect = async (): Promise<HelloOkPayload> => {
     const hello = await client.connect();
     app.onGatewayReady(hello);
+
+    // Detect and persist workspace root from gateway config so agent creation
+    // can construct absolute workspace paths. Priority: env → .env / config.json → auto-detect.
+    // Verified config.get structure (OpenClaw 2026.5.28):
+    //   parsed.agents.defaults.workspace → /home/user/.openclaw/workspace
+    try {
+      const { resolveWorkspaceRoot } = await import("./user-config.js");
+      const existingRoot = await resolveWorkspaceRoot();
+      if (!existingRoot) {
+        const config = await client.sendReq("config.get");
+        const data = (config ?? {}) as Record<string, unknown>;
+        const parsed = (data.parsed ?? data) as Record<string, unknown>;
+        const agents = (parsed.agents ?? {}) as Record<string, unknown>;
+        const defaults = (agents.defaults ?? {}) as Record<string, unknown>;
+        const defaultWs = typeof defaults.workspace === "string" ? defaults.workspace.trim() : "";
+        if (defaultWs) {
+          const root = defaultWs.replace(/[\\/]workspace[\\/]?$/, "");
+          if (root) {
+            const { isTaskMeldDevRuntime } = await import("./data-dir.js");
+            if (isTaskMeldDevRuntime()) {
+              // Dev: write to project .env (next restart) + set in-memory (this session)
+              const { appendFile } = await import("node:fs/promises");
+              await appendFile(".env", `\nOPENCLAW_WORKSPACE_ROOT=${root}\n`, "utf8");
+              process.env.OPENCLAW_WORKSPACE_ROOT = root;
+            } else {
+              // Prod: write to ~/.taskmeld/config.json
+              const { writeUserConfig } = await import("./user-config.js");
+              await writeUserConfig({ workspaceRoot: root });
+            }
+          }
+        }
+      }
+    } catch {
+      // Non-critical — agent creation will fall back to relative path.
+    }
+
     return hello;
   };
 

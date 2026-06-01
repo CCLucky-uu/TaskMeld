@@ -40,8 +40,27 @@ export type AgentListItem = {
   lastActiveAt: string | null;
 };
 
+export type AgentCreateParams = {
+  name: string;
+  workspace?: string;
+};
+
+export type AgentUpdateParams = {
+  agentId: string;
+  name?: string;
+  workspace?: string;
+};
+
+export type AgentDeleteParams = {
+  agentId: string;
+  deleteFiles?: boolean;
+};
+
 export type AgentService = {
   listAgents: () => Promise<AgentListItem[]>;
+  createAgent: (params: AgentCreateParams) => Promise<unknown>;
+  updateAgent: (params: AgentUpdateParams) => Promise<unknown>;
+  deleteAgent: (params: AgentDeleteParams) => Promise<unknown>;
 };
 
 export const createAgentService = (app: PipelineRegistry): AgentService => {
@@ -85,7 +104,47 @@ export const createAgentService = (app: PipelineRegistry): AgentService => {
     });
   };
 
+  const resolveDefaultWorkspace = async (name: string): Promise<string> => {
+    // Priority: OPENCLAW_WORKSPACE_ROOT env → ~/.taskmeld/config.json workspaceRoot
+    try {
+      const { resolveWorkspaceRoot } = await import("../app/user-config.js");
+      const root = await resolveWorkspaceRoot();
+      if (root) return `${root}/workspace-${name}`;
+    } catch { /* fall through */ }
+    return `workspace-${name}`;
+  };
+
+  const createAgent = async (params: AgentCreateParams): Promise<unknown> => {
+    await ensureGatewayReadyForReadonly(app);
+    const workspace = params.workspace?.trim() || await resolveDefaultWorkspace(params.name);
+    const payload = await app.gateway.client.sendReq("agents.create", {
+      name: params.name,
+      workspace,
+    });
+    return payload;
+  };
+
+  const updateAgent = async (params: AgentUpdateParams): Promise<unknown> => {
+    await ensureGatewayReadyForReadonly(app);
+    const updateParams: Record<string, unknown> = { agentId: params.agentId };
+    if (params.name?.trim()) updateParams.name = params.name.trim();
+    if (params.workspace?.trim()) updateParams.workspace = params.workspace.trim();
+    const payload = await app.gateway.client.sendReq("agents.update", updateParams);
+    return payload;
+  };
+
+  const deleteAgent = async (params: AgentDeleteParams): Promise<unknown> => {
+    await ensureGatewayReadyForReadonly(app);
+    const deleteParams: Record<string, unknown> = { agentId: params.agentId };
+    if (params.deleteFiles !== undefined) deleteParams.deleteFiles = params.deleteFiles;
+    const payload = await app.gateway.client.sendReq("agents.delete", deleteParams);
+    return payload;
+  };
+
   return {
     listAgents,
+    createAgent,
+    updateAgent,
+    deleteAgent,
   };
 };
