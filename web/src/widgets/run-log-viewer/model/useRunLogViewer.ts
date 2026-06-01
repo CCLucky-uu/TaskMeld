@@ -16,7 +16,7 @@ export const useRunLogViewer = (open: boolean, runId: string) => {
   const [loadingMore, setLoadingMore] = useState(false);
 
   const clearLogState = (opts?: { keepError?: boolean }) => {
-    // 切换 run 或离开日志页时立即卸载旧日志，避免多个 run 的大数组同时驻留内存。
+    // When switching run or leaving the log page, immediately unload old logs to avoid keeping large arrays from multiple runs in memory.
     setItems([]);
     setTotal(0);
     setParseErrorCount(0);
@@ -37,7 +37,7 @@ export const useRunLogViewer = (open: boolean, runId: string) => {
     clearLogState();
     setLoading(true);
 
-    // 只允许当前 run 的请求回写状态，切换 run 后旧请求结果直接丢弃。
+    // Only the current run's request may write back state; stale request results from a switched run are discarded.
     void fetchRunTimelineLogs({
       runId,
       keyword,

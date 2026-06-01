@@ -78,7 +78,7 @@ export const createSessionService = (app: PipelineRegistry): SessionService => {
         const refreshed = await app.gateway.refreshSessionsFromGateway();
         return toSessionListItems(refreshed.items);
       } catch {
-        // 刷新失败时使用缓存，确保 CLI 在网关抖动时仍可读到会话信息。
+        // On refresh failure, use cache so the CLI can still read session info during gateway flapping.
       }
     }
     return toSessionListItems(app.gateway.getSessionCache());
@@ -192,7 +192,7 @@ export const createSessionService = (app: PipelineRegistry): SessionService => {
         const stream = String(payload.stream ?? "").toLowerCase();
         const data = (payload.data ?? {}) as Record<string, unknown>;
 
-        // 流式文本片段（累积+增量混合，用 merge 去重）
+        // Streaming text fragments (mix of accumulation and incremental; deduplicated with merge)
         if (stream === "assistant") {
           const text = typeof data.text === "string" ? data.text : "";
           if (text) {
@@ -208,7 +208,7 @@ export const createSessionService = (app: PipelineRegistry): SessionService => {
           return;
         }
 
-        // 兼容非 stream 前缀的直接文本
+        // Compatible with non-stream-prefix direct text
         const role = String(payload.role ?? data.role ?? "").toLowerCase();
         if (role === "assistant") {
           const text = typeof data.text === "string" ? data.text : "";
@@ -224,7 +224,7 @@ export const createSessionService = (app: PipelineRegistry): SessionService => {
           }
         }
 
-        // 生命周期结束
+        // Lifecycle end
         if (stream === "lifecycle") {
           const phase = String(data.phase ?? "").toLowerCase();
           if (phase === "end" || phase === "done") {
@@ -239,11 +239,11 @@ export const createSessionService = (app: PipelineRegistry): SessionService => {
         }
       });
 
-      // 超时兜底
+      // Timeout safety net
       timer = setTimeout(() => {
         if (settled) return;
         cleanup();
-        // 超时时尝试从 history 补一次
+        // On timeout, try to backfill from history once
         void getSessionHistory(sessionId).then((history) => {
           const items = Array.isArray(history) ? history : [];
           const lastAssistant = [...items].reverse().find((item) => {

@@ -8,7 +8,8 @@ import enCli from "./locales/en.json";
 
 const resolveLocale = (): string => {
   // 1. env override
-  if (process.env.TASKMELD_LOCALE) return process.env.TASKMELD_LOCALE.trim();
+  const envLocale = process.env.TASKMELD_LOCALE?.trim();
+  if (envLocale && ["zh", "en"].includes(envLocale)) return envLocale;
 
   // 2. config.json
   try {
@@ -37,3 +38,7 @@ i18next.init({
 });
 
 export const t = i18next.t.bind(i18next);
+
+export const changeLocale = async (locale: "en" | "zh") => {
+  await i18next.changeLanguage(locale);
+};

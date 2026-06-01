@@ -1,5 +1,5 @@
-// 目录出口：调用方继续从 structured-output 子模块导入，内部文件按职责拆分。
-// 统一从这里 re-export，避免后续再次拆分时把外部 import 路径扩散到实现细节。
+// Directory barrel export: callers continue importing from structured-output sub-modules; internal files are split by responsibility.
+// Re-export uniformly from here to avoid spreading external import paths to implementation details upon future re-splits.
 export * from "./contract";
 export * from "./parser";
 export * from "./prompt";

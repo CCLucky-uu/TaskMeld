@@ -191,8 +191,8 @@ const shouldHideRawGatewayEventLine = (item: TimelineItem) => {
   }
   if (!isRecord(item.detail) || item.detail.type !== "event") return false;
   const eventName = getString(item.detail.event)?.toLowerCase();
-  // agent/chat 原始 gateway 事件已经被更高层的“开始工作 / 结束工作”语义吸收，
-  // 继续直接展示只会让时间线出现两套重复表述。
+  // Raw gateway agent/chat events are already absorbed by higher-level "started / finished" semantics;
+  // showing them directly would produce two duplicate narratives in the timeline.
   return eventName === "agent" || eventName === "chat";
 };
 
@@ -209,8 +209,8 @@ const buildDisplayTimeline = (timeline: TimelineItem[], t: TFunction<"timeline">
   const collapsedByStartIndex = new Map<number, CollapsedTimelineEntry>();
   const lifecycleDedupeKeys = new Set<string>();
 
-  // timeline 存储顺序是“最新在前”，这里先转成时间正序计算工作区间，
-  // 否则开始/结束边界会反过来，折叠结果就会失真。
+  // Timeline is stored newest-first; reverse to chronological order to compute work intervals,
+  // otherwise start/end boundaries invert and collapse results become distorted.
   for (let index = 0; index < chronological.length; index += 1) {
     const item = chronological[index];
     const meta = getTimelineAgentMeta(item);
@@ -249,7 +249,7 @@ const buildDisplayTimeline = (timeline: TimelineItem[], t: TFunction<"timeline">
     );
   }
 
-  // Agent 尚未结束时，把开始事件之后到当前最新的一段也折成一条“进行中”占位。
+  // When an agent hasn't finished yet, collapse everything after its start into a single "in progress" placeholder.
   for (const [agentRunKey, startIndexes] of startIndexesByAgentRun.entries()) {
     const [agentId, runIdRaw] = agentRunKey.split("::");
     const runId = runIdRaw === "unknown" ? null : runIdRaw;

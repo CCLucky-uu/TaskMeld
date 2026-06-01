@@ -21,7 +21,7 @@ export const predictRunLogRowHeight = (text: string, width: number) => {
   const key = `${width}::${text}`;
   const cached = ROW_CACHE.get(key);
   if (cached !== undefined) return cached;
-  // 日志列表只展示摘要文本，使用 pretext 预估高度可以减少翻页后首屏抖动。
+  // The log list only shows summary text; using pretext for height estimation reduces first-paint jitter after paging.
   const predicted = Math.max(MIN_ROW_HEIGHT, ROW_CHROME_HEIGHT + predictLines(text, width) * TEXT_LINE_HEIGHT);
   ROW_CACHE.set(key, predicted);
   return predicted;
@@ -42,7 +42,7 @@ export const predictRunLogDetailHeight = (detail: unknown, width: number) => {
   const key = `${width}::${text}`;
   const cached = DETAIL_CACHE.get(key);
   if (cached !== undefined) return cached;
-  // detail 区是纯文本 JSON，继续复用 pretext 做预估，避免详情抽屉切换时高度跳闪。
+  // The detail area is plain-text JSON; reuse pretext for estimation to avoid height flicker when toggling the detail drawer.
   const predicted = Math.min(MAX_DETAIL_HEIGHT, DETAIL_CHROME_HEIGHT + predictLines(text, width) * TEXT_LINE_HEIGHT);
   DETAIL_CACHE.set(key, predicted);
   return predicted;

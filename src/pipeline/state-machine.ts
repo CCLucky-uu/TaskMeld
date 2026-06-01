@@ -119,8 +119,8 @@ export const transitionStatus = (
 ): NodeRunStatus => {
   if (current === next) return current;
   const allowedByCommand = VALID_TRANSITIONS[current];
-  // 未指定 command 时仅允许 execute + dependency 权限（安全默认值），
-  // 特殊权限（route_backfill/retry_reset/reject_reset/sleep/group_aggregate）必须显式传 command。
+  // When no command is specified, only execute + dependency permissions are allowed (safe default),
+  // special permissions (route_backfill/retry_reset/reject_reset/sleep/group_aggregate) require an explicit command.
   const allowed = command
     ? (allowedByCommand[command] ?? [])
     : [

@@ -26,6 +26,29 @@
       "optional": "可选"
     }
   },
+  "init": {
+    "firstTimeSetup": "首次配置",
+    "greeting": "配置您的 OpenClaw Gateway 连接以开始使用。",
+    "configSavedTo": "配置  {{path}}",
+    "languageLabel": "语言",
+    "gatewayUrlLabel": "Gateway URL",
+    "gatewayUrlHint": "OpenClaw Gateway 的 ws:// 或 wss:// 地址",
+    "gatewayTokenLabel": "Gateway Token",
+    "gatewayTokenHint": "Gateway 认证令牌",
+    "success": "Gateway 配置成功",
+    "nextStep": "运行 \"taskmeld server start\" 以开始使用。",
+    "urlLabel": "URL",
+    "description": "OpenClaw Gateway 连接引导设置",
+    "usage": "taskmeld init [--url <url>] [--token <token>]",
+    "summary": "引导式首次配置 — 设置 OpenClaw Gateway 连接。",
+    "optUrlDesc": "Gateway WebSocket URL（ws:// 或 wss://）",
+    "optTokenDesc": "Gateway 认证令牌",
+    "example1": "taskmeld init",
+    "example2": "taskmeld init --url ws://127.0.0.1:18789 --token your-token",
+    "note1": "不带参数运行时启动交互式引导设置。",
+    "note2": "配置保存在 ~/.taskmeld/config.json。",
+    "note3": "环境变量（OPENCLAW_GATEWAY_URL/TOKEN）的优先级高于此配置。"
+  },
   "agent": {
     "list": {
       "description": "输出智能体列表",

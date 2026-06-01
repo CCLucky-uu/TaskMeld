@@ -50,13 +50,13 @@ export const createAgentService = (app: PipelineRegistry): AgentService => {
     const payload = await app.gateway.client.sendReq("agents.list");
     const rawItems = app.gateway.pickArray(payload);
 
-    // 会话活动时间优先尝试刷新；刷新失败时回退缓存，保证只读查询可用性。
+    // Try refreshing session activity first; fall back to cache on failure to keep read-only queries available.
     let sessionItems: NormalizedSession[] = app.gateway.getSessionCache();
     try {
       const refreshed = await app.gateway.refreshSessionsFromGateway();
       sessionItems = refreshed.items;
     } catch {
-      // 只读查询容错：会话刷新失败不应阻断 agents.list 输出。
+      // Read-only query resilience: session refresh failure must not block agents.list output.
     }
 
     const lastActiveByAgentId = new Map<string, number>();

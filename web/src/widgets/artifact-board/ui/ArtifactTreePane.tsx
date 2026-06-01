@@ -47,7 +47,7 @@ export function ArtifactTreePane({
               <span className="truncate">{dateGroup.dateKey}</span>
               <span className="text-(--muted)">({dateGroup.total})</span>
             </summary>
-            {/* 采用文件树缩进线，替代多层卡片边框。 */}
+            {/* File-tree indentation lines in place of multi-layer card borders. */}
             <div className="ml-3 border-l border-[rgba(142,163,179,0.2)] pl-2">
               {dateGroup.pipelines.map((pipelineGroup) => (
                 <details key={`${dateGroup.dateKey}:${pipelineGroup.pipelineId}`} open className="group mt-0.5">
@@ -76,7 +76,7 @@ export function ArtifactTreePane({
                               <button
                                 key={key}
                                 type="button"
-                                // 文件行强制扁平化：去掉默认按钮立体外观和卡片感。
+                                // File row forced flat: strip default button 3D look and card feel.
                                 className={`${monoClassName} mt-0.5 grid w-full cursor-pointer appearance-none grid-cols-[auto_1fr] items-center gap-x-2 border-0 bg-transparent px-1.5 py-0.5 text-left text-xs shadow-none outline-none ${
                                   selected
                                     ? "bg-[rgba(50,215,186,0.16)] text-(--text)"

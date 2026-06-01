@@ -7,7 +7,7 @@ import { schedulerRenderSpecs } from "./scheduler";
 import { serverRenderSpecs } from "./server";
 import { systemRenderSpecs } from "./system";
 
-// 按模块聚合输出定义，避免继续把所有结构堆回单一 renderer 文件。
+// Aggregate output definitions by module to avoid dumping all structures back into a single renderer file.
 const allSpecs: RenderSpecMap = {
   ...agentRenderSpecs,
   ...artifactRenderSpecs,

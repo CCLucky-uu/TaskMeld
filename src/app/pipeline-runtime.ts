@@ -111,8 +111,8 @@ export const createPipelineRuntime = (options: CreatePipelineRuntimeOptions) => 
         payload: frame.payload ?? null,
       });
     }
-    // health / tick 都是高频事件，只保留为 lastFrame，不推送到 timeline / ws，
-    // 避免前端与日志被刷屏，同时不影响依赖最后一帧做诊断的调试能力。
+    // health / tick are high-frequency events; only store as lastFrame, don't push to timeline/WS,
+    // to avoid flooding the frontend and logs, while still allowing diagnostic debugging that depends on the last frame.
     if (!isSilentEvent) {
       runtimeStore.broadcast({
         type: "gateway.frame",

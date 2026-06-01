@@ -26,7 +26,7 @@ export const parsePipelineError = (rawError: string | null | undefined): ParsedP
   const raw = String(rawError ?? "").trim();
   if (!raw) return null;
 
-  // 结构化协议校验/发送链路错误都属于“结构化错误”。
+  // Structured protocol validation / send-link errors are all "structured errors".
   if (
     raw.includes("contract_violation:") ||
     raw.includes("openclaw_send_failed:") ||
@@ -47,8 +47,8 @@ export const parsePipelineError = (rawError: string | null | undefined): ParsedP
     const code = typeof parsed.code === "string" ? parsed.code.trim() : "";
     const message = typeof parsed.message === "string" ? parsed.message.trim() : "";
 
-    // 后端对节点 status=failed 会把 envelope.error 原样写入 lastError。
-    // 这类 JSON 错误按“节点返回错误”展示，便于和结构化链路问题区分。
+    // The backend writes envelope.error as-is into lastError for nodes with status=failed.
+    // These JSON errors are displayed as "node return errors" to distinguish them from structured-link issues.
     if (code || message) {
       return {
         kind: "node_return",

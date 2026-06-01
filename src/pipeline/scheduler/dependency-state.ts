@@ -51,9 +51,9 @@ export const createDependencyState = (options: CreateDependencyStateOptions) => 
         impossibleCount += 1;
       }
     }
-    // all/any 执行差异：
-    // - all: 只有全部依赖满足才入队；若剩余依赖都已不可能满足则跳过。
-    // - any: 任一依赖满足即可入队；仅当所有依赖都不可能满足时才跳过。
+    // all/any execution difference:
+    // - all: only enqueue when all dependencies are satisfied; skip when remaining dependencies are all impossible.
+    // - any: enqueue when any single dependency is satisfied; only skip when all dependencies are impossible.
     if (policy === "any") {
       if (satisfiedCount > 0) return "queued";
       if (impossibleCount === incoming.length) return "skipped";
@@ -132,7 +132,7 @@ export const createDependencyState = (options: CreateDependencyStateOptions) => 
     for (const group of getRun().groups ?? []) {
       const related = (getRun().groupItemRuns ?? []).filter((item) => item.groupId === group.id);
       if (related.length === 0) continue;
-      // joinPolicy 仅支持 "all"：全部 group item 成功才标记 group 成功，任一失败即失败
+      // joinPolicy only supports "all": mark group success only when all group items succeed, fail if any fails
       if (related.some((item) => item.status === "failed")) {
         markGroupFailed(group, { reason: "member_failed", command: "group_aggregate", error: related.find((item) => item.status === "failed")?.lastError });
       } else if (related.some((item) => item.status === "running")) {

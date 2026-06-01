@@ -1,12 +1,10 @@
 node_modules/
 dist/
-/landing-web/
 .data/
-coverage/
 .vscode/
+.internal/
 .env
 *.tgz
-CLAUDE.local.md
 src/version.ts
 CLAUDE.md
-/locales/
+CLAUDE.local.md

@@ -52,7 +52,7 @@ export const mockSnapshot: AppSnapshot = {
   pipeline: [
     {
       id: "n1",
-      title: "需求解析",
+      title: "Requirement Analysis",
       executor: { agentId: "planner-main", role: "planner", fallbackAgentId: null, sessionId: null },
       status: "success",
       dependsOn: [],
@@ -71,7 +71,7 @@ export const mockSnapshot: AppSnapshot = {
     },
     {
       id: "n2",
-      title: "代码生成",
+      title: "Code Generation",
       executor: { agentId: "coder-a", role: "coder", fallbackAgentId: "coder-b", sessionId: null },
       status: "running",
       dependsOn: ["n1"],
@@ -90,7 +90,7 @@ export const mockSnapshot: AppSnapshot = {
     },
     {
       id: "n3",
-      title: "测试验证",
+      title: "Test Verification",
       executor: { agentId: "tester-a", role: "tester", fallbackAgentId: null, sessionId: null },
       status: "blocked",
       dependsOn: ["n2"],
@@ -98,7 +98,7 @@ export const mockSnapshot: AppSnapshot = {
     },
     {
       id: "n4",
-      title: "发布审批",
+      title: "Release Approval",
       executor: { agentId: "reviewer-a", role: "reviewer", fallbackAgentId: null, sessionId: null },
       status: "queued",
       dependsOn: ["n3"],
@@ -106,8 +106,8 @@ export const mockSnapshot: AppSnapshot = {
     },
   ],
   timeline: [
-    { ts: "20:39:18", createdAt: "2026-04-13T20:39:18.000Z", text: "网关握手完成（协议 v3）", level: "info" },
-    { ts: "20:39:20", createdAt: "2026-04-13T20:39:20.000Z", text: "流水线运行 #241 已启动", level: "info" },
-    { ts: "20:39:33", createdAt: "2026-04-13T20:39:33.000Z", text: "节点 n2 仍在执行中", level: "warn" },
+    { ts: "20:39:18", createdAt: "2026-04-13T20:39:18.000Z", text: "Gateway handshake complete (protocol v3)", level: "info" },
+    { ts: "20:39:20", createdAt: "2026-04-13T20:39:20.000Z", text: "Pipeline run #241 started", level: "info" },
+    { ts: "20:39:33", createdAt: "2026-04-13T20:39:33.000Z", text: "Node n2 still executing", level: "warn" },
   ],
 };

@@ -18,12 +18,5 @@
   "updateTime": "更新时间 {{time}}",
   "enterPipeline": "进入流水线",
   "working": "工作中...",
-  "startWork": "开始工作",
-  "statusRunning": "运行中",
-  "statusFailed": "失败",
-  "statusBlocked": "阻塞",
-  "statusWaiting": "等待中",
-  "statusStopped": "已停止",
-  "statusSuccess": "已完成",
-  "statusIdle": "空闲"
+  "startWork": "开始工作"
 }

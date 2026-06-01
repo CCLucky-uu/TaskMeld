@@ -196,7 +196,7 @@ export const createNodeRunner = (deps: CreateNodeRunnerDeps) => {
       const classification = isAborted
         ? { reason: "pipeline_aborted", haltPipeline: true }
         : classifyNodeFailure(error);
-      // 用户中止时节点已被标记为 stopped，不应再覆盖为 failed
+      // When the user aborts, the node is already marked as stopped — should not be overwritten to failed
       if (!isAborted) {
         markNodeFailed(node, ctx(classification.reason, { error: String(error) }));
       }

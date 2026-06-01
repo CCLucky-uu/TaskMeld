@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AgentListCard } from "../../../widgets/agent-list/ui/AgentListCard";
 import { NavPanel } from "../../../widgets/nav-panel/ui/NavPanel";
@@ -46,7 +46,7 @@ const fieldClassName = "mx-3 min-w-0";
 const fieldLabelClassName = "mb-1.5 block text-xs text-[var(--muted)]";
 const actionButtonClassName =
   "mt-0 cursor-pointer border border-[var(--live-25)] bg-transparent px-[10px] py-2 font-semibold text-[var(--live)] hover:bg-[rgba(50,215,186,0.1)]";
-// 流水线入口按钮单独控制为 32px 高，且所在栏位去掉上下留白。
+// Pipeline create button: fixed 32px height, strip vertical padding from its row.
 const pipelineCreateButtonClassName =
   "mt-0 inline-flex h-8 items-center justify-center cursor-pointer border border-[var(--live-25)] bg-[rgba(12,21,27,0.96)] px-[10px] text-[13px] font-semibold text-[var(--live)] hover:bg-[rgba(18,31,38,0.98)]";
 
@@ -85,7 +85,7 @@ type ModalLayerProps = {
   open: boolean;
   onClose: () => void;
   panelClassName: string;
-  /** 屏幕阅读器可读的模态标题 */
+  /** Screen-reader accessible modal title */
   ariaLabel: string;
   children: React.ReactNode;
 };
@@ -95,7 +95,7 @@ function ModalLayer({ open, onClose, panelClassName, ariaLabel, children }: Moda
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
-  // Escape 键关闭
+  // Close on Escape key
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
     if (event.key === "Escape") {
       onCloseRef.current();
@@ -109,7 +109,7 @@ function ModalLayer({ open, onClose, panelClassName, ariaLabel, children }: Moda
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
-    // 聚焦面板，确保屏幕阅读器感知上下文切换
+    // Focus panel so screen readers pick up the context change
     panelRef.current?.focus();
 
     return () => {
@@ -163,29 +163,47 @@ export function ControlPlanePage({
   onNavigateHome,
   focusPipelineId,
 }: ControlPlanePageProps) {
-  const { t } = useTranslation(["modal", "common", "nav", "settings"]);
-  const translatedStatusTone = statusTone;
-  const translatedStatusLabel = Object.fromEntries(
+  const { t } = useTranslation(["modal", "common", "nav", "pipeline"]);
+  const translatedStatusLabel = useMemo(() => Object.fromEntries(
     Object.entries(statusLabel).map(([key, val]) => [key, t(`common:status.${val}`)]),
-  );
+  ), [t]);
   const vm = useControlPlanePage();
   const effectivePageRoute: "home" | "pipeline" | "logs" | "agents" | "artifacts" | "settings" = pageRoute;
   const isPipelineRoute = effectivePageRoute === "pipeline";
-  const routeText =
-    effectivePageRoute === "pipeline"
-      ? t("nav:pipeline")
-      : effectivePageRoute === "logs"
-        ? t("nav:logs")
-        : effectivePageRoute === "agents"
-          ? t("nav:agents")
-          : effectivePageRoute === "artifacts"
-            ? t("nav:artifacts")
-          : effectivePageRoute === "settings"
-            ? t("nav:settings")
-          : t("nav:overview");
+
+  const ROUTE_TEXT_MAP: Record<string, string> = {
+    pipeline: "nav:pipeline",
+    logs: "nav:logs",
+    agents: "nav:agents",
+    artifacts: "nav:artifacts",
+    settings: "nav:settings",
+    overview: "nav:overview",
+  };
+  const routeText = t(ROUTE_TEXT_MAP[effectivePageRoute] ?? "nav:overview");
+  const onSelectNode = useCallback(
+    (pipelineId: string, nodeId: string) => {
+      vm.selectNodeInPipeline(pipelineId, nodeId);
+      if (nodeId) setDetailCollapsed(false);
+    },
+    [vm.selectNodeInPipeline],
+  );
+  const onSelectGroup = useCallback(
+    (pipelineId: string, groupId: string) => {
+      vm.selectGroupInPipeline(pipelineId, groupId);
+      if (groupId) setDetailCollapsed(false);
+    },
+    [vm.selectGroupInPipeline],
+  );
+  const onReorderNode = useCallback(
+    (pipelineId: string, nodeId: string, targetNodeId: string, position: "before" | "after") => {
+      vm.selectNodeInPipeline(pipelineId, nodeId);
+      void vm.reorderNode(pipelineId, nodeId, targetNodeId, position);
+    },
+    [vm.selectNodeInPipeline, vm.reorderNode],
+  );
   const isMobile = useMediaQuery("(max-width: 767px)");
   const [navCollapsed, setNavCollapsed] = useState(false);
-  // 从桌面端缩小窗口到移动端时，同步关闭抽屉避免中间帧闪烁
+  // Close drawer when window resizes below mobile breakpoint to avoid mid-frame flicker
   useLayoutEffect(() => {
     if (isMobile) setNavCollapsed(true);
   }, [isMobile]);
@@ -206,7 +224,7 @@ export function ControlPlanePage({
   const [dispatchBoardOpen, setDispatchBoardOpen] = useState(false);
   const renamePipelineTarget = vm.pipelineList.find((item) => item.id === renamePipelineTargetId) ?? null;
   const deletePipelineTarget = vm.pipelineList.find((item) => item.id === deletePipelineTargetId) ?? null;
-  // 移动端：侧边栏不占布局空间，作为浮层抽屉独立渲染
+  // Mobile: sidebar renders as a floating drawer, not part of the layout grid.
   const pageLayoutClassName = isMobile
     ? "grid h-screen overflow-hidden grid-cols-[minmax(0,1fr)]"
     : [
@@ -215,7 +233,7 @@ export function ControlPlanePage({
       ].join(" ");
   const contentLayoutClassName = "grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden";
   const shellLayoutClassName = [
-    // 主体只允许占用 TopBar 下方这一行高度，避免右栏内容把整行 grid 撑出容器。
+    // Main area must only take the row below TopBar, so the right panel doesn't stretch the grid past the viewport.
     "grid h-full min-h-0 grid-rows-[minmax(0,1fr)] overflow-hidden border-b border-r border-[var(--line)]",
     !isPipelineRoute
       ? "grid-cols-[minmax(0,1fr)]"
@@ -237,7 +255,7 @@ export function ControlPlanePage({
     "[&>[data-pipeline-card]]:shrink [&>[data-pipeline-card]]:flex-1 [&>[data-pipeline-card]]:overflow-y-auto",
     "[&>[data-agent-card]]:shrink [&>[data-agent-card]]:flex-1 [&>[data-agent-card]]:overflow-hidden",
     "[&>[data-center-card]:last-child]:border-b-0",
-    // 日志页暂时仍保留独立滚动与高度策略，避免改造外层布局时影响虚拟列表测量结果。
+    // Log page keeps its own scroll / height strategy to avoid disturbing virtual-list measurements during outer-layout refactors.
     "[&>[data-run-log-page]]:min-h-0 [&>[data-run-log-page]]:flex-1 [&>[data-run-log-page]]:overflow-hidden [&>[data-run-log-page]]:border-b-0",
   ].join(" ");
   const deleteTargetNode = vm.pipeline.find((node) => node.id === vm.deleteTargetNodeId);
@@ -314,7 +332,7 @@ export function ControlPlanePage({
   };
 
   useEffect(() => {
-    // 路由变化时同步默认激活导航项，避免 URL 与页面高亮不一致。
+    // Sync active nav item on route change, so URL and highlight never diverge.
     vm.setActive(initialActive);
   }, [initialActive, vm.setActive]);
 
@@ -323,9 +341,9 @@ export function ControlPlanePage({
     const handlePointerDown = (event: PointerEvent) => {
       const target = event.target as HTMLElement | null;
       if (!target) return;
-      // 点击节点或并行组时不关闭，避免从节点A切到节点B出现“先关后开”的抖动。
+      // Don't close when clicking a node or parallel group — avoids flash closing/reopening when switching from node A to B.
       if (target.closest("[data-pipeline-node-id]") || target.closest("[data-pipeline-group-id]")) return;
-      // 点击右侧详情面板内部不关闭，保持编辑连续性。
+      // Don't close when clicking inside the right detail panel — keeps editing uninterrupted.
       if (target.closest("[data-pipeline-detail-panel]")) return;
       setDetailCollapsed(true);
     };
@@ -433,7 +451,7 @@ export function ControlPlanePage({
     <div className={pageLayoutClassName}>
       {isMobile ? (
           <>
-            {/* 移动端：侧边栏从左侧滑出的浮层抽屉 */}
+            {/* Mobile: sidebar as a slide-out drawer from the left */}
             {!navCollapsed && (
               <div
                 className="fixed inset-0 z-40 bg-black/50"
@@ -553,14 +571,8 @@ export function ControlPlanePage({
             selectedNodeId={vm.selectedNode?.id ?? ""}
             selectedGroupId={vm.selectedGroup?.id ?? ""}
             activePipelineId={vm.activePipelineId}
-            onSelectNode={(pipelineId, nodeId) => {
-              vm.selectNodeInPipeline(pipelineId, nodeId);
-              if (nodeId) setDetailCollapsed(false);
-            }}
-            onSelectGroup={(pipelineId, groupId) => {
-              vm.selectGroupInPipeline(pipelineId, groupId);
-              if (groupId) setDetailCollapsed(false);
-            }}
+            onSelectNode={onSelectNode}
+            onSelectGroup={onSelectGroup}
             onRun={(pipelineId) => void vm.startPipelineRun(pipelineId)}
             onStop={(pipelineId) => void vm.stopPipelineRun(pipelineId)}
             deletingEntity={vm.isDeletingNode}
@@ -596,10 +608,7 @@ export function ControlPlanePage({
                 void vm.moveSelectedNodeDown(nodeId, pipelineId);
               }
             }}
-            onReorderNode={(pipelineId, nodeId, targetNodeId, position) => {
-              vm.selectNodeInPipeline(pipelineId, nodeId);
-              void vm.reorderNode(pipelineId, nodeId, targetNodeId, position);
-            }}
+            onReorderNode={onReorderNode}
             onChangeBatchStartBatch={(pipelineId, value) => vm.setBatchStartBatch(pipelineId, value)}
             onStartRemoteKeywordBatchRun={(pipelineId) => void vm.startRemoteKeywordBatchRun(pipelineId)}
             onToggleScheduler={(pipelineId, enabled) => {

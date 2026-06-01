@@ -44,7 +44,7 @@ export const archiveRejectedArtifacts = async (params: {
         relativePath: relative(artifactDir, targetPath).replaceAll("\\", "/"),
         movedAt: new Date(),
         rejectedByNodeId,
-      }).catch(() => { /* 索引补记失败不阻断节点执行 */ });
+      }).catch(() => { /* Index append failure must not block node execution */ });
       moved += 1;
     } catch (error) {
       pushTimeline(

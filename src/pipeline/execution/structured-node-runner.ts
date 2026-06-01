@@ -43,8 +43,8 @@ export const resolveActiveBatchKeywordsForInstruction = (
   activeBatchKeywordItems: string[] | null,
   isSourceEntryNode: boolean,
 ) => {
-  // 只有真正处于批跑中的入口节点，才允许把关键词池注入到提示词。
-  // 普通单运行虽然默认 itemKey 可能是 global，但它只是运行项标识，不应被当成批次关键词展示。
+  // Only the entry node that is actually in a batch run may inject the keyword pool into the prompt.
+  // In a regular single run the default itemKey may be "global", but that's just a run-item identifier — it should not be shown as a batch keyword.
   if (!isSourceEntryNode || !activeBatchKeywordItems || activeBatchKeywordItems.length === 0) {
     return [];
   }
@@ -107,8 +107,8 @@ export const createStructuredNodeRunner = (options: CreateStructuredNodeRunnerOp
     lockedRunId: string | null;
   };
 
-  // 同一个 agent session 会复用多轮对话。
-  // 这里按 sessionId + agent runId 记录生命周期，避免上一轮尾部的 end/error 事件误伤下一轮新请求。
+  // The same agent session reuses multiple rounds of conversation.
+  // Track lifecycle by sessionId + agent runId to prevent stray end/error events from the previous round's tail from hitting the next round's new request.
   const sessionRuns = new Map<string, Map<string, SessionRunSnapshot>>();
 
   const findStringByKeys = (value: unknown, keys: string[], depth = 0): string | null => {
@@ -184,9 +184,9 @@ export const createStructuredNodeRunner = (options: CreateStructuredNodeRunnerOp
     }
     runMap.set(runId, current);
 
-    // 每个 session 只保留最近少量 run 记录，避免长跑时无界增长。
-    // 驱逐前跳过仍在等待确认的活跃 run (completedAt 为 null)，
-    // 防止 resolveCompletedAtForRequest 锁定的 runId 被误删导致超时。
+    // Keep only the most recent few run records per session to avoid unbounded growth during long runs.
+    // Skip active runs still awaiting confirmation (completedAt is null) before eviction,
+    // to prevent runId locked by resolveCompletedAtForRequest from being mistakenly deleted and causing a timeout.
     const MAX_RUNS_PER_SESSION = 48;
     if (runMap.size > MAX_RUNS_PER_SESSION) {
       const now = Date.now();
@@ -214,8 +214,8 @@ export const createStructuredNodeRunner = (options: CreateStructuredNodeRunnerOp
     if (!runMap || runMap.size === 0) return null;
 
     if (!watch.lockedRunId) {
-      // 优先锁定"首次出现时间晚于本次请求发出时间"的 runId。
-      // 这样可以避免上一轮请求的尾部 end/error 在新请求刚开始时被错认成当前轮次结束。
+      // Prefer locking the runId whose "first seen time" is later than this request's start time.
+      // This avoids the previous request's tail end/error being misidentified as the current round's completion when a new request just starts.
       const currentRun = [...runMap.entries()]
         .filter(([, snapshot]) => snapshot.firstSeenAt >= requestStartedAt)
         .sort((a, b) => a[1].firstSeenAt - b[1].firstSeenAt)[0];
@@ -248,8 +248,8 @@ export const createStructuredNodeRunner = (options: CreateStructuredNodeRunnerOp
         rememberSessionRunEvent(sessionId, runId, inferLifecycle(payload.data));
         return;
       }
-      // assistant/tool/item 等流虽然不代表完成，但能提供当前轮次的 runId。
-      // 这里只做"看见过该 run"的记录，完成仍以 lifecycle/chat.final 为准。
+      // assistant/tool/item streams don't represent completion, but they provide the current round's runId.
+      // This only records "this run was seen"; completion is still determined by lifecycle/chat.final.
       rememberSessionRunEvent(sessionId, runId, "unknown");
       return;
     }
@@ -296,8 +296,8 @@ export const createStructuredNodeRunner = (options: CreateStructuredNodeRunnerOp
     const workflowNode = options.graph.getWorkflowNodeById(node.id);
     const retryBackoffMs = workflowNode?.retryPolicy.backoffMs ?? 0;
     const parallelGroup = options.graph.getParallelGroupByMemberNodeId(node.id);
-    // 批处理关键词只应注入真正的入口节点。并行组成员虽然通常没有 direct incoming edge，
-    // 但它们的依赖挂在 group 上，只看 node 自身入边会把 group 成员误判为 source entry。
+    // Batch keywords should only be injected into the true entry node. Parallel-group members typically have no direct incoming edge,
+    // but their dependencies are attached to the group; looking only at the node's own incoming edges would misclassify group members as source entries.
     const isSourceEntryNode =
       options.graph.getIncomingEdges(node.id).length === 0 &&
       (!parallelGroup || options.graph.getIncomingEdges(parallelGroup.id).length === 0);
@@ -370,7 +370,7 @@ export const createStructuredNodeRunner = (options: CreateStructuredNodeRunnerOp
     requestRunWatch: RequestRunWatch,
     signal?: AbortSignal,
   ): Promise<ResultEnvelope> => {
-    // DAG 节点发送只保留 chat.send 单一路径，避免不同发送 API 的兼容补发把同一 requestId 投递两次。
+    // DAG node send only uses the chat.send single path to avoid compatibility fallback sends from different APIs delivering the same requestId twice.
     const idempotencyKey = randomUUID();
     let payload: unknown;
     try {
@@ -419,8 +419,8 @@ export const createStructuredNodeRunner = (options: CreateStructuredNodeRunnerOp
       requireRouteContent: allowedRoutes.length > 0,
     };
     let lastViolation: ContractViolationCode | null = null;
-    // 纠错重试属于同一次节点请求的补正，不应更换 requestId。
-    // 否则模型即使按上一轮上下文修正成功，也会因为顶层 requestId 变化被误判为 mismatch。
+    // Error-correction retries are corrections of the same node request; the requestId should not be changed.
+    // Otherwise the model would be wrongly flagged as a mismatch due to a changed top-level requestId, even after a successful context-based correction.
     for (let attemptIndex = 0; attemptIndex < 2; attemptIndex += 1) {
       if (attemptIndex > 0 && retryBackoffMs > 0) {
         await new Promise(resolve => setTimeout(resolve, retryBackoffMs));
@@ -469,7 +469,7 @@ export const createStructuredNodeRunner = (options: CreateStructuredNodeRunnerOp
     const status = envelope.status === "failed" ? "failed" as const : "success" as const;
     const batchRunId = options.getBatchRunId?.();
 
-    // envelope 文件通过 persistEnvelopeFile 写入并追加索引
+    // Envelope files are written and indexed via persistEnvelopeFile
     await persistEnvelopeFile(
       options.artifactDir,
       status,

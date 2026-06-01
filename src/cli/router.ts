@@ -10,7 +10,7 @@ import { resolveHelp, resolveHelpHint } from "./help";
 import type { CliRouteDefinition, CliRouteMatch, CliRunOptions } from "./types";
 
 const collectRoutesFromModule = (moduleExports: Record<string, unknown>): CliRouteDefinition[] => {
-  // 只聚合命令模块导出的 *Routes，router 不再内联维护路由定义。
+  // Only aggregate *Routes exports from command modules; the router no longer inlines route definitions.
   return Object.entries(moduleExports)
     .filter(([exportName, value]) => exportName.endsWith("Routes") && Array.isArray(value))
     .flatMap(([, value]) => value as CliRouteDefinition[]);

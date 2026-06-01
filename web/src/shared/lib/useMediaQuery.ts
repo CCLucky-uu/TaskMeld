@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 
 /**
- * 监听 CSS 媒体查询，返回当前是否匹配。
- * 用于响应式布局中区分移动端/桌面端。
+ * Listen to a CSS media query, returning whether it currently matches.
+ * Used for responsive mobile/desktop layout switching.
  */
 export function useMediaQuery(query: string): boolean {
   const [matches, setMatches] = useState(() => {

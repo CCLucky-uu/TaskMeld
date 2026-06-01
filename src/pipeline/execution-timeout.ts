@@ -8,11 +8,11 @@ const normalizeTimeout = (value: string | undefined, fallback: number, min: numb
   return Math.max(min, Math.trunc(parsed));
 };
 
-// 统一维护 DAG 节点执行超时，避免发送请求与等待回执使用不同默认值。
+// Centrally maintain DAG node execution timeout so send-request and wait-receipt don't use different defaults.
 export const getPipelineNodeExecutionTimeoutMs = () =>
   normalizeTimeout(process.env.PIPELINE_NODE_EXECUTION_TIMEOUT_MS, DEFAULT_PIPELINE_NODE_TIMEOUT_MS, MIN_TIMEOUT_MS);
 
-// 兼容历史环境变量名，未设置新变量时继续读取旧变量。
+// Compatible with legacy env var name; fall back to the old var when the new one is not set.
 export const getStructuredResultTimeoutMs = () =>
   normalizeTimeout(
     process.env.STRUCTURED_RESULT_TIMEOUT_MS ?? process.env.PIPELINE_NODE_EXECUTION_TIMEOUT_MS,
@@ -20,6 +20,6 @@ export const getStructuredResultTimeoutMs = () =>
     MIN_TIMEOUT_MS,
   );
 
-// 轮询间隔保持短周期，仅负责观察回执，不参与失败判定。
+// Polling interval stays short; it only observes receipts and does not participate in failure judgment.
 export const getStructuredResultPollMs = () =>
   normalizeTimeout(process.env.STRUCTURED_RESULT_POLL_MS, DEFAULT_STRUCTURED_RESULT_POLL_MS, 100);

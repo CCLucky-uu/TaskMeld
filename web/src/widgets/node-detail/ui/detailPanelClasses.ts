@@ -1,7 +1,7 @@
 import { actionRowClassName, panelHeaderClassName } from "../../../shared/ui/panelClasses";
 
-// 右侧详情栏必须先锁定在主内容区可用高度内，再把滚动交给自身处理。
-// 否则详情内容一多就会把整行 grid 撑高，连带影响中间流水线区域的滚动边界。
+// The right detail panel must first lock into the available height of the main content area, then delegate scrolling to itself.
+// Otherwise, when detail content grows tall, the entire grid row stretches, pulling the middle pipeline area's scroll boundary along with it.
 export const detailPanelShellClassName = "h-full min-h-0 min-w-0 overflow-hidden";
 export const detailPanelClassName = "detail-panel grid h-full min-h-0 content-start gap-[10px] overflow-x-hidden overflow-y-auto p-3";
 export const detailPanelHeadClassName = panelHeaderClassName;

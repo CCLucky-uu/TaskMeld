@@ -23,7 +23,7 @@ export function SchedulerCard({
   onManualTick,
   embedded = false,
 }: SchedulerCardProps) {
-  const { t } = useTranslation('scheduler');
+  const { t } = useTranslation('common');
   const wrapperClassName = embedded
     ? "border-b border-(--line) bg-[rgba(15,23,29,0.42)] mb-3"
     : "";
@@ -31,18 +31,18 @@ export function SchedulerCard({
   return (
     <section data-center-card={!embedded} className={wrapperClassName}>
       <div className={`mb-2 flex items-center justify-between gap-2 px-3 pt-0` }>
-        <div className="font-[JetBrains_Mono,monospace] text-xs text-(--muted)">{t('schedulerConfig', { pipelineId })}</div>
+        <div className="font-[JetBrains_Mono,monospace] text-xs text-(--muted)">{t('scheduler.schedulerConfig', { pipelineId })}</div>
         <span className={monoClassName}>{`mode=${schedulerMode}`}</span>
       </div>
       <div className={`${actionRowClassName} mb-0.5 grid grid-cols-3 max-[980px]:grid-cols-2 max-[640px]:grid-cols-1`}>
         <button className={actionButtonClassName} type="button" onClick={onToggleScheduler}>
-          {schedulerEnabled ? t('disableScheduler') : t('enableScheduler')}
+          {schedulerEnabled ? t('scheduler.disableScheduler') : t('scheduler.enableScheduler')}
         </button>
         <button className={actionButtonClassName} type="button" onClick={onSwitchSchedulerMode}>
-          {t('switchToMode', { mode: schedulerMode === "manual" ? t('auto') : t('manual') })}
+          {t('scheduler.switchToMode', { mode: schedulerMode === "manual" ? t('scheduler.auto') : t('scheduler.manual') })}
         </button>
         <button className={actionButtonClassName} type="button" onClick={onManualTick}>
-          {t('manualStep')}
+          {t('scheduler.manualStep')}
         </button>
       </div>
     </section>

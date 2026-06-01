@@ -143,6 +143,23 @@
     "idEmpty": "{{field}} cannot be empty",
     "pipelineTitleEmpty": "Pipeline title cannot be empty"
   },
+  "scheduler": {
+    "schedulerConfig": "Scheduler Config (DAG-{{pipelineId}})",
+    "disableScheduler": "Disable Scheduler",
+    "enableScheduler": "Enable Scheduler",
+    "switchToMode": "Switch to {{mode}}",
+    "auto": "Auto",
+    "manual": "Manual",
+    "manualStep": "Step Through"
+  },
+  "settings": {
+    "title": "Settings",
+    "language": {
+      "label": "Language",
+      "zh": "中文",
+      "en": "English"
+    }
+  },
   "validation": {
     "versionInvalid": "workflow.version invalid, only 3.0 supported: {{version}}",
     "mustBeArray": "workflow.nodes/edges/groups must be arrays",

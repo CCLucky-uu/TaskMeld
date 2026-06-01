@@ -58,7 +58,7 @@ export const validateWorkflowGraph = (workflow: WorkflowDefinitionRuntime): Work
     if (kinds.size <= 1) continue;
     const sourceNode = workflow.nodes.find((node) => node.id === sourceId);
     if (sourceNode?.routePolicy) continue;
-    // 非分流节点仍禁止同一节点混合依赖边和路由边，避免无条件放行导致重复执行。
+    // Non-routing nodes are still forbidden from mixing dependency and route edges on the same node, to prevent unconditional passthrough leading to double execution.
     return {
       ok: false,
       error: "mixed_outgoing_edge_kinds_forbidden",
@@ -66,8 +66,8 @@ export const validateWorkflowGraph = (workflow: WorkflowDefinitionRuntime): Work
     };
   }
 
-  // Phase 2: 基于显式 scope 的跨支线边检测。
-  // computeNodeScopes + isCrossBranchEdgeByScope 使用显式 branchScopeId（缺失时从 route 边推导）。
+  // Phase 2: Cross-branch edge detection based on explicit scope.
+  // computeNodeScopes + isCrossBranchEdgeByScope use explicit branchScopeId (derived from route edges when missing).
   {
     const explicitScopes = new Map<string, string | null>();
     const mergeNodeIds = new Set<string>();
@@ -75,13 +75,13 @@ export const validateWorkflowGraph = (workflow: WorkflowDefinitionRuntime): Work
       if (node.branchScopeId != null) {
         explicitScopes.set(node.id, node.branchScopeId);
       }
-      // merge 节点（dependencyPolicy !== "all"）是显式分支汇聚点，接受来自不同 scope 的依赖边
+      // merge nodes (dependencyPolicy !== "all") are explicit branch convergence points, accepting dependency edges from different scopes
       if (node.dependencyPolicy && node.dependencyPolicy !== "all") {
         mergeNodeIds.add(node.id);
       }
     }
     const nodeScopes = computeNodeScopes(workflow.nodes, workflow.edges, explicitScopes);
-    // 对 merge 节点清除 scope，避免其被误判为跨支线（与 workflow-graph.ts 的 buildIndices 保持一致）
+    // Clear scope for merge nodes to avoid them being misjudged as cross-branch (consistent with buildIndices in workflow-graph.ts)
     for (const nodeId of mergeNodeIds) {
       nodeScopes.set(nodeId, null);
     }
@@ -142,7 +142,7 @@ export const validateWorkflowGraph = (workflow: WorkflowDefinitionRuntime): Work
   }
 
   for (const group of workflow.groups) {
-    // joinPolicy 仅支持 "all"；any/quorum 运行时未实现，保存时显式拒绝
+    // joinPolicy only supports "all"; any/quorum are not implemented at runtime, explicitly reject on save
     if (group.joinPolicy !== "all") {
       return {
         ok: false,

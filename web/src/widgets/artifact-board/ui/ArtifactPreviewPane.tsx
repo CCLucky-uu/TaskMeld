@@ -13,7 +13,7 @@ const monoClassName = "font-[JetBrains_Mono,monospace]";
 
 const toPreviewText = (content: StoredArtifactContent | null): string => {
   if (!content) return "";
-  // envelope 内容：展示 contents[] + logs[]
+  // envelope content: show contents[] + logs[]
   const contentObj = content.content as Record<string, unknown> | null;
   if (contentObj && (Array.isArray(contentObj.contents) || Array.isArray(contentObj.logs))) {
     const parts: string[] = [];

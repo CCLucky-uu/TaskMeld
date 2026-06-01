@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ControlPlanePage } from "../pages/control-plane/ui/ControlPlanePage";
 import type { NavKey } from "../widgets/nav-panel/model/navItem";
+import i18n from "../shared/i18n";
 
 const PIPELINE_ROUTE_PATH = "/pipeline";
 const LOG_ROUTE_PATH = "/logs";
@@ -30,6 +31,11 @@ export default function App() {
     search: window.location.search,
   }));
 
+  // Sync <html lang> with i18n locale for screen readers and CSS :lang() selectors
+  useEffect(() => {
+    document.documentElement.lang = i18n.language === "zh" ? "zh-CN" : i18n.language;
+  }, [i18n.language]);
+
   useEffect(() => {
     const handlePopState = () => {
       setCurrentLocation({
@@ -53,36 +59,23 @@ export default function App() {
       ? new URLSearchParams(currentLocation.search).get("pipeline")?.trim() ?? ""
       : "";
 
+  const ROUTE_MAP: Record<NavKey, string> = {
+    overview: OVERVIEW_ROUTE_PATH,
+    agents: AGENTS_ROUTE_PATH,
+    pipeline: PIPELINE_ROUTE_PATH,
+    pipelineRuns: OVERVIEW_ROUTE_PATH,
+    artifacts: ARTIFACTS_ROUTE_PATH,
+    logs: LOG_ROUTE_PATH,
+    settings: SETTINGS_ROUTE_PATH,
+  };
+
   const handleNavigateByNav = useCallback(
     (label: NavKey, pipelineId?: string) => {
-      if (label === "overview") {
-        navigate(OVERVIEW_ROUTE_PATH);
-        return;
-      }
-      if (label === "pipeline") {
-        navigate(
-          PIPELINE_ROUTE_PATH,
-          pipelineId?.trim() ? `pipeline=${encodeURIComponent(pipelineId.trim())}` : "",
-        );
-        return;
-      }
-      if (label === "agents") {
-        navigate(AGENTS_ROUTE_PATH);
-        return;
-      }
-      if (label === "artifacts") {
-        navigate(ARTIFACTS_ROUTE_PATH);
-        return;
-      }
-      if (label === "logs") {
-        navigate(LOG_ROUTE_PATH);
-        return;
-      }
-      if (label === "settings") {
-        navigate(SETTINGS_ROUTE_PATH);
-        return;
-      }
-      navigate(OVERVIEW_ROUTE_PATH);
+      const path = ROUTE_MAP[label] ?? OVERVIEW_ROUTE_PATH;
+      const query = label === "pipeline" && pipelineId?.trim()
+        ? `pipeline=${encodeURIComponent(pipelineId.trim())}`
+        : "";
+      navigate(path, query);
     },
     [navigate],
   );
@@ -157,7 +150,6 @@ export default function App() {
 
   return (
     <>
-      {/* 键盘导航跳过链接：仅聚焦时可见 */}
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-(--z-tooltip) focus:inline-flex focus:h-10 focus:items-center focus:border focus:border-[var(--live)] focus:bg-[var(--panel)] focus:px-4 focus:text-sm focus:font-medium focus:text-[var(--live)] focus:shadow-lg focus:outline-none"

@@ -93,8 +93,8 @@ export const rebuildWorkflowEdgesForLaneChange = (
   workflow: WorkflowDefinition,
   _nextNodes: WorkflowDefinition["nodes"],
 ): WorkflowDefinition["edges"] => {
-  // uiLane 只负责展示分栏，不应反向改写执行拓扑。
-  // 执行边由“上游依赖/路由目标”显式编辑生成，lane 变更时必须保持 edges 不变。
+  // uiLane is only for display column assignment and must not reverse-rewrite execution topology.
+  // Execution edges are generated explicitly via "upstream dependencies / route targets" editing; lane changes must keep edges unchanged.
   return workflow.edges;
 };
 
@@ -119,7 +119,7 @@ export const reorderWorkflowNodeWithinLane = (
 
   const nextTargetIndex = nextNodes.findIndex((node) => node.id === targetNodeId);
   if (nextTargetIndex < 0) return workflow;
-  // 排序需要显式区分“插到目标前”还是“插到目标后”，否则下移和向后拖拽都会被错误地前插。
+  // Reorder must explicitly distinguish "insert before target" vs "insert after target", otherwise moving down and dragging backwards would both incorrectly insert before.
   const insertIndex = position === "after" ? nextTargetIndex + 1 : nextTargetIndex;
   nextNodes.splice(insertIndex, 0, movedNode);
 
@@ -207,9 +207,9 @@ export const updateParallelGroupInWorkflow = ({
           return edge.from !== previousGroupId && edge.to !== previousGroupId;
         }
 
-        // 并行组成员变更后，旧组与旧成员的无条件边语义已经失效：
-        // 保留下来会把“已移出成员”悬空，或让组成员同时拥有 group 边和 direct 边，
-        // 触发后端工作流校验失败。这里统一清空旧编排，再按新成员/新上下游重建。
+        // After parallel-group membership changes, the old unconditional-edge semantics between the group and members are stale:
+        // keeping them would leave "removed members" dangling, or give members both a group edge and a direct edge,
+        // triggering backend workflow validation failures. Clear old structure and rebuild from new members/upstream/downstream.
         if (edge.from === nextGroupId || edge.to === nextGroupId) return false;
         if (involvedMemberIds.includes(edge.from) || involvedMemberIds.includes(edge.to)) return false;
         return true;
@@ -373,8 +373,8 @@ export const insertWorkflowNodeByDependencies = (
       : Math.max(...normalizedDependsOn.map(resolveEntityAnchorIndex)) + 1;
 
   const nextNodes = [...workflow.nodes];
-  // 新增节点默认插入到“最后一个上游依赖”之后；
-  // 这样 DAG 视觉顺序会和用户在新增面板里选择的依赖关系保持一致。
+  // Insert new node after the "last upstream dependency";
+  // this way the DAG visual order matches the dependency choices made in the "add node" panel.
   nextNodes.splice(Math.max(0, Math.min(insertIndex, workflow.nodes.length)), 0, nextNode);
   return nextNodes;
 };
@@ -483,6 +483,10 @@ export const getApiErrorMessage = (error: unknown) =>
       ? error.message
       : "unknown_error";
 
+// Validation messages include node/edge/group IDs in interpolation values.
+// Evaluated for information-leak risk (L-17): these IDs are user-authored, visible
+// throughout the admin UI, and essential for the pipeline author to locate the
+// exact problem. Removing them would degrade the editing experience. Kept as-is.
 export const validateWorkflowBeforeSave = (workflow: WorkflowDefinition): { ok: true } | { ok: false; message: string } => {
   if (workflow.version !== "3.0") {
     return { ok: false, message: i18n.t("common:validation.versionInvalid", { version: String(workflow.version) }) };
@@ -522,7 +526,7 @@ export const validateWorkflowBeforeSave = (workflow: WorkflowDefinition): { ok: 
     outgoingBySource.set(edge.from, [...(outgoingBySource.get(edge.from) ?? []), edge.to]);
     indegreeByEntity.set(edge.to, (indegreeByEntity.get(edge.to) ?? 0) + 1);
   }
-  // 非分流节点不能混合出边；分流节点的普通边被限定为 yes 主线语义。
+  // Non-routing nodes cannot mix outgoing edge types; for routing nodes the sole unconditional edge is limited to "yes" mainline semantics.
   for (const [sourceId, kinds] of outgoingKindsBySource.entries()) {
     if (kinds.size <= 1) continue;
     const sourceNode = workflow.nodes.find((node) => node.id === sourceId);
@@ -567,7 +571,7 @@ export const validateWorkflowBeforeSave = (workflow: WorkflowDefinition): { ok: 
     }
   }
 
-  // 这些约束必须前置到前端：否则用户只能在提交后才看到后端拒绝，编辑体验会变成“改完才报错”。
+  // These constraints must be enforced on the frontend; otherwise users would only see the backend rejection after submitting, making the editing experience "fix after error".
   for (const group of workflow.groups) {
     if (group.type !== "parallel") {
       return { ok: false, message: i18n.t("common:validation.groupTypeInvalid", { groupId: group.id }) };
@@ -621,7 +625,7 @@ export const validateWorkflowBeforeSave = (workflow: WorkflowDefinition): { ok: 
     }
   }
 
-  // DAG 环路必须前置校验，否则会在保存后才被后端拒绝，导致用户难以定位问题。
+  // DAG cycles must be caught on the frontend; otherwise the rejection only comes after save, making it hard for users to locate the problem.
   const queue = [...[...entityIds].filter((id) => (indegreeByEntity.get(id) ?? 0) === 0)];
   let visited = 0;
   while (queue.length > 0) {

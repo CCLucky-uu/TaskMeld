@@ -205,7 +205,7 @@ export function ArtifactFiltersBar({
                     className={nodeCheckboxClassName}
                     checked={filters.nodeIds.length === 0}
                     onChange={() => {
-                      // 空数组代表“全部节点”，保持和查询层语义一致。
+                      // Empty array means "all nodes" — consistent with the query-layer semantics.
                       onChangeFilters((prev) => ({ ...prev, nodeIds: [] }));
                     }}
                   />

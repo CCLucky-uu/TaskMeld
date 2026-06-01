@@ -46,7 +46,7 @@ export function AgentListCard({ agents, onOpenAgentSession, onOpenAgentOutput }:
 
   return (
     <section data-center-card data-agent-card className="grid min-h-0 min-w-0 flex-1 grid-rows-[auto_minmax(0,1fr)] overflow-hidden">
-      {/* 顶部仅保留检索与筛选工具，减少低价值统计信息占位。 */}
+      {/* Top area only keeps search and filter tools — low-value stats that waste space are removed. */}
       <div className={`flex h-[66px] items-center border-b border-(--line) ${gridTileClassName}`}>
         <div className="flex w-full items-center gap-0 overflow-hidden px-8">
           <input
@@ -57,7 +57,7 @@ export function AgentListCard({ agents, onOpenAgentSession, onOpenAgentOutput }:
             aria-label={t('searchLabel')}
           />
           <span className={`${gridTileClassName} h-8 w-4 shrink-0`} aria-hidden="true" />
-          {/* 状态筛选只影响展示，不改动任何业务行为。 */}
+          {/* Status filter only affects display, never changes business behavior. */}
           <div className={filterGroupShellClassName} role="group" aria-label={t('statusFilter')}>
             <button
               type="button"
@@ -82,7 +82,7 @@ export function AgentListCard({ agents, onOpenAgentSession, onOpenAgentOutput }:
             </button>
           </div>
           <span className={`${gridTileClassName} h-8 w-4 shrink-0`} aria-hidden="true" />
-          {/* 视图模式切换只影响展示，不影响任何智能体交互逻辑。 */}
+          {/* View-mode toggle only affects display, no impact on agent interaction logic. */}
           <button
             type="button"
             className={viewToggleButtonClassName}

@@ -206,7 +206,7 @@ export const createNodeExecutionPrompt = (ctx: {
     `- type: \`${spec.type}\``,
     `- schemaVersion: \`${spec.schemaVersion}\``,
   );
-  // 仅在节点明确开启分流时，才注入分流相关说明，避免无配置时污染提示词。
+  // Only inject routing instructions when the node explicitly enables routing, to avoid polluting the prompt when no routing is configured.
   if (ctx.allowedRoutes.length > 0) {
     lines.push(
       "",
@@ -225,7 +225,7 @@ export const createNodeExecutionPrompt = (ctx: {
       }
     }
   }
-  // 仅在节点明确开启打回且存在上游依赖时，才注入打回相关说明，避免无配置时污染提示词。
+  // Only inject rejection instructions when the node explicitly enables rejection and has upstream dependencies, to avoid polluting the prompt when no rejection is configured.
   if (ctx.allowReject && ctx.dependencies.length > 0) {
     lines.push(
       "",
@@ -347,8 +347,8 @@ export const createNodeExecutionPrompt = (ctx: {
     }
     lines.push("");
   }
-  // 节点目标是执行 prompt 的核心约束，不能因为存在打回反馈或分流说明而被覆盖掉。
-  // 这里固定保留“节点目标”段，再额外追加反馈，避免分流节点提示词缺少主任务目标。
+  // The node objective is the core constraint of the execution prompt and must not be overwritten by rejection feedback or routing instructions.
+  // Always keep the "Node Objective" section here, then append feedback separately, to avoid routing-node prompts missing the main task objective.
   lines.push("## Node Objective", ctx.instruction || "Complete the task according to the node's responsibilities");
   if (ctx.rejectFeedbacks.length > 0) {
     lines.push("", "## Downstream Rejection Feedback (please prioritize fixes)");
@@ -402,7 +402,7 @@ export const buildExternalPipelineArtifactInput = async (
 ): Promise<ExternalPipelineArtifactInput | null> => {
   try {
     const { absolutePath } = output.artifactRef;
-    // Verify path is within artifact directory (basic path traversal check)
+    // Normalize path to resolve relative segments (e.g. '..', '.')
     const normalizedPath = resolve(absolutePath);
     if (!normalizedPath) return null;
 

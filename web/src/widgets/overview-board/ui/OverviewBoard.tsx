@@ -41,13 +41,7 @@ const resolveStatusToneClassName = (status: PipelineNodeStatus | "idle") => {
 };
 
 const resolveStatusLabel = (status: PipelineNodeStatus | "idle", t: (key: string) => string) => {
-  if (status === "running") return t('statusRunning');
-  if (status === "failed") return t('statusFailed');
-  if (status === "blocked") return t('statusBlocked');
-  if (status === "waiting") return t('statusWaiting');
-  if (status === "stopped") return t('statusStopped');
-  if (status === "success") return t('statusSuccess');
-  return t('statusIdle');
+  return t(`common:status.${status}`);
 };
 
 const pickRunningNode = (nodes: PipelineNode[]): PipelineNode | null =>
@@ -94,7 +88,7 @@ export function OverviewBoard({ pipelines, onStartPipeline, onNavigatePipeline, 
             const failedNode = pipeline.nodes.find((node) => node.status === "failed") ?? null;
             const structuredErrorNode = pipeline.nodes.find((node) => isStructuredErrorNode(node)) ?? null;
             const nodeReturnErrorNode = pipeline.nodes.find((node) => isNodeReturnErrorNode(node)) ?? null;
-            // 会话按钮优先打开"节点返回错误"的执行者，便于直接追踪业务失败上下文。
+            // Session button prefers the executor of a "node return error" so you can directly trace business-failure context.
             const sessionTargetNode = nodeReturnErrorNode ?? structuredErrorNode ?? failedNode;
             const sessionTargetAgentId = sessionTargetNode?.executor.agentId?.trim() ?? "";
             const latestArtifact = pickLatestArtifact(pipeline.nodes);

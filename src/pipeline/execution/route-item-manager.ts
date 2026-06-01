@@ -34,7 +34,7 @@ const normalizeAllowedRoute = (rawRoute: unknown, allowedRoutes: string[]) => {
   const direct = allowedRoutes.find((route) => route === trimmed);
   if (direct) return direct;
   const lower = trimmed.toLowerCase();
-  // 与结构化校验保持一致：大小写不一致时使用工作流声明值，避免命中丢失。
+  // Consistent with structured validation: when case differs, use the workflow-declared value to avoid missed matches.
   return allowedRoutes.find((route) => route.toLowerCase() === lower) ?? null;
 };
 
@@ -103,7 +103,7 @@ export const createRouteItemManager = (options: CreateRouteItemManagerOptions) =
     const outgoingEdges = options.graph.getOutgoingEdges(sourceItem.nodeId);
     const isRouteNode = (options.graph.getWorkflowNodeById(sourceItem.nodeId)?.routePolicy?.allowed.length ?? 0) > 0;
     const startTargets = outgoingEdges
-      // 分流节点中 yes 是主线语义：只沿普通依赖边初始化；no/自定义值只沿路由边初始化。
+      // In routing nodes, yes is mainline semantics: only follow unconditional dependency edges; no/custom values only follow route edges.
       .filter((edge) => (isRouteNode ? (route === MAINLINE_ROUTE_VALUE ? edge.when === null : edge.when === route) : !edge.when))
       .map((edge) => edge.to);
     const reachable = options.state.collectReachableEntities(startTargets);
@@ -212,7 +212,7 @@ export const createRouteItemManager = (options: CreateRouteItemManagerOptions) =
         if (!opts?.suppressOutgoing) {
           for (const edge of options.graph.getOutgoingEdges(item.nodeId)) {
             if (bucket.route === MAINLINE_ROUTE_VALUE) continue;
-            // 路由节点只按命中的 route 边推进，普通边在此一律忽略，避免主线被隐式直通。
+          // Routing nodes only advance along the matched route edge; unconditional edges are unconditionally ignored here to prevent implicit mainline passthrough.
             if (edge.when !== bucket.route) continue;
             if (options.graph.isGroupId(edge.to)) {
               options.state.ensureGroupItemKeyInitialized(derivedItemKey);

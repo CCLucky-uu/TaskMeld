@@ -38,9 +38,9 @@ type ExecutionServiceDeps = {
 };
 
 /**
- * 流水线执行器。
- * 负责：节点的具体执行逻辑、状态转换、产物管理。
- * 不负责：调度决策、并发控制。
+ * Pipeline executor.
+ * Responsible for: specific execution logic of nodes, state transitions, artifact management.
+ * Not responsible for: scheduling decisions, concurrency control.
  */
 export const createExecutionService = (deps: ExecutionServiceDeps) => {
   let activeBatchKeywordItems: string[] | null = null;
@@ -99,7 +99,7 @@ export const createExecutionService = (deps: ExecutionServiceDeps) => {
     },
   });
 
-  // ====== Helper: 重置受影响的 downstream ======
+  // ====== Helper: Reset affected downstream ======
   const resetAffectedDownstreamNodes = (params: {
     targetNodeId: string;
     itemKey?: string;

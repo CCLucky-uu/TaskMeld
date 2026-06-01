@@ -23,12 +23,6 @@ type RunLogViewerProps = {
   onClose: () => void;
 };
 
-const levelKey: Record<"info" | "warn" | "error", string> = {
-  info: "levelInfo",
-  warn: "levelWarn",
-  error: "levelError",
-};
-
 const runLogLevelGroupClassName = "flex flex-wrap gap-2";
 const runLogLevelLabelBaseClassName = "inline-flex cursor-pointer items-center gap-1.5 rounded-none px-2 py-[2px] text-xs uppercase";
 const runLogLevelLabelToneClassName: Record<"info" | "warn" | "error", string> = {
@@ -125,7 +119,7 @@ export function RunLogViewer({ open, runId, onClose }: RunLogViewerProps) {
                       checked={vm.selectedLevels.includes(level)}
                       onChange={(event) => vm.toggleLevel(level, event.target.checked)}
                     />
-                    <span>{t(levelKey[level])}</span>
+                    <span>{t(level)}</span>
                   </label>
                 ))}
               </div>
@@ -158,7 +152,7 @@ export function RunLogViewer({ open, runId, onClose }: RunLogViewerProps) {
                   <div className={`${monoClassName} flex items-center justify-between gap-3 text-xs text-(--muted)`}>
                     <span>{new Date(item.ts).toLocaleString(undefined, { hour12: false })}</span>
                     <span className={`${runLogLevelLabelBaseClassName} ${runLogLevelLabelToneClassName[item.level]}`}>
-                      {t(levelKey[item.level])}
+                      {t(item.level)}
                     </span>
                   </div>
                   <p className="m-0 wrap-break-word whitespace-pre-wrap font-[JetBrains_Mono,monospace] text-[13px] leading-normal">{item.text}</p>

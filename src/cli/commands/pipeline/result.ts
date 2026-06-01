@@ -103,7 +103,7 @@ export const pipelineResultCommand: CliCommandHandler = async (input, ctx) => {
     nodes: [],
   };
 
-  // 通过 artifact service 查询 envelope 文件（复用统一读取语义）
+  // Query envelope files via artifact service (reuses unified read semantics)
   const envelopeList = await ctx.app.artifactService.listArtifacts({
     pipelineId,
     runId,
@@ -111,7 +111,7 @@ export const pipelineResultCommand: CliCommandHandler = async (input, ctx) => {
   }) as { items?: Array<{ nodeId?: string | null; relativePath?: string }> };
   const envelopeItems = Array.isArray(envelopeList?.items) ? envelopeList.items : [];
 
-  // 按 nodeId 索引 envelope 的 relativePath
+  // Index envelope relativePath by nodeId
   const envelopePathByNode = new Map<string, string>();
   for (const item of envelopeItems) {
     const nid = item.nodeId?.trim();

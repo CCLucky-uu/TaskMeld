@@ -26,6 +26,29 @@
       "optional": "Optional"
     }
   },
+  "init": {
+    "firstTimeSetup": "First-time Setup",
+    "greeting": "Configure your OpenClaw Gateway connection to get started.",
+    "configSavedTo": "Config  {{path}}",
+    "languageLabel": "Language",
+    "gatewayUrlLabel": "Gateway URL",
+    "gatewayUrlHint": "ws:// or wss:// address of your OpenClaw Gateway",
+    "gatewayTokenLabel": "Gateway Token",
+    "gatewayTokenHint": "Authentication token for the Gateway",
+    "success": "Gateway configured successfully",
+    "nextStep": "Run \"taskmeld server start\" to begin.",
+    "urlLabel": "URL",
+    "description": "Guided setup for OpenClaw Gateway connection",
+    "usage": "taskmeld init [--url <url>] [--token <token>]",
+    "summary": "Guided first-time setup — configure the OpenClaw Gateway connection.",
+    "optUrlDesc": "Gateway WebSocket URL (ws:// or wss://)",
+    "optTokenDesc": "Gateway authentication token",
+    "example1": "taskmeld init",
+    "example2": "taskmeld init --url ws://127.0.0.1:18789 --token your-token",
+    "note1": "Running without flags starts an interactive guided setup.",
+    "note2": "Config is saved to ~/.taskmeld/config.json.",
+    "note3": "Environment variables (OPENCLAW_GATEWAY_URL/TOKEN) take precedence over this config."
+  },
   "agent": {
     "list": {
       "description": "List agents",

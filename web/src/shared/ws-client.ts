@@ -1,10 +1,10 @@
 import { GatewayWsEvent, parseGatewayWsEvent } from "./realtime/gateway-events";
 
-// 基础常量
+// Base constants
 export const API_BASE = import.meta.env.VITE_API_BASE ?? "";
 export const WS_BASE = API_BASE.replace(/^http/i, "ws");
 
-// 统一错误类
+// Unified error class
 export class ApiError extends Error {
   status: number;
   body: unknown;
@@ -17,7 +17,7 @@ export class ApiError extends Error {
   }
 }
 
-// WS 请求客户端
+// WS request client
 type PendingRequest = {
   resolve: (payload: unknown) => void;
   reject: (error: Error) => void;

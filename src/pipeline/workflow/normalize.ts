@@ -79,7 +79,7 @@ const normalizeRemoteBatchPlugin = (value: unknown): WorkflowRemoteBatchPlugin =
     enabled: record.enabled === true,
     url: normalizeNonEmptyString(record.url) ?? DEFAULT_REMOTE_BATCH_URL,
     startBatch: normalizeIntegerInRange(record.startBatch, 1, 1, 1_000_000),
-    // 批大小与取数来源都属于低频配置，统一并入插件配置，避免主面板堆叠过多参数。
+    // Batch size and data source are low-frequency configuration; consolidate into plugin config to avoid too many params piling up on the main panel.
     batchSize: normalizeIntegerInRange(record.batchSize, 5, 1, 1_000),
     sourceField: normalizeNonEmptyString(record.sourceField) ?? "list30",
   };
@@ -88,7 +88,7 @@ const normalizeRemoteBatchPlugin = (value: unknown): WorkflowRemoteBatchPlugin =
 const normalizeSchedulerPlugin = (value: unknown): WorkflowSchedulerPlugin => {
   const record = isRecord(value) ? value : {};
   return {
-    // 调度器历史上默认对所有流水线开启；插件化后继续保持默认开启，避免升级后界面和行为突然消失。
+    // The scheduler was historically enabled for all pipelines by default; after plugin-ification, keep it enabled by default so the UI and behavior don't suddenly disappear after upgrade.
     enabled: record.enabled !== false,
   };
 };
@@ -96,7 +96,7 @@ const normalizeSchedulerPlugin = (value: unknown): WorkflowSchedulerPlugin => {
 export const normalizeWorkflowPlugins = (value: unknown): WorkflowPlugins => {
   const record = isRecord(value) ? value : {};
   return {
-    // 插件能力对所有流水线一致，这里只记录每条流水线自己的启用与参数配置。
+    // Plugin capabilities are consistent across all pipelines; only record each pipeline's own enabled + parameter configuration here.
     remoteBatch: normalizeRemoteBatchPlugin(record.remoteBatch),
     scheduler: normalizeSchedulerPlugin(record.scheduler),
   };
@@ -213,7 +213,7 @@ export const normalizeWorkflowNode = (value: unknown): WorkflowNode | null => {
     allowReject: value.allowReject === true,
     maxRejectCount: normalizeIntegerInRange(value.maxRejectCount, 3, 0, 10),
   };
-  // 仅在显式提供时写入 branch scope 字段，避免 null 值污染 JSON 输出
+  // Only write branch scope fields when explicitly provided to avoid null values polluting JSON output
   if (branchScopeId) node.branchScopeId = branchScopeId;
   if (routeSourceNodeId) node.routeSourceNodeId = routeSourceNodeId;
   if (routeValue) node.routeValue = routeValue;
@@ -237,8 +237,8 @@ const normalizeWorkflowEdgeV3 = (value: unknown): WorkflowEdge | null => {
   const from = normalizeNonEmptyString(value.from);
   const to = normalizeNonEmptyString(value.to);
   if (!from || !to) return null;
-  // v3 API 闭环要求：读取接口返回运行时 when 形状时，写回 /workflow 也必须可直接接受。
-  // 这里仅在 version=3.0 契约下做"同版本双形状"归一化，不允许 version=2.0 旁路写入。
+  // v3 API closed-loop requirement: when the read API returns runtime when shapes, writing back to /workflow must also be directly accepted.
+  // Here, only do "same-version dual-shape" normalization under the version=3.0 contract; do not allow version=2.0 bypass writes.
   if ("when" in value) {
     return {
       from,
@@ -271,10 +271,10 @@ export const normalizeWorkflowGroup = (value: unknown): WorkflowGroup | null => 
 
   const joinPolicy: WorkflowJoinPolicy = "all";
 
-  // 历史 any/quorum 降级：运行时仅支持 all，读取历史数据时静默降级为 all。
-  // 保存新 workflow 时 validate 会显式拒绝 any/quorum。
+  // Historical any/quorum downgrade: runtime only supports all; silently downgrade to all when reading historical data.
+  // When saving a new workflow, validate will explicitly reject any/quorum.
   if (value.joinPolicy === "any" || value.joinPolicy === "quorum") {
-    // 静默降级 — 历史数据兼容，新保存会被 validate 拦截
+    // Silently downgrade — historical data compatibility; new saves will be intercepted by validate
   }
 
   return {
@@ -334,7 +334,7 @@ export const readWorkflowDefinitionFromRawDetailed = (value: unknown): WorkflowR
 
   const groups: WorkflowGroup[] = [];
   for (const item of value.groups) {
-    // 预检：在 normalize 静默降级之前显式拒绝不支持的 joinPolicy
+    // Pre-check: explicitly reject unsupported joinPolicy before normalize silently downgrades it
     if (isRecord(item) && (item.joinPolicy === "any" || item.joinPolicy === "quorum")) {
       return {
         ok: false,

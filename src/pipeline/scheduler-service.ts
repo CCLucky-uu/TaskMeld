@@ -19,9 +19,9 @@ type SchedulerServiceDeps = {
 };
 
 /**
- * 流水线调度器。
- * 负责：决定何时执行节点、管理并发、控制调度模式。
- * 不负责：节点的具体执行逻辑。
+ * Pipeline scheduler.
+ * Responsible for: deciding when to execute nodes, managing concurrency, controlling scheduling mode.
+ * Not responsible for: the specific execution logic of nodes.
  */
 export const createSchedulerService = (deps: SchedulerServiceDeps) => {
   const isSchedulerPluginEnabled = () => deps.graph.getWorkflow().plugins.scheduler.enabled;
@@ -107,8 +107,8 @@ export const createSchedulerService = (deps: SchedulerServiceDeps) => {
       currentGroupItem.attempt = 0;
       currentGroupItem.artifacts = [];
     }
-    // 手动重试模式下，目标节点可能已经满足依赖但被 reset 成 blocked。
-    // 这里先重新评估依赖，再决定是否立刻执行首个节点，避免稳定复现 node_retry_blocked。
+    // In manual retry mode, the target node may already have its dependencies met but was reset to blocked.
+    // Re-evaluate dependencies first, then decide whether to execute the first node immediately, to avoid reliably reproducing node_retry_blocked.
     markReadyItemsFromDependencies();
     markReadyGroupsFromDependencies();
 
@@ -136,10 +136,10 @@ export const createSchedulerService = (deps: SchedulerServiceDeps) => {
   };
 
   /**
-   * 核心调度循环。遍历就绪节点并执行。这是调度器的核心职责。
+   * Core scheduling loop. Iterates over ready nodes and executes them. This is the scheduler's core responsibility.
    *
-   * 传入的 AbortSignal 仅用于提前退出本地排水循环；
-   * 远端 agent 的停止由 executionService.abortRunControllers 通过 "/stop" 命令处理。
+   * The passed AbortSignal is only used to exit the local drain loop early;
+   * remote agent stopping is handled by executionService.abortRunControllers via the "/stop" command.
    */
   const drainPipeline = async (reason: string, signal?: AbortSignal) => {
     const manualTick = reason.startsWith("manual_tick");
@@ -180,8 +180,8 @@ export const createSchedulerService = (deps: SchedulerServiceDeps) => {
       };
 
       while (true) {
-        // 客户端侧中止：外部调用 abortRunControllers 后，signal 变为 aborted，
-        // 排水循环提前退出，不再等待活跃节点自然完成。
+        // Client-side abort: after external call to abortRunControllers, the signal becomes aborted,
+        // the drain loop exits early and no longer waits for active nodes to finish naturally.
         if (signal?.aborted) {
           stopScheduling = true;
         }
@@ -242,8 +242,8 @@ export const createSchedulerService = (deps: SchedulerServiceDeps) => {
   };
 
   /**
-   * 批量运行控制器。管理关键词池的分批执行生命周期（启动、停止、取消、状态查询）。
-   * 属于调度器职责——控制何时及如何分批执行。
+   * Batch run controller. Manages the lifecycle of keyword-pool batch execution (start, stop, cancel, status query).
+   * Belongs to the scheduler's responsibility — controls when and how to execute batches.
    */
   const itemBatchController = createItemBatchController({
     pipelineId: deps.pipelineId,
@@ -276,7 +276,7 @@ export const createSchedulerService = (deps: SchedulerServiceDeps) => {
         return { ok: true as const };
       }
 
-      // 仅在硬失败场景停止后续批次；业务型 failed(status=failed) 允许继续下一批。
+      // Only stop subsequent batches on hard-failure scenarios; business-type failed (status=failed) allows continuing to the next batch.
       if (drained.hardFailed) {
         deps.runtimeStore.pushTimeline(`Batch run failed: batch ${batchIndex}, subsequent batches stopped`, "error", {
           batchIndex,
@@ -294,7 +294,7 @@ export const createSchedulerService = (deps: SchedulerServiceDeps) => {
   return {
     getSchedulerState: () => ({
       ...schedulerState,
-      // 调度器插件关闭时，对外统一表现为 disabled，避免界面和运行时状态不一致。
+      // When the scheduler plugin is disabled, externally present as disabled to avoid UI/runtime state inconsistency.
       enabled: isSchedulerPluginEnabled() && schedulerState.enabled,
     }),
     setSchedulerEnabled: (enabled: boolean) => {

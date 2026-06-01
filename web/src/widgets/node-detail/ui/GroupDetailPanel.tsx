@@ -96,12 +96,12 @@ export function GroupDetailPanel({
       <div className={detailPanelHeadClassName}>
         <h2 className={detailPanelTitleClassName}>{t("groupDetail")}</h2>
         <span className={`${statusTagBaseClassName} ${statusTagToneClassName[(selectedGroup ? statusTone[selectedGroup.status] ?? "muted" : "muted") as keyof typeof statusTagToneClassName]}`}>
-          {selectedGroup ? statusLabel[selectedGroup.status] ?? selectedGroup.status : "-"}
+          {selectedGroup ? statusLabel[selectedGroup.status] ?? selectedGroup.status : t('common:empty')}
         </span>
       </div>
       <div className={fieldClassName}>
         <label className={fieldLabelClassName}>{t("runtime")}</label>
-        <code className={fieldCodeClassName}>{selectedGroup ? `${selectedGroup.startedAt ?? "-"} -> ${selectedGroup.finishedAt ?? "-"}` : "-"}</code>
+        <code className={fieldCodeClassName}>{selectedGroup ? `${selectedGroup.startedAt ?? t('common:empty')} -> ${selectedGroup.finishedAt ?? t('common:empty')}` : t('common:empty')}</code>
       </div>
       <div className={fieldClassName}>
         <label className={fieldLabelClassName}>{t("groupId")}</label>
@@ -178,7 +178,7 @@ export function GroupDetailPanel({
             ? selectedGroup.memberRuns
                 .map((member) => `${member.id} | ${member.title} | ${statusLabel[member.status] ?? member.status} | agent:${member.executor.agentId} | artifacts=${member.artifacts.length}`)
                 .join("\n")
-            : "-"}
+            : t('common:empty')}
         </code>
       </div>
       <div className={fieldClassName}>
@@ -186,9 +186,9 @@ export function GroupDetailPanel({
         <code className={fieldCodeClassName}>
           {selectedGroup?.itemRuns.length
             ? selectedGroup.itemRuns
-                .map((item) => `${item.itemKey} | ${statusLabel[item.status] ?? item.status} | attempt=${item.attempt} | ${item.startedAt ?? "-"} -> ${item.finishedAt ?? "-"}${item.lastError ? ` | error=${item.lastError}` : ""}`)
+                .map((item) => `${item.itemKey} | ${statusLabel[item.status] ?? item.status} | attempt=${item.attempt} | ${item.startedAt ?? t('common:empty')} -> ${item.finishedAt ?? t('common:empty')}${item.lastError ? ` | error=${item.lastError}` : ""}`)
                 .join("\n")
-            : "-"}
+            : t('common:empty')}
         </code>
       </div>
       <div className={fieldClassName}>
@@ -198,12 +198,12 @@ export function GroupDetailPanel({
             ? selectedGroup.artifacts
                 .map((artifact) => `${artifact.type}@v${artifact.schemaVersion} ${artifact.path} (${artifact.hash})`)
                 .join("\n")
-            : "-"}
+            : t('common:empty')}
         </code>
       </div>
       <div className={fieldClassName}>
         <label className={fieldLabelClassName}>{t("lastError")}</label>
-        <code className={fieldCodeClassName}>{selectedGroup?.lastError || "-"}</code>
+        <code className={fieldCodeClassName}>{selectedGroup?.lastError || t('common:empty')}</code>
       </div>
       <small className={`${monoClassName} block text-xs text-(--muted)`}>{isSaving ? t("groupSaving") : t("groupSaveHint")}</small>
       <div className={detailPanelActionRowClassName}>

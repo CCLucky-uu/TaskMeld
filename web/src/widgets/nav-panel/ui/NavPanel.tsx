@@ -10,9 +10,9 @@ type NavPanelProps = {
   protocol: number | null;
   scopes: string[];
   collapsed?: boolean;
-  /** 移动端浮层抽屉关闭回调 */
+  /** Callback when the mobile floating drawer should close */
   onCloseDrawer?: () => void;
-  /** 渲染模式：inline=嵌入布局（桌面端），overlay=浮层抽屉（移动端） */
+  /** Render mode: inline = embedded in layout (desktop), overlay = floating drawer (mobile) */
   variant?: "inline" | "overlay";
 };
 
@@ -27,7 +27,7 @@ export function NavPanel({
 }: NavPanelProps) {
   const { t } = useTranslation("nav");
   const isOverlay = variant === "overlay";
-  // 桌面端：collapsed 控制宽/窄；移动端浮层：始终展示完整内容，collapsed 控制滑入/滑出
+  // Desktop: collapsed controls wide/narrow; mobile overlay: always show full content, collapsed controls slide in/out
   const showLabels = isOverlay ? true : !collapsed;
   const showCentered = isOverlay ? false : collapsed;
 
@@ -39,18 +39,18 @@ export function NavPanel({
 
   return (
     <aside className={asideClassName}>
-      {/* 品牌信息放到侧边栏顶部，和导航形成一个稳定的起点区域。 */}
+      {/* Branding sits at the top of the sidebar, forming a stable starting area together with navigation. */}
       <button
         className={`m-0 flex w-full cursor-pointer items-center border-0 border-b border-(--line) bg-transparent px-3 py-2.5 min-h-[60px] text-left font-inherit text-inherit leading-inherit transition-[background-color] hover:bg-[rgba(142,163,179,0.06)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--live)] focus-visible:outline-offset-[-2px] ${showCentered ? "justify-center" : "gap-2"}`}
         type="button"
         onClick={() => {
-          // 主页（/）和总览（/overview）语义分离：优先跳主页，未提供时回退到总览。
+          // Home (/) and Overview (/overview) are semantically separate: prefer home, fall back to overview.
           if (onNavigateHome) {
             onNavigateHome();
           } else {
             onChangeActive("overview");
           }
-          // 移动端浮层点击后关闭抽屉
+          // Close floating drawer on mobile after click
           onCloseDrawer?.();
         }}
         aria-label={t('backToHome')}
@@ -73,11 +73,11 @@ export function NavPanel({
             }`}
             onClick={() => {
               onChangeActive(key);
-              // 移动端浮层点击导航项后关闭抽屉
+              // Close drawer on mobile after clicking a nav item
               onCloseDrawer?.();
             }}
           >
-            {/* 图标和文案保持同一点击热区，提升侧边导航扫描效率。 */}
+            {/* Icon and label share one clickable hit zone to improve sidebar scan efficiency. */}
             <span className={`flex items-center ${showCentered ? "justify-center" : "gap-2.5"}`}>
               <Icon width="20" height="20" className="shrink-0" />
               {showLabels ? <span>{t(label)}</span> : null}

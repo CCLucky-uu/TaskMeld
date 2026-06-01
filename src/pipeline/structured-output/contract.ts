@@ -107,7 +107,7 @@ export const normalizeSchemaVersion = (value: unknown): number | null => {
   }
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
-  // 兼容模型把 schemaVersion 输出成字符串数字（例如 "1"）的场景。
+  // Accommodate models that output schemaVersion as a numeric string (e.g. "1").
   if (!/^\d+$/.test(trimmed)) return null;
   const parsed = Number(trimmed);
   if (!Number.isFinite(parsed) || !Number.isSafeInteger(parsed)) return null;
@@ -122,7 +122,7 @@ export const normalizeAllowedRoute = (rawRoute: unknown, allowedRoutes?: string[
   const direct = allowedRoutes.find((route) => route === trimmed);
   if (direct) return direct;
   const lower = trimmed.toLowerCase();
-  // 允许大小写不一致，统一纠正为工作流里声明的 route，避免无意义失败。
+  // Allow case-insensitive matches, normalizing to the declared workflow route to avoid pointless failures.
   const insensitive = allowedRoutes.find((route) => route.toLowerCase() === lower);
   return insensitive ?? null;
 };
@@ -173,7 +173,7 @@ export const validateEnvelope = (
     }
   }
 
-  // 兼容历史/冗余字段：顶层 route、decisions 不再作为硬失败条件，忽略即可。
+  // Backward-compat with legacy/redundant fields: top-level route and decisions are no longer hard-failure conditions — simply ignore.
   if (envelope.control !== undefined) {
     if (!isRecord(envelope.control)) return { ok: false, code: "hold_control_invalid" };
     const sleepUntil = envelope.control.sleepUntil;
@@ -189,7 +189,7 @@ export const validateEnvelope = (
       return { ok: false, code: "route_content_invalid" };
     }
     if (!Array.isArray(primaryArtifact.content) && isRecord(primaryArtifact.content)) {
-      // 兼容单对象输出，统一纠正为数组，后续分流逻辑保持一致。
+      // Accommodate single-object output by normalizing to an array so downstream routing logic stays consistent.
       primaryArtifact.content = [primaryArtifact.content];
     }
     if (!Array.isArray(primaryArtifact.content) || primaryArtifact.content.length === 0) {

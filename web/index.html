@@ -1,18 +1,10 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>TaskMeld</title>
-    <script>
-      // Sync <html lang> with i18n locale before first paint
-      (function() {
-        var saved = localStorage.getItem("taskmeld-locale");
-        var lang = saved || (navigator.language.startsWith("zh") ? "zh" : "en");
-        document.documentElement.lang = lang === "zh" ? "zh-CN" : lang;
-      })();
-    </script>
   </head>
   <body>
     <div id="root"></div>

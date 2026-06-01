@@ -85,7 +85,7 @@ export const normalizePoolItems = (value: unknown): string[] => {
       if (typeof entry === "string") rawList.push(entry);
     }
   } else if (typeof value === "string") {
-    // 支持逗号与换行混输，方便直接粘贴关键词池。
+    // Support mixed comma and newline input for easy pasting of keyword pools.
     rawList.push(...value.split(/[\n,]/g));
   }
   const unique = new Set<string>();
@@ -135,8 +135,8 @@ export const createItemBatchController = (deps: CreateItemBatchControllerDeps) =
           totalItems: snapshot.totalItems,
         });
       } catch (error) {
-        // 批跑控制器运行在 HTTP 请求之外；这里若让异常逃逸，快照会永久停留在 running，
-        // 后续 start() 都会误判为已有批跑进行中。必须在控制器内兜底收口状态。
+        // The batch-run controller runs outside HTTP requests; if an exception escapes here, the snapshot would permanently stay at running,
+        // and subsequent start() calls would falsely detect an existing batch run in progress. Must guard the state inside the controller.
         if (token !== runToken) return;
         hasBatchErrors = true;
         snapshot = {
@@ -230,7 +230,7 @@ export const createItemBatchController = (deps: CreateItemBatchControllerDeps) =
       batchRunId,
     };
 
-    // 异步后台运行，避免占住 HTTP 请求。
+    // Run asynchronously in the background to avoid blocking the HTTP request.
     void runLoop(runToken, [...queuedItems]);
     return { ok: true as const, snapshot: cloneSnapshot(snapshot) };
   };
@@ -239,7 +239,7 @@ export const createItemBatchController = (deps: CreateItemBatchControllerDeps) =
     if (snapshot.status !== "running") {
       return { ok: false as const, error: "batch_run_not_running", snapshot: cloneSnapshot(snapshot) };
     }
-    // 仅请求停止，当前批次跑完后会安全退出。
+    // Only request stop; the current batch will exit safely after completion.
     snapshot = {
       ...snapshot,
       stopRequested: true,
@@ -251,7 +251,7 @@ export const createItemBatchController = (deps: CreateItemBatchControllerDeps) =
     if (snapshot.status !== "running") {
       return { ok: false as const, error: "batch_run_not_running", snapshot: cloneSnapshot(snapshot) };
     }
-    // 插件关闭后不应继续保留运行中的批跑控制器；切换 runToken 让旧循环结果失效。
+    // When the plugin is disabled, the running batch controller should not be retained; switch runToken to invalidate old loop results.
     runToken += 1;
     snapshot = {
       ...snapshot,

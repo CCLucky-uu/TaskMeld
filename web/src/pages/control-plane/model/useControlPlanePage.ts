@@ -87,7 +87,7 @@ const DEFAULT_REMOTE_BATCH_PLUGIN: WorkflowRemoteBatchPlugin = {
 };
 const DEFAULT_WORKFLOW_PLUGINS: WorkflowPlugins = {
   remoteBatch: DEFAULT_REMOTE_BATCH_PLUGIN,
-  // 调度器历史行为默认可用，插件化后默认继续开启，避免老流水线升级后功能突然隐藏。
+  // Scheduler was historically enabled by default; after plugin-ification, keep it enabled by default so upgraded legacy pipelines don't silently lose the feature.
   scheduler: { enabled: true },
 };
 const MAINLINE_ROUTE_VALUE = "yes";
@@ -136,8 +136,8 @@ const collectVisibleNodeIdsForBranch = (
     .map((edge) => edge.to);
   const groupMembersById = new Map(workflow.groups.map((group) => [group.id, group.members]));
 
-  // 派生 itemKey 会复制祖先节点状态，便于分支内继续读取上游产物；
-  // 运行视图需要按“这个分支实际会走到哪些节点”过滤，避免把上下文复制误读成重复执行。
+  // Derived itemKey copies ancestor node state so branches can read upstream artifacts;
+  // the run view must filter to "which nodes this branch actually reaches" to avoid misreading context copies as duplicate execution.
   while (queue.length > 0) {
     const entityId = queue.shift();
     if (!entityId || visitedEntities.has(entityId)) continue;
@@ -667,8 +667,7 @@ export function useControlPlanePage() {
           if (boot.status) setGateway(boot.status);
           if (boot.pipelines) {
             const pipelineEntries = Object.entries(boot.pipelines);
-            // bootstrap 表示服务端当前全量快照；这里必须按服务端结果整体替换，
-            // 避免断线重连后把已删除流水线继续从本地旧状态并回列表里。
+            // bootstrap is the server's current full snapshot; must replace wholesale so deleted pipelines don't leak back into the list from stale local state after reconnect.
             setPipelineList(pipelineEntries.map(([pipelineId, entry]) => ({ id: pipelineId, title: entry.title })));
             setPipelineStateById((prev) => {
               const next: Record<string, PipelineViewState> = {};
@@ -857,7 +856,7 @@ export function useControlPlanePage() {
       const nextWorkflow: WorkflowDefinition = {
         ...currentWorkflow,
         plugins,
-        // 调度器插件关闭时同步关闭 scheduler.enabled，避免界面关闭后后台仍继续自动调度。
+        // When the scheduler plugin is disabled, also disable scheduler.enabled to prevent background auto-scheduling after the UI is turned off.
         scheduler: plugins.scheduler.enabled
           ? currentWorkflow.scheduler
           : {
@@ -1033,7 +1032,7 @@ export function useControlPlanePage() {
         ),
       );
       const remoteUrl = pluginState.url.trim();
-      // 远端关键词池默认按每批 5 个执行，避免单批过大导致处理耗时过长。
+      // Remote keyword pool defaults to batch size 5 to avoid excessive per-batch processing time.
       const result = await startRemoteBatchRun(pipelineId, {
         batchSize: pluginState.batchSize,
         startBatch: normalizedStartBatch,
@@ -1198,18 +1197,18 @@ export function useControlPlanePage() {
         })(),
     );
 
-    // uiLane 仅用于主线/支线展示，不应隐式改写执行 edges。
-    // 执行边只能通过“上游依赖”和“路由目标”两个显式编辑入口更新。
+    // uiLane is only for main/branch display and must not implicitly rewrite execution edges.
+    // Execution edges can only be updated through the two explicit edit entry points: "upstream dependencies" and "route targets".
     let nextEdges = [...workflow.edges];
     if (includeNodeConfig) {
-      // 上游依赖只对应 dependency 边（when=null）。
+      // Upstream dependencies only correspond to dependency edges (when=null).
       nextEdges = dedupeEdges([
         ...nextEdges.filter((edge) => !(edge.to === selectedNode.id && edge.when === null)),
         ...dependsOn.map((dep) => ({ from: dep, to: selectedNode.id, when: null as string | null })),
       ]);
     }
     if (includeWorkflowConfig) {
-      // 路由目标只对应 route 边（when=route），不能复用 dependency 边。
+      // Route targets only correspond to route edges (when=route); cannot reuse dependency edges.
       nextEdges = nextEdges.filter((edge) => !(edge.from === selectedNode.id && edge.when !== null));
       nextEdges = dedupeEdges([
         ...nextEdges,
@@ -1361,7 +1360,7 @@ export function useControlPlanePage() {
     setIsSavingNodeConfig(true);
     setActionMessage("");
     try {
-      // 顺序编辑可能发生在未激活的流水线卡片上，这里必须显式使用来源 pipelineId 保存。
+      // Order editing may happen on a non-active pipeline card; must explicitly use the source pipelineId to save.
       await saveWorkflowDefinitionReq(pipelineId, nextWorkflow);
       updatePipelineState(pipelineId, (prev) => ({ ...prev, workflow: nextWorkflow }));
       setActivePipelineId(pipelineId);
@@ -1391,7 +1390,7 @@ export function useControlPlanePage() {
     setIsSavingNodeConfig(true);
     setActionMessage("");
     try {
-      // 拖拽排序和按钮排序走同一条显式 pipeline 保存链路，避免 A/B 卡片切换时写错目标。
+      // Drag-and-drop reorder and button reorder share the same explicit pipeline save path to avoid writing to the wrong target when switching between pipeline A/B cards.
       await saveWorkflowDefinitionReq(pipelineId, nextWorkflow);
       updatePipelineState(pipelineId, (prev) => ({ ...prev, workflow: nextWorkflow }));
       setActivePipelineId(pipelineId);
@@ -1734,8 +1733,8 @@ export function useControlPlanePage() {
 
     const nextNodes = workflow.nodes.filter((node) => node.id !== nodeId);
 
-    // 删除中间节点时自动重连：如果被删节点恰好有一个依赖入边和一个依赖出边，
-    // 则把前驱直接连到后继，避免产生孤立节点导致 mainline_last 验证失败。
+    // Auto-reconnect when deleting a middle node: if the deleted node has exactly one dependency in-edge and one out-edge,
+    // connect its predecessor directly to its successor to avoid orphan nodes that trigger mainline_last validation failures.
     const incomingEdges = workflow.edges.filter((edge) => edge.to === nodeId);
     const outgoingEdges = workflow.edges.filter((edge) => edge.from === nodeId);
     const incomingDep = incomingEdges.filter((e) => e.when === null);

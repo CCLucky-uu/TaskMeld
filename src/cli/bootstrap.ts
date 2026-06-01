@@ -18,7 +18,7 @@ const normalizePipelineSelector = (selector: string | CliPipelineSelector): CliP
 
 const requirePipelineId = (selector: CliPipelineSelector): string => {
   if (selector.pipelineId) return selector.pipelineId;
-  // 内嵌 runtime service 只能通过 pipelineId 定位 pipeline 实例；runId/batchRunId 在此层仅用于二次匹配。
+  // The embedded runtime service can only locate a pipeline instance by pipelineId; runId/batchRunId at this layer is only used for secondary matching.
   throw new CliError("Missing pipelineId for local runtime selector", {
     code: "INVALID_ARGUMENT",
     exitCode: 2,
@@ -193,10 +193,10 @@ export const createMainCliBootstrap = (): CliBootstrap => {
   return async ({ route }) => {
     const bootstrap = route.bootstrap;
     if (bootstrap?.runtimeApiOnly) {
-      // runtime-api only 路由必须复用 daemon 提供的 API 语义，避免误落到内嵌 service 路径。
+      // runtime-api-only routes must reuse the daemon-provided API semantics to avoid incorrectly falling to the embedded service path.
       if (bootstrap.ensureServerReady) {
         const serverLifecycleClient = createServerLifecycleClient();
-        // 运行类命令必须先绑定到持久执行宿主，避免 CLI 临时进程误充当后台宿主。
+        // Run-class commands must bind to a persistent execution host first, to avoid the CLI temporary process inadvertently acting as the daemon host.
         await serverLifecycleClient.ensureServerReady();
       }
       return {
@@ -214,11 +214,11 @@ export const createMainCliBootstrap = (): CliBootstrap => {
     if (bootstrap?.gateway === "required") {
       await appContext.gateway.connect();
     } else if (bootstrap?.gateway === "warmup") {
-      // 系统快照尽量尝试建链，失败时退回当前缓存状态，避免只读命令被完全阻断。
+      // For system snapshots, try connecting first; fall back to cached state on failure so read-only commands aren't completely blocked.
       try {
         await appContext.gateway.connect();
       } catch {
-        // 保持只读命令可退化执行。
+        // Allow read-only commands to degrade gracefully.
       }
     }
 

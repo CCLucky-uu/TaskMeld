@@ -106,7 +106,7 @@ export const savePipelineDefinitions = (document: PipelineDefinitionsDocument) =
 export const ensurePipelineDefinitions = (): PipelineDefinitionsDocument => {
   const fromDisk = readDefinitionsDocumentFromDisk();
   if (fromDisk) {
-    // 每次启动都按当前约束回写一遍，避免 defaultPipelineId 指向失效项或 title 为空。
+    // Rewrite on every startup according to current constraints, to prevent defaultPipelineId pointing to an invalid entry or title being empty.
     return savePipelineDefinitions(fromDisk);
   }
   return savePipelineDefinitions(createDefaultDefinitionsDocument());

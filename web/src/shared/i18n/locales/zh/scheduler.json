@@ -1,9 +1,0 @@
-{
-  "schedulerConfig": "调度器配置（DAG-{{pipelineId}}）",
-  "disableScheduler": "停用调度器",
-  "enableScheduler": "启用调度器",
-  "switchToMode": "切到{{mode}}模式",
-  "auto": "自动",
-  "manual": "手动",
-  "manualStep": "手动推进一步"
-}

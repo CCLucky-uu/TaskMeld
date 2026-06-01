@@ -219,7 +219,7 @@ export const ChatHistoryPanel = memo(function ChatHistoryPanel({
               </div>
             </header>
             {useMarkdownBubble ? (
-              // Markdown 容器需要允许收缩，否则内部 code block 的最小内容宽度会外溢到气泡外。
+              // Markdown container must allow shrinking, or inner code-block min-content width will spill past the bubble.
               <div className="min-w-0 max-w-full overflow-hidden">
                 <MarkdownViewer content={item.text} />
               </div>

@@ -2,81 +2,76 @@ import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 import LanguageDetector from "i18next-browser-languagedetector";
 
-import zhCommon from "./locales/zh/common.json";
-import zhNav from "./locales/zh/nav.json";
-import zhOverview from "./locales/zh/overview.json";
-import zhAgent from "./locales/zh/agent.json";
-import zhScheduler from "./locales/zh/scheduler.json";
-import zhTimeline from "./locales/zh/timeline.json";
-import zhLog from "./locales/zh/log.json";
-import zhArtifact from "./locales/zh/artifact.json";
-import zhSession from "./locales/zh/session.json";
-import zhNodeDetail from "./locales/zh/node-detail.json";
-import zhDispatch from "./locales/zh/dispatch.json";
-import zhModal from "./locales/zh/modal.json";
-import zhPipeline from "./locales/zh/pipeline.json";
-import zhSettings from "./locales/zh/settings.json";
-
-import enCommon from "./locales/en/common.json";
-import enNav from "./locales/en/nav.json";
-import enOverview from "./locales/en/overview.json";
-import enAgent from "./locales/en/agent.json";
-import enScheduler from "./locales/en/scheduler.json";
-import enTimeline from "./locales/en/timeline.json";
-import enLog from "./locales/en/log.json";
-import enArtifact from "./locales/en/artifact.json";
-import enSession from "./locales/en/session.json";
-import enNodeDetail from "./locales/en/node-detail.json";
-import enDispatch from "./locales/en/dispatch.json";
-import enModal from "./locales/en/modal.json";
-import enPipeline from "./locales/en/pipeline.json";
-import enSettings from "./locales/en/settings.json";
-
 export const defaultLocale = "en";
 export const supportedLocales = ["zh", "en"] as const;
 
-const resources = {
-  zh: {
-    common: zhCommon,
-    nav: zhNav,
-    overview: zhOverview,
-    agent: zhAgent,
-    scheduler: zhScheduler,
-    timeline: zhTimeline,
-    log: zhLog,
-    artifact: zhArtifact,
-    session: zhSession,
-    "node-detail": zhNodeDetail,
-    dispatch: zhDispatch,
-    modal: zhModal,
-    pipeline: zhPipeline,
-    settings: zhSettings,
-  },
-  en: {
-    common: enCommon,
-    nav: enNav,
-    overview: enOverview,
-    agent: enAgent,
-    scheduler: enScheduler,
-    timeline: enTimeline,
-    log: enLog,
-    artifact: enArtifact,
-    session: enSession,
-    "node-detail": enNodeDetail,
-    dispatch: enDispatch,
-    modal: enModal,
-    pipeline: enPipeline,
-    settings: enSettings,
-  },
+const namespaceNames = [
+  "common",
+  "nav",
+  "overview",
+  "agent",
+  "timeline",
+  "log",
+  "artifact",
+  "session",
+  "node-detail",
+  "dispatch",
+  "modal",
+  "pipeline",
+] as const;
+
+type Namespace = (typeof namespaceNames)[number];
+
+// Build-time: Vite resolves import.meta.glob to a map of lazy chunks, one per file.
+// At runtime only the locale in use is loaded — the other 12 JSON files stay as
+// separate chunks and never enter the main bundle.
+const localeModules = import.meta.glob<Record<string, unknown>>(
+  "./locales/*/*.json",
+);
+
+/** Load a single locale's full set of namespace resources on demand. */
+const loadLocaleResources = async (
+  locale: string,
+): Promise<Record<Namespace, Record<string, unknown>>> => {
+  const resources = {} as Record<Namespace, Record<string, unknown>>;
+  await Promise.all(
+    namespaceNames.map(async (ns) => {
+      const key = `./locales/${locale}/${ns}.json`;
+      const loader = localeModules[key];
+      if (loader) {
+        resources[ns] = await loader();
+      }
+    }),
+  );
+  return resources;
 };
 
+// Detect the initial locale the same way i18next-browser-languagedetector does,
+// but synchronously so we can start loading resources immediately.
+const detectInitialLocale = (): string => {
+  const qs = new URLSearchParams(window.location.search).get("lng");
+  if (qs && (supportedLocales as readonly string[]).includes(qs)) return qs;
+  const stored = localStorage.getItem("taskmeld-locale");
+  if (stored && (supportedLocales as readonly string[]).includes(stored)) return stored;
+  if (navigator.language.startsWith("zh")) return "zh";
+  return defaultLocale;
+};
+
+const initialLocale = detectInitialLocale();
+
+// Start loading the initial locale's resources immediately (does not block i18n.init).
+const resourcePromise = loadLocaleResources(initialLocale);
+
+// Init i18next synchronously with empty resources — the LanguageDetector plugin
+// will set the language immediately, and resources arrive asynchronously.
 i18n
   .use(LanguageDetector)
   .use(initReactI18next)
   .init({
-    resources,
+    resources: {},
     defaultNS: "common",
     fallbackLng: defaultLocale,
+    lng: initialLocale,
     interpolation: { escapeValue: false },
     detection: {
       order: ["querystring", "localStorage", "navigator"],
@@ -85,5 +80,32 @@ i18n
       caches: ["localStorage"],
     },
   });
+
+// Once the initial locale's resources are loaded, inject them into i18next.
+// Exported as a promise so main.tsx can block React rendering until ready.
+export const i18nReady = resourcePromise.then((resources) => {
+  for (const ns of namespaceNames) {
+    i18n.addResourceBundle(initialLocale, ns, resources[ns], true, true);
+  }
+}).catch((err) => {
+  console.error("Failed to load initial locale resources:", err);
+});
+
+// When the user switches language, load the new locale on demand.
+i18n.on("languageChanged", async (newLocale: string) => {
+  if (!(supportedLocales as readonly string[]).includes(newLocale)) return;
+  // Check if resources are already loaded (avoid double-loading)
+  if (i18n.hasResourceBundle(newLocale, "common")) return;
+  try {
+    const resources = await loadLocaleResources(newLocale);
+    for (const ns of namespaceNames) {
+      i18n.addResourceBundle(newLocale, ns, resources[ns], true, true);
+    }
+    // Trigger re-render with the new translations
+    i18n.emit("loaded");
+  } catch (err) {
+    console.error(`Failed to load locale resources for "${newLocale}":`, err);
+  }
+});
 
 export default i18n;

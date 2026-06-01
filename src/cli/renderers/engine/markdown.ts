@@ -79,7 +79,7 @@ export const formatMarkdown = (ir: RenderIR): string => {
       const stringRows = section.rows.map((row) => section.columns.map((c) => escapeCell(c.render(row))));
       lines.push(...renderTable(headers, stringRows));
     } else {
-      // custom: 直接拼入
+      // custom: concatenate directly
       lines.push(...section.lines);
     }
   }

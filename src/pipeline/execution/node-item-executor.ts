@@ -57,7 +57,7 @@ export const createNodeItemExecutor = (deps: NodeItemExecutorDeps) => {
     });
     if (!exec.ok) {
       if (exec.finalStatus === "stopped") {
-        // 用户中止时节点项已被标记为 stopped，不覆盖
+        // When the user aborts, the node item is already marked as stopped — do not overwrite
       } else if (exec.finalStatus === "rejected") {
         markItemRejected(item, ctx("node_rejected", { error: exec.error ?? null }));
       } else {

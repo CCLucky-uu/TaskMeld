@@ -150,7 +150,7 @@ const renderAutoCommandHelp = (route: CliRouteDefinition): string => {
 };
 
 const renderCommand = (route: CliRouteDefinition): string => {
-  // 保留特例出口是为了兼容未来极少数需要完全自定义排版的命令；默认路径必须使用路由元数据生成。
+  // This special-case exit point exists for future compatibility with the very few commands that require fully custom layout; the default path must use route metadata generation.
   const text = route.renderHelp ? route.renderHelp(route) : renderAutoCommandHelp(route);
   const lines = text.split("\n");
   appendCommonOptions(lines);

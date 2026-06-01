@@ -45,7 +45,7 @@ function MarkdownCodeBlock({ blockKey, className, children, collapsed, onToggleC
   };
 
   return (
-    // 代码块外层显式限制宽度，避免长 JSON 在 grid/flex 容器中把聊天气泡撑穿。
+    // Explicitly constrain the code-block outer container width so long JSON lines don't burst the chat bubble in grid/flex layouts.
     <div className="my-2 block min-w-0 max-w-full overflow-hidden border border-[rgba(142,163,179,0.14)] bg-[rgba(255,255,255,0.01)]">
       <div
         className="flex cursor-pointer items-center justify-between gap-2 border-b border-[rgba(142,163,179,0.12)] bg-[rgba(255,255,255,0.03)] px-2.5 py-1.75"
@@ -75,8 +75,8 @@ function MarkdownCodeBlock({ blockKey, className, children, collapsed, onToggleC
         </div>
       </div>
       {!collapsed ? (
-        // 代码块需要强制占满当前气泡宽度，并允许任意位置断行；
-        // 仅靠 break-words 在 pre/code 组合下不稳定，长 JSON/JS 行仍可能按 max-content 撑宽。
+        // The code block must fill the current bubble width and allow breaking anywhere;
+        // relying on break-words alone is unstable inside pre/code — long JSON/JS lines may still stretch to max-content.
         <pre className="m-0 block min-w-0 w-full max-w-full overflow-hidden bg-transparent p-0 whitespace-pre-wrap break-all wrap-anywhere">
           <code
             className={`${className ?? ""} block min-w-0 w-full max-w-full whitespace-pre-wrap break-all rounded-none bg-transparent px-0 py-0 font-[JetBrains_Mono,monospace] text-[13px] leading-[1.45] text-inherit wrap-anywhere`}

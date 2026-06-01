@@ -38,7 +38,7 @@ export const getPipelineStatusBySelector = async (
   if (!selector.runId && !selector.batchRunId && selector.pipelineId) {
     return await getPipelineStatus(selector.pipelineId) as PipelineStatusPayload;
   }
-  // daemon-first 迁移期允许 CLI 把 selector 整体下发，避免 status/watch/stop 再依赖“当前 pipeline 活跃运行”的隐式猜测。
+  // During daemon-first migration, allow the CLI to pass the full selector so status/watch/stop don't rely on implicitly guessing the "currently active pipeline run".
   return await getPipelineStatus(selector) as PipelineStatusPayload;
 };
 

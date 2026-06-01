@@ -3,9 +3,8 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import type { CliCommandHandler, CliRouteDefinition } from "../types";
-
-const userConfigDir = join(homedir(), ".taskmeld");
-const userConfigPath = join(userConfigDir, "config.json");
+import { t, changeLocale } from "../i18n";
+import { hr, fieldPrompt, selectPrompt } from "../ui-prompts";
 
 const c = {
   reset: "\x1b[0m",
@@ -19,86 +18,8 @@ const c = {
   bgGreen: "\x1b[42m",
 };
 
-const hr = () => {
-  process.stdout.write(`\n  ${c.dim}${"─".repeat(50)}${c.reset}\n\n`);
-};
-
-const fieldPrompt = (rl: ReturnType<typeof createInterface>, label: string, hint: string, prefill?: string): Promise<string> => {
-  return new Promise((resolve) => {
-    process.stdout.write(`  ${c.bold}${c.white}${label}${c.reset}\n`);
-    process.stdout.write(`  ${c.dim}${hint}${c.reset}\n\n`);
-    rl.question(`  ${c.green}${c.bold}>${c.reset} `, (answer) => {
-      resolve(answer.trim());
-    });
-    if (prefill) {
-      rl.write(prefill);
-    }
-  });
-};
-
-const selectPrompt = (label: string, options: { value: string; label: string }[]): Promise<string> => {
-  return new Promise((resolve) => {
-    let selected = 0;
-
-    process.stdout.write(`  ${c.bold}${c.white}${label}${c.reset}\n\n`);
-
-    const render = () => {
-      for (let i = 0; i < options.length; i++) {
-        const opt = options[i];
-        if (i === selected) {
-          process.stdout.write(`    ${c.bgCyan}${c.black}${c.bold} ${opt.label} ${c.reset}\n`);
-        } else {
-          process.stdout.write(`    ${c.dim}${opt.label}${c.reset}\n`);
-        }
-      }
-    };
-
-    render();
-
-    const onData = (key: Buffer) => {
-      const str = key.toString();
-      // up arrow or k
-      if (str === "\x1b[A" || str === "k") {
-        selected = selected > 0 ? selected - 1 : options.length - 1;
-      // down arrow or j
-      } else if (str === "\x1b[B" || str === "j") {
-        selected = selected < options.length - 1 ? selected + 1 : 0;
-      // enter
-      } else if (str === "\r" || str === "\n") {
-        cleanup();
-        process.stdout.write("\n");
-        resolve(options[selected].value);
-        return;
-      // ctrl+c
-      } else if (str === "\x03") {
-        cleanup();
-        process.stdout.write("\n");
-        process.exit(0);
-      } else {
-        return;
-      }
-
-      // move cursor up to re-render
-      process.stdout.write(`\x1b[${options.length}A`);
-      process.stdout.write("\x1b[J");
-      render();
-    };
-
-    const cleanup = () => {
-      process.stdin.removeListener("data", onData);
-      if (process.stdin.isTTY) {
-        process.stdin.setRawMode(false);
-      }
-      process.stdin.pause();
-    };
-
-    if (process.stdin.isTTY) {
-      process.stdin.setRawMode(true);
-    }
-    process.stdin.resume();
-    process.stdin.on("data", onData);
-  });
-};
+const userConfigDir = join(homedir(), ".taskmeld");
+const userConfigPath = join(userConfigDir, "config.json");
 
 type UserGatewayConfig = {
   gatewayUrl?: string;
@@ -118,7 +39,11 @@ const readConfig = async (): Promise<UserGatewayConfig> => {
 const writeConfig = async (config: UserGatewayConfig): Promise<void> => {
   await mkdir(userConfigDir, { recursive: true });
   const existing = await readConfig();
-  const merged = { ...existing, ...config };
+  const sanitized: UserGatewayConfig = {};
+  if (typeof existing.gatewayUrl === 'string') sanitized.gatewayUrl = existing.gatewayUrl;
+  if (typeof existing.gatewayToken === 'string') sanitized.gatewayToken = existing.gatewayToken;
+  if (typeof existing.locale === 'string' && ['zh', 'en'].includes(existing.locale)) sanitized.locale = existing.locale;
+  const merged = { ...sanitized, ...config };
   await writeFile(userConfigPath, JSON.stringify(merged, null, 2) + "\n", "utf8");
 };
 
@@ -130,18 +55,18 @@ export const initCommand: CliCommandHandler = async (input) => {
 
   if (interactive) {
     console.log("");
-    console.log(`  ${c.bold}${c.cyan}TaskMeld${c.reset}  ${c.dim}·  First-time Setup${c.reset}`);
+    console.log(`  ${c.bold}${c.cyan}TaskMeld${c.reset}  ${c.dim}·  ${t("init:firstTimeSetup")}${c.reset}`);
     console.log("");
-    console.log(`  ${c.dim}Configure your OpenClaw Gateway connection to get started.${c.reset}`);
-    console.log(`  ${c.dim}Config  ${userConfigPath}${c.reset}`);
+    console.log(`  ${c.dim}${t("init:greeting")}${c.reset}`);
+    console.log(`  ${c.dim}${t("init:configSavedTo", { path: userConfigPath })}${c.reset}`);
 
-    // Language selection — uses raw stdin, must complete before creating readline interface
     hr();
-    const locale = await selectPrompt("Language / 语言", [
+    const locale = await selectPrompt(t("init:languageLabel"), [
       { value: "en", label: "English" },
-      { value: "zh", label: "中文" },
+      { value: "zh", label: "Chinese" },
     ]);
     await writeConfig({ locale });
+    await changeLocale(locale as "en" | "zh");
 
     const rl = createInterface({
       input: process.stdin,
@@ -150,12 +75,12 @@ export const initCommand: CliCommandHandler = async (input) => {
 
     if (!url) {
       hr();
-      url = await fieldPrompt(rl, "Gateway URL", "ws:// or wss:// address of your OpenClaw Gateway", "ws://127.0.0.1:18789") || "ws://127.0.0.1:18789";
+      url = await fieldPrompt(rl, t("init:gatewayUrlLabel"), t("init:gatewayUrlHint"), "ws://127.0.0.1:18789") || "ws://127.0.0.1:18789";
     }
 
     if (url && !token) {
       hr();
-      token = await fieldPrompt(rl, "Gateway Token", "Authentication token for the Gateway");
+      token = await fieldPrompt(rl, t("init:gatewayTokenLabel"), t("init:gatewayTokenHint"));
     }
 
     rl.close();
@@ -176,12 +101,12 @@ export const initCommand: CliCommandHandler = async (input) => {
 
   if (interactive) {
     console.log("");
-    console.log(`  ${c.bgGreen}${c.black}${c.bold} > Gateway configured successfully ${c.reset}`);
+    console.log(`  ${c.bgGreen}${c.black}${c.bold} > ${t("init:success")} ${c.reset}`);
     console.log("");
-    console.log(`  ${c.dim}URL${c.reset}     ${url}`);
+    console.log(`  ${c.dim}${t("init:urlLabel")}${c.reset}     ${url}`);
     console.log(`  ${c.dim}Config${c.reset}  ${userConfigPath}`);
     console.log("");
-    console.log(`  ${c.dim}Run ${c.white}\"taskmeld server start\"${c.reset}${c.dim} to begin.${c.reset}`);
+    console.log(`  ${c.dim}${t("init:nextStep")}${c.reset}`);
     console.log("");
   }
 
@@ -197,46 +122,47 @@ export const initRoutes: CliRouteDefinition[] = [
   {
     key: "init",
     path: ["init"],
-    description: "Guided setup for OpenClaw Gateway connection",
+    description: t("init:description"),
     handler: initCommand,
     renderHelp: () => {
       const lines = [
         "Usage:",
-        "  taskmeld init [--url <url>] [--token <token>]",
+        `  ${t("init:usage")}`,
         "",
         "Description:",
-        "  Guided first-time setup — configure the OpenClaw Gateway connection.",
-        `  Config is saved to ${userConfigPath}`,
+        `  ${t("init:summary")}`,
+        `  ${t("init:configSavedTo", { path: userConfigPath })}`,
         "",
         "Options:",
-        "  --url <url>      Gateway WebSocket URL (ws:// or wss://)",
-        "  --token <token>  Gateway authentication token",
+        `  --url <url>      ${t("init:optUrlDesc")}`,
+        `  --token <token>  ${t("init:optTokenDesc")}`,
         "",
         "Examples:",
-        "  taskmeld init",
-        "  taskmeld init --url ws://127.0.0.1:18789 --token your-token",
+        `  ${t("init:example1")}`,
+        `  ${t("init:example2")}`,
         "",
         "Notes:",
-        "  Running without flags starts an interactive guided setup.",
-        "  Environment variables (OPENCLAW_GATEWAY_URL/TOKEN) take precedence over this config.",
+        `  ${t("init:note1")}`,
+        `  ${t("init:note2")}`,
+        `  ${t("init:note3")}`,
       ];
       return lines.join("\n");
     },
     help: {
-      usage: "taskmeld init [--url <url>] [--token <token>]",
-      summary: "Guided first-time setup — configure the OpenClaw Gateway connection.",
+      usage: t("init:usage"),
+      summary: t("init:summary"),
       options: [
-        { flags: ["--url"], valueName: "url", description: "Gateway WebSocket URL (ws:// or wss://)" },
-        { flags: ["--token"], valueName: "token", description: "Gateway authentication token" },
+        { flags: ["--url"], valueName: "url", description: t("init:optUrlDesc") },
+        { flags: ["--token"], valueName: "token", description: t("init:optTokenDesc") },
       ],
       examples: [
-        "taskmeld init",
-        "taskmeld init --url ws://127.0.0.1:18789 --token your-token",
+        t("init:example1"),
+        t("init:example2"),
       ],
       notes: [
-        "Running without flags starts an interactive guided setup.",
-        "Config is saved to ~/.taskmeld/config.json.",
-        "Environment variables (OPENCLAW_GATEWAY_URL/TOKEN) take precedence over this config.",
+        t("init:note1"),
+        t("init:note2"),
+        t("init:note3"),
       ],
     },
   },

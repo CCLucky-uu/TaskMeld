@@ -21,7 +21,7 @@ export function filterAgentCards(agents: AgentListCardItem[], keyword: string): 
   if (!normalized) return agents;
 
   return agents.filter((agent) => {
-    // 中文注释：按常用定位信息搜索，覆盖智能体 ID、角色、最近输出与事件摘要，方便快速定位目标智能体。
+    // Search by common identification info — covers agent ID, role, recent output, and event summary for quick targeting.
     const text = [agent.id, agent.role, agent.outputPreview, agent.eventPreview].join(" ").toLowerCase();
     return text.includes(normalized);
   });
