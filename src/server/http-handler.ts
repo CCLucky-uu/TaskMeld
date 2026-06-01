@@ -26,7 +26,7 @@ const MIME: Record<string, string> = {
 
 // Resolve the web static assets directory
 const resolveWebDist = (): string =>
-  join(__dirname, "..", "..", "web", "dist");
+  join(__dirname, "..", "..", "..", "web", "dist");
 
 const webDistRoot = resolveWebDist();
 

@@ -8,3 +8,4 @@ dist/
 src/version.ts
 CLAUDE.md
 CLAUDE.local.md
+.reasonix/
