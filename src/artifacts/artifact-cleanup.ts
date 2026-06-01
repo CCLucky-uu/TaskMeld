@@ -28,8 +28,8 @@ const DEFAULT_RETENTION_DAYS: Record<string, number> = {
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
- * 生成清理计划，不删除任何文件。
- * 默认只清理 success 状态，可通过 options 指定其他状态。
+ * Generate a cleanup plan without deleting any files.
+ * Defaults to only cleaning "success" status; other statuses can be specified via options.
  */
 export const planCleanup = async (
   definition: PipelineDefinition,
@@ -44,7 +44,7 @@ export const planCleanup = async (
   );
   const cutoffMs = Date.now() - olderThanDays * ONE_DAY_MS;
 
-  // 优先从索引获取文件列表，索引缺失时回退扫描
+  // Prefer index for file list; fall back to scan when index is missing
   let items = await readIndexRecords(definition.artifactDir);
   if (items.length === 0) {
     const scanned = await scanStoredArtifacts([definition]);
@@ -106,7 +106,7 @@ export const planCleanup = async (
 };
 
 /**
- * 执行清理：删除文件 + 清理空目录 + 清理临时文件 + 重建索引。
+ * Execute cleanup: delete files + clean empty directories + clean temp files + rebuild index.
  */
 export const executeCleanup = async (
   definition: PipelineDefinition,
@@ -119,10 +119,10 @@ export const executeCleanup = async (
   for (const file of plan.files) {
     const rootAbs = resolve(definition.artifactDir);
     const absPath = resolve(rootAbs, file.relativePath);
-    // 路径穿越保护：目标必须位于当前 pipeline 的 artifactDir 内
+    // Path traversal protection: target must be within the current pipeline's artifactDir
     if (absPath !== rootAbs && !absPath.startsWith(`${rootAbs}${sep}`)) {
       failed += 1;
-      warnings.push(`拒绝删除越界文件 (${definition.id}:${file.relativePath})`);
+      warnings.push(`Refused to delete out-of-bounds file (${definition.id}:${file.relativePath})`);
       continue;
     }
     try {
@@ -131,31 +131,31 @@ export const executeCleanup = async (
     } catch (error) {
       failed += 1;
       warnings.push(
-        `删除失败 (${definition.id}:${file.relativePath}): ${error instanceof Error ? error.message : String(error)}`,
+        `Delete failed (${definition.id}:${file.relativePath}): ${error instanceof Error ? error.message : String(error)}`,
       );
     }
   }
 
-  // 清理空目录
+  // Clean empty directories
   await cleanupEmptyDirs(definition.artifactDir);
 
-  // 清理临时文件
+  // Clean temp files
   const tmpResult = await cleanupTempFiles(definition.artifactDir);
   warnings.push(...tmpResult.warnings);
 
-  // 重建索引以移除已删文件
+  // Rebuild index to remove deleted file entries
   try {
     const { rebuildArtifactIndex } = await import("./artifact-index.js");
     await rebuildArtifactIndex(definition, (d: PipelineDefinition) => scanStoredArtifacts([d]));
   } catch {
-    warnings.push(`删除后自动重建索引失败 (${definition.id})，请手动执行 rebuild-index`);
+    warnings.push(`Auto-rebuild index after delete failed (${definition.id}), please run rebuild-index manually`);
   }
 
   return { deleted, failed, warnings };
 };
 
 /**
- * 递归清理空目录。保留 artifactDir 根目录本身。
+ * Recursively clean empty directories. Preserves the artifactDir root directory itself.
  */
 export const cleanupEmptyDirs = async (
   artifactDir: string,
@@ -171,7 +171,7 @@ export const cleanupEmptyDirs = async (
           await walkAndRemove(`${dirPath}${sep}${entry.name}`);
         }
       }
-      // 不删除 artifacts 根目录本身
+      // Don't delete the artifacts root directory itself
       const isRoot = dirPath === artifactDir || dirPath.endsWith(`${sep}artifacts`) && dirPath.replace(/\\/g, "/").endsWith("/artifacts");
       if (isRoot) return;
       const after = await readdir(dirPath);
@@ -180,7 +180,7 @@ export const cleanupEmptyDirs = async (
         removed += 1;
       }
     } catch {
-      // 目录不存在或无权访问
+      // Directory doesn't exist or cannot be accessed
     }
   };
 
@@ -189,7 +189,7 @@ export const cleanupEmptyDirs = async (
 };
 
 /**
- * 清理 persistArtifactFile 遗留的 .tmp-*.json 临时文件（原子写入失败残留）。
+ * Clean up .tmp-*.json temp files left behind by persistArtifactFile (atomic write failure residue).
  */
 export const cleanupTempFiles = async (
   artifactDir: string,
@@ -210,13 +210,13 @@ export const cleanupTempFiles = async (
             cleaned += 1;
           } catch (error) {
             warnings.push(
-              `清理临时文件失败: ${error instanceof Error ? error.message : String(error)}`,
+              `Failed to clean temp files: ${error instanceof Error ? error.message : String(error)}`,
             );
           }
         }
       }
     } catch {
-      // 目录不存在
+      // Directory doesn't exist
     }
   };
 

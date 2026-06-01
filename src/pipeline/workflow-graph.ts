@@ -22,7 +22,7 @@ type WorkflowIndices = {
   groupById: Map<string, WorkflowGroup>;
   parallelGroupByMemberNodeId: Map<string, WorkflowGroup>;
   groups: WorkflowGroup[];
-  /** 节点 branch scope 缓存。null = 主线，非 null = 支线 scope（如 "router:a"）。 */
+  /** Node branch scope cache. null = mainline, non-null = branch scope (e.g. "router:a"). */
   nodeScopes: NodeScopeMap;
 };
 
@@ -48,8 +48,8 @@ const buildIndices = (workflow: WorkflowDefinitionRuntime): WorkflowIndices => {
     outgoingEdgesBySource.set(edge.from, outgoing);
   }
 
-  // 计算节点 branch scope：优先使用显式 branchScopeId，缺失时从 route 边推导。
-  // 将 nodes 和 groups 都纳入 scope 计算，确保 group 的 scope 被正确传播。
+  // Compute node branch scope: prefer explicit branchScopeId, derive from route edges when missing.
+  // Include both nodes and groups in scope computation so group scopes are correctly propagated.
   const explicitScopes = new Map<string, string | null>();
   for (const node of workflow.nodes) {
     if (node.branchScopeId != null) {
@@ -62,9 +62,9 @@ const buildIndices = (workflow: WorkflowDefinitionRuntime): WorkflowIndices => {
   ];
   const nodeScopes = computeNodeScopes(allEntities, workflow.edges, explicitScopes);
 
-  // explicitScopeIds: 显式声明了非默认 merge 策略的节点（dependencyPolicy != "all"），
-  // 是多个分支的显式汇聚点，应接受来自不同 scope 的依赖边。
-  // 将其 scope 重置为 null，避免跨支线误判阻断合法的分支合并。
+  // explicitScopeIds: nodes that explicitly declare a non-default merge strategy (dependencyPolicy != "all"),
+  // they are explicit convergence points for multiple branches and should accept dependency edges from different scopes.
+  // Reset their scope to null to avoid cross-branch false positives blocking valid branch merges.
   for (const node of workflow.nodes) {
     if (node.dependencyPolicy && node.dependencyPolicy !== "all") {
       nodeScopes.set(node.id, null);
@@ -140,15 +140,15 @@ export const createWorkflowGraph = (initialWorkflow: WorkflowDefinitionRuntime, 
   const isWorkflowNodeEnabled = (nodeId: string) => getWorkflowNodeById(nodeId)?.enabled !== false;
   const isGroupId = (id: string) => indices.groupById.has(id);
 
-  // Phase 2: 基于 scope 判断支线身份，替代入边形状推断。
-  // scope 为 null → 主线节点；scope 非 null → 支线节点。
+  // Phase 2: determine branch identity based on scope, replacing incoming-edge shape inference.
+  // scope is null → mainline node; scope is non-null → branch node.
   const isBranchNode = (nodeId: string) => {
     const scope = indices.nodeScopes.get(nodeId);
     return scope != null;
   };
 
-  // Phase 2: 基于 scope 判断跨支线边，替代入边形状推断。
-  // 旧版在存在 B1→B2 普通边时会因 B2 不再"纯支线"而漏判，新版不受此影响。
+  // Phase 2: determine cross-branch edges based on scope, replacing incoming-edge shape inference.
+  // The old version would miss detection when B1→B2 unconditional edges exist because B2 was no longer "purely branch"; the new version is unaffected.
   const isCrossBranchEdge = (edge: { from: string; to: string; when: string | null }) =>
     isCrossBranchEdgeByScope(edge, indices.nodeScopes);
 
@@ -169,7 +169,7 @@ export const createWorkflowGraph = (initialWorkflow: WorkflowDefinitionRuntime, 
     const current = new Map((run.groups ?? []).map((group) => [group.id, group]));
     run.groups = indices.groups.map((group) => ({
       id: group.id,
-      title: `并行组 ${group.id}`,
+      title: `Group ${group.id}`,
       status: current.get(group.id)?.status ?? "blocked",
       members: group.members,
       joinPolicy: group.joinPolicy,

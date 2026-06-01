@@ -26,9 +26,9 @@ export const createRunAbortController = () => {
   };
 
   /**
-   * 中止指定流水线运行的所有节点执行。
-   * 1. 向每个活跃节点的远端 agent 会话发送 "/stop" 命令（fire-and-forget）
-   * 2. 触发本地 AbortController 中断轮询/排水循环
+   * Abort all node executions for a given pipeline run.
+   * 1. Send "/stop" to each active node's remote agent session (fire-and-forget)
+   * 2. Trigger local AbortController to interrupt polling/drain loop
    */
   const abortRunControllers = (runId: string, client: GatewayClient) => {
     const controllers = nodeExecutionControllers.get(runId);
@@ -52,8 +52,8 @@ export const createRunAbortController = () => {
   };
 
   /**
-   * 获取或创建用于 drainPipeline 的中止信号。
-   * 每次新 run 会创建新的 AbortController，确保 stop/retry 只中断当前运行。
+   * Get or create the abort signal for drainPipeline.
+   * Each new run creates a new AbortController so stop/retry only interrupt the current run.
    */
   const getOrCreateDrainSignal = (runId: string): AbortSignal => {
     let dc = drainControllers.get(runId);

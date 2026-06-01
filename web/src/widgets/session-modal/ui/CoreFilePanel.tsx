@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { MarkdownViewer } from "../../../shared/ui";
 import { drawerCloseClassName } from "../../../shared/ui/surfaceClassNames";
 
@@ -36,6 +37,7 @@ export function CoreFilePanel({
   canRenderMarkdown,
   filePaneText,
 }: CoreFilePanelProps) {
+  const { t } = useTranslation("session");
   return (
     <div className="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-2">
       <div className="flex items-center justify-between gap-[10px] bg-transparent px-0 py-[6px] pb-2 text-xs text-[var(--muted)]">
@@ -47,21 +49,21 @@ export function CoreFilePanel({
         <div className="flex shrink-0 items-center gap-1.5">
           {!isEditingFile ? (
             <button className={`${drawerCloseClassName} h-auto w-auto px-[9px] py-1 text-xs`} type="button" onClick={onBeginEdit} disabled={!canEditCurrentFile}>
-              编辑
+              {t("edit")}
             </button>
           ) : (
             <>
               <button className={`${drawerCloseClassName} h-auto w-auto px-[9px] py-1 text-xs`} type="button" onClick={onCancelEdit} disabled={isSavingFile}>
-                取消
+                {t("cancel")}
               </button>
               <button className={`${drawerCloseClassName} h-auto w-auto border-[var(--live)] px-[9px] py-1 text-xs text-[var(--live)] hover:bg-[rgba(50,215,186,0.12)]`} type="button" onClick={onSave} disabled={isSavingFile}>
-                {isSavingFile ? "保存中..." : "保存"}
+                {isSavingFile ? t("saving") : t("save")}
               </button>
             </>
           )}
         </div>
       </div>
-      {fileSaveError ? <p className={`${monoClassName} m-0 text-xs text-[var(--bad)]`}>保存失败: {fileSaveError}</p> : null}
+      {fileSaveError ? <p className={`${monoClassName} m-0 text-xs text-[var(--bad)]`}>{t("saveFailed", { error: fileSaveError })}</p> : null}
       <div className={`${isEditingFile ? "overflow-hidden px-3 pt-0" : "overflow-auto px-3 pt-2"} min-h-0`}>
         {isEditingFile ? (
           <textarea

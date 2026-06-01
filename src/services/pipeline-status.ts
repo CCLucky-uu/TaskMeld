@@ -104,7 +104,7 @@ const isBatchTerminal = (batchRun: unknown): batchRun is BatchRunLike => {
 export const readPipelineLastCompletedAt = (run: RunLike, batchRun: unknown): string | null => {
   const candidates: string[] = [];
 
-  // 只有确认 run 已进入终态后，才允许把 updatedAt 视作完成时间候选。
+  // Only allow updatedAt as a completion time candidate after confirming the run has reached a terminal state.
   if (isRunTerminal(run) && isNonEmptyString(run.updatedAt)) {
     candidates.push(run.updatedAt.trim());
   }
@@ -113,7 +113,7 @@ export const readPipelineLastCompletedAt = (run: RunLike, batchRun: unknown): st
   candidates.push(...collectFinishedAtValues(run.groups));
   candidates.push(...collectFinishedAtValues(run.groupItemRuns));
 
-  // 批跑完成时间应来自控制器真实终态，而不是运行中的快照更新时间。
+  // Batch-run completion time should come from the controller's real terminal state, not the running snapshot's update time.
   if (isBatchTerminal(batchRun) && isNonEmptyString(batchRun.finishedAt)) {
     candidates.push(batchRun.finishedAt.trim());
   }
@@ -126,14 +126,14 @@ export const buildPipelineStatusResult = <TScheduler, TBatchRun>(
 ): PipelineStatusResult<TScheduler, TBatchRun> => {
   const status = buildPipelineExecutionStatus({
     pipelineId: input.pipelineId,
-    // 这里直接复用 execution-status 作为运行态快照构造器，保证 status 字段来源仍然唯一。
+    // Reuse execution-status directly as the runtime snapshot constructor, keeping the status field source unique.
     run: input.run as BuildableRun,
     scheduler: input.scheduler,
     batchRun: input.batchRun,
   });
 
   if (status.running) {
-    // status.running=true 时，mode 只能是 single 或 remote_batch；这里显式收窄给 CLI/API 统一消费。
+    // When status.running=true, mode can only be single or remote_batch; explicitly narrow here for unified CLI/API consumption.
     return {
       ok: true,
       status: {

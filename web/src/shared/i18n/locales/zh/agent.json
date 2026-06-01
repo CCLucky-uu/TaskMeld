@@ -1,0 +1,19 @@
+{
+  "searchPlaceholder": "搜索智能体（ID/角色/输出/事件）",
+  "searchLabel": "搜索智能体",
+  "statusFilter": "智能体状态筛选",
+  "all": "全部",
+  "busy": "忙碌",
+  "idle": "空闲",
+  "switchToList": "切换为列表视图",
+  "switchToCard": "切换为卡片视图",
+  "role": "角色",
+  "recentNode": "最近节点",
+  "outputPreview": "成功输出",
+  "noOutput": "暂无输出内容",
+  "eventPreview": "事件",
+  "noEvent": "暂无相关事件",
+  "viewOutput": "查看输出",
+  "openSession": "打开会话",
+  "noMatch": "未匹配到智能体"
+}

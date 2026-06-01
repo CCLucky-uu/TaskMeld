@@ -76,18 +76,18 @@ export const createToolActivityLogger = (deps: ToolActivityLoggerDeps) => {
     if (!markSeen(dedupeKey)) return;
 
     if (phase === "start") {
-      deps.pushTimeline(`Agent ${agentId} 工具开始: ${toolName} (run:${runId})`);
+      deps.pushTimeline(`Agent ${agentId} tool started: ${toolName} (run:${runId})`);
       return;
     }
     if (phase === "result" || phase === "end") {
       const isError = data.isError === true;
       deps.pushTimeline(
-        `Agent ${agentId} 工具结束: ${toolName} (run:${runId}${isError ? ", error" : ""})`,
+        `Agent ${agentId} tool finished: ${toolName} (run:${runId}${isError ? ", error" : ""})`,
         isError ? "warn" : "info",
       );
       return;
     }
-    deps.pushTimeline(`Agent ${agentId} 工具事件: ${toolName}/${phase || "unknown"} (run:${runId})`);
+    deps.pushTimeline(`Agent ${agentId} tool event: ${toolName}/${phase || "unknown"} (run:${runId})`);
   };
 
   return {

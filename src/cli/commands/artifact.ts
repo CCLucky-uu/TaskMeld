@@ -1,4 +1,5 @@
 import { CliError, assertRequiredArg } from "../errors";
+import { t } from "../i18n";
 import type { CliCommandHandler, CliRouteDefinition } from "../types";
 
 const pickOptionalString = (value: string | boolean | undefined): string | undefined => {
@@ -70,7 +71,7 @@ export const artifactCleanupCommand: CliCommandHandler = async (input, ctx) => {
   });
   const planObj = plan as Record<string, unknown>;
   if (input.flags.confirm !== true) {
-    return { ...planObj, dryRun: true, message: "dry-run 模式，候选文件不会删除。传入 --confirm 执行真实删除。" };
+    return { ...planObj, dryRun: true, message: t("artifact.cleanup.dryRunMessage") };
   }
   const result = await ctx.app.artifactService.executeCleanup(pipelineId, plan) as Record<string, unknown>;
   return { ...planObj, dryRun: false, ...result };
@@ -92,83 +93,83 @@ export const artifactRoutes: CliRouteDefinition[] = [
   {
     key: "artifact.index",
     path: ["artifact", "index"],
-    description: "重建产物索引",
+    description: t("artifact.index.description"),
     handler: artifactIndexCommand,
     help: {
       usage: "taskmeld artifact index rebuild [--pipeline <id>] [--format <json|md>]",
-      args: [{ name: "rebuild", required: true, description: "重建 index.jsonl" }],
-      options: [{ flags: ["--pipeline"], valueName: "id", description: "只重建指定流水线" }],
-      summary: "扫描产物目录并重建 index.jsonl，用于升级后纳入历史文件或修复索引不一致",
+      args: [{ name: "rebuild", required: true, description: t("artifact.index.argRebuild") }],
+      options: [{ flags: ["--pipeline"], valueName: "id", description: t("artifact.index.optPipeline") }],
+      summary: t("artifact.index.summary"),
     },
   },
   {
     key: "artifact.list",
     path: ["artifact", "list"],
-    description: "输出产物列表",
+    description: t("artifact.list.description"),
     handler: artifactListCommand,
     help: {
       usage: "taskmeld artifact list [--pipeline <id>] [--node <id>] [--status <status>] [--kind <kind>] [--batch <id>] [--run <id>] [--cursor <cursor>] [--format <json|md>]",
       options: [
-        { flags: ["--pipeline"], valueName: "id", description: "按流水线过滤" },
-        { flags: ["--node"], valueName: "id", description: "按节点过滤" },
+        { flags: ["--pipeline"], valueName: "id", description: t("artifact.list.optPipeline") },
+        { flags: ["--node"], valueName: "id", description: t("artifact.list.optNode") },
         { flags: ["--status"], valueName: "status", description: "success,failed,rejected" },
         { flags: ["--kind"], valueName: "kind", description: "artifact,envelope,adapter,group" },
-        { flags: ["--batch"], valueName: "id", description: "按批跑ID过滤" },
-        { flags: ["--run"], valueName: "id", description: "按运行RunId过滤" },
-        { flags: ["--cursor"], valueName: "cursor", description: "分页游标" },
+        { flags: ["--batch"], valueName: "id", description: t("artifact.list.optBatch") },
+        { flags: ["--run"], valueName: "id", description: t("artifact.list.optRun") },
+        { flags: ["--cursor"], valueName: "cursor", description: t("artifact.list.optCursor") },
       ],
-      summary: "输出产物列表，支持状态/类型/批跑/游标分页",
+      summary: t("artifact.list.summary"),
     },
   },
   {
     key: "artifact.show",
     path: ["artifact", "show"],
-    description: "输出产物内容",
+    description: t("artifact.show.description"),
     handler: artifactShowCommand,
     help: {
       usage: "taskmeld artifact show <pipelineId> <relativePath> [--format <json|md>]",
       args: [
-        { name: "pipelineId", required: true, description: "流水线 ID" },
-        { name: "relativePath", required: true, description: "产物相对路径" },
+        { name: "pipelineId", required: true, description: t("artifact.show.argPipelineId") },
+        { name: "relativePath", required: true, description: t("artifact.show.argRelativePath") },
       ],
-      summary: "输出指定产物的文件内容",
+      summary: t("artifact.show.summary"),
     },
   },
   {
     key: "artifact.export",
     path: ["artifact", "export"],
-    description: "导出产物内容",
+    description: t("artifact.export.description"),
     handler: artifactExportCommand,
     help: {
       usage: "taskmeld artifact export [--pipeline <id>] [--from <date>] [--to <date>] [--format <json>]",
       options: [
-        { flags: ["--pipeline"], valueName: "id", description: "按流水线过滤" },
-        { flags: ["--node"], valueName: "id", description: "按节点过滤" },
+        { flags: ["--pipeline"], valueName: "id", description: t("artifact.export.optPipeline") },
+        { flags: ["--node"], valueName: "id", description: t("artifact.export.optNode") },
         { flags: ["--status"], valueName: "status", description: "success,failed,rejected" },
         { flags: ["--kind"], valueName: "kind", description: "artifact,envelope,adapter,group" },
-        { flags: ["--batch"], valueName: "id", description: "按批跑ID过滤" },
-        { flags: ["--from"], valueName: "date", description: "开始日期 YYYY-MM-DD" },
-        { flags: ["--to"], valueName: "date", description: "结束日期 YYYY-MM-DD" },
-        { flags: ["--limit"], valueName: "n", description: "最大导出条数，默认20000" },
+        { flags: ["--batch"], valueName: "id", description: t("artifact.export.optBatch") },
+        { flags: ["--from"], valueName: "date", description: t("artifact.export.optFrom") },
+        { flags: ["--to"], valueName: "date", description: t("artifact.export.optTo") },
+        { flags: ["--limit"], valueName: "n", description: t("artifact.export.optLimit") },
       ],
-      summary: "导出产物内容为 日期->流水线->节点 三层JSON",
+      summary: t("artifact.export.summary"),
     },
   },
   {
     key: "artifact.cleanup",
     path: ["artifact", "cleanup"],
-    description: "清理旧产物",
+    description: t("artifact.cleanup.description"),
     handler: artifactCleanupCommand,
     help: {
       usage: "taskmeld artifact cleanup <pipelineId> [--older-than <days>] [--status <status>] [--confirm]",
-      args: [{ name: "pipelineId", required: true, description: "流水线 ID" }],
+      args: [{ name: "pipelineId", required: true, description: t("artifact.cleanup.argPipelineId") }],
       options: [
-        { flags: ["--pipeline"], valueName: "id", description: "按流水线过滤" },
-        { flags: ["--older-than"], valueName: "days", description: "保留天数，默认 success=30/failed=90/rejected=90" },
+        { flags: ["--pipeline"], valueName: "id", description: t("artifact.list.optPipeline") },
+        { flags: ["--older-than"], valueName: "days", description: t("artifact.cleanup.optOlderThan") },
         { flags: ["--status"], valueName: "status", description: "success,failed,rejected" },
-        { flags: ["--confirm"], description: "必须显式传入才执行真实删除，否则 dry-run" },
+        { flags: ["--confirm"], description: t("artifact.cleanup.optConfirm") },
       ],
-      summary: "清理旧产物文件，默认 dry-run 只展示候选不删除，传 --confirm 执行真实删除并重建索引",
+      summary: t("artifact.cleanup.summary"),
     },
   },
 ];

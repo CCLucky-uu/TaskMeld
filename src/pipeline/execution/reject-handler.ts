@@ -66,7 +66,7 @@ export const handleNodeReject = async (params: {
   node.rejectCount = (node.rejectCount ?? 0) + 1;
   if (node.rejectCount > limit) {
     markNodeFailed(node, ctx("reject_limit_exceeded", { error: JSON.stringify(envelope.error ?? "reject_limit_exceeded") }));
-    pushTimeline(`节点 ${node.id} 打回超过 ${limit} 次，标记失败`, "error");
+    pushTimeline(`Node ${node.id} rejected ${limit} times, marked as failed`, "error");
     return;
   }
 
@@ -79,11 +79,11 @@ export const handleNodeReject = async (params: {
       : defaultTarget
         ? [defaultTarget]
         : [];
-  const rejectMessage = extractEnvelopeErrorMessage(envelope.error) || "下游校验不通过，请修正后重新提交。";
+  const rejectMessage = extractEnvelopeErrorMessage(envelope.error) || "Downstream validation failed, please correct and resubmit.";
 
   if (rejectTargetIds.length === 0) {
     markNodeFailed(node, ctx("reject_target_missing", { error: JSON.stringify(envelope.error ?? "reject_target_missing") }));
-    pushTimeline(`节点 ${node.id} 请求打回但未找到可用上游节点，标记失败`, "error");
+    pushTimeline(`Node ${node.id} requested reject but no available upstream node found, marked as failed`, "error");
     return;
   }
 
@@ -92,7 +92,7 @@ export const handleNodeReject = async (params: {
   for (const targetId of rejectTargetIds) {
     const targetNode = nodes.find((current) => current.id === targetId);
     if (!targetNode) continue;
-    const feedback = `${node.id}(${node.title})打回原因: ${rejectMessage}`;
+    const feedback = `${node.id}(${node.title}) reject reason: ${rejectMessage}`;
     targetNode.rejectFeedbacks = [...(targetNode.rejectFeedbacks ?? []), feedback].slice(-5);
     const movedCount = await archiveRejectedArtifacts({
       node: targetNode,
@@ -109,7 +109,7 @@ export const handleNodeReject = async (params: {
       skipNodeIds: [node.id],
     });
     pushTimeline(
-      `节点 ${node.id} 打回 ${targetNode.id}，原因: ${rejectMessage}；重置 ${affectedNodeCount} 个节点/${affectedGroupCount} 个并行组，归档产物 ${movedCount} 条`,
+      `Node ${node.id} rejected ${targetNode.id}, reason: ${rejectMessage}; reset ${affectedNodeCount} nodes/${affectedGroupCount} parallel groups, archived ${movedCount} artifacts`,
       "warn",
     );
   }

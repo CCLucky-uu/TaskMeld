@@ -54,8 +54,8 @@ export const watchPipelineUntilTerminal = async (
     }
     if (wsSignalAvailable) {
       try {
-        // daemon-first 路径优先基于 WS 事件触发下一次状态确认，减少无效轮询；
-        // 事件链路抖动时自动降级为 interval 轮询，避免 watch 因订阅失败直接中断。
+        // The daemon-first path prioritizes triggering the next status check via WS events to reduce unnecessary polling;
+        // when the event link flaps, auto-degrade to interval polling so the watch isn't directly interrupted by a failed subscription.
         await ctx.app.pipelineService.waitForPipelineWatchSignal?.(
           selector,
           Math.max(1, Math.min(intervalMs, timeoutMs - (Date.now() - startAt))),

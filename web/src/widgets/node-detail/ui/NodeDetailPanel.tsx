@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { PipelineNode } from "../../../entities/pipeline";
 import { InlineSelect, PlusIcon } from "../../../shared/ui";
 import {
@@ -134,6 +135,7 @@ export function NodeDetailPanel({
   statusTone,
   statusLabel,
 }: NodeDetailPanelProps) {
+  const { t } = useTranslation("node-detail");
   const [depEditorOpen, setDepEditorOpen] = useState(false);
   const depEditorRef = useRef<HTMLDivElement | null>(null);
   const rawRouteOptions = Array.from(new Set(draftWorkflowRouteAllowed.split(",").map((item) => item.trim()).filter(Boolean)));
@@ -216,16 +218,16 @@ export function NodeDetailPanel({
   return (
     <aside className={detailPanelClassName}>
       <div className={detailPanelHeadClassName}>
-        <h2 className={detailPanelTitleClassName}>节点详情</h2>
+        <h2 className={detailPanelTitleClassName}>{t("nodeDetail")}</h2>
         <div className={detailPanelStatusClassName}>
-          {isSaving ? <span className={`${statusTagBaseClassName} ${statusTagToneClassName.live}`}>保存中</span> : null}
+          {isSaving ? <span className={`${statusTagBaseClassName} ${statusTagToneClassName.live}`}>{t("saving")}</span> : null}
           <span className={`${statusTagBaseClassName} ${statusTagToneClassName[(statusTone[displayStatus] ?? "muted") as keyof typeof statusTagToneClassName]}`}>
             {selectedNode ? statusLabel[displayStatus] : "-"}
           </span>
         </div>
       </div>
       <div className={fieldClassName}>
-        <label className={fieldLabelClassName}>节点标题</label>
+        <label className={fieldLabelClassName}>{t("nodeTitle")}</label>
         <input
           className={controlInputClassName}
           value={draftTitle}
@@ -253,7 +255,7 @@ export function NodeDetailPanel({
         />
       </div>
       <div className={adapterGridFieldClassName}>
-        <label className="block text-xs text-(--muted)">会话</label>
+        <label className="block text-xs text-(--muted)">{t("session")}</label>
         <InlineSelect
           value={draftExecutorSessionId}
           options={(sessionOptions.length ? sessionOptions : [{ id: draftExecutorSessionId || "-", title: draftExecutorSessionId || "-" }]).map(
@@ -269,11 +271,11 @@ export function NodeDetailPanel({
           onClose={onBlurSave}
           triggerClassName={controlInputClassName}
           disabled={!selectedNode}
-          ariaLabel="选择会话"
+          ariaLabel={t("session")}
         />
       </div>
       <div className={adapterInstructionFieldClassName}>
-        <label className="block text-xs text-(--muted)">让 Agent 干嘛</label>
+        <label className="block text-xs text-(--muted)">{t("agentInstruction")}</label>
         <textarea
           className={controlTextAreaMonoClassName}
           value={draftInstruction}
@@ -284,7 +286,7 @@ export function NodeDetailPanel({
         />
       </div>
       <div className={fieldClassName}>
-        <label className={fieldLabelClassName}>泳道（workflow）</label>
+        <label className={fieldLabelClassName}>{t("lane")}</label>
         <InlineSelect
           value={draftWorkflowLane}
           options={[
@@ -294,23 +296,23 @@ export function NodeDetailPanel({
           onChange={(next) => onChangeDraftWorkflowLane(next === "branch" ? "branch" : "main")}
           triggerClassName={controlInputClassName}
           disabled={!selectedNode}
-          ariaLabel="选择泳道"
+          ariaLabel={t("lane")}
         />
       </div>
       <div className={fieldClassName}>
         <div className={routeSwitchRowClassName}>
-          <label className="block text-xs text-[var(--muted)]">路由 allowed（workflow）</label>
+          <label className="block text-xs text-[var(--muted)]">{t("routeAllowed")}</label>
           <button
             type="button"
             className={`${routeSwitchClassName} ${routeOptions.length > 0 ? routeSwitchOnClassName : ""}`}
             onClick={routeOptions.length > 0 ? disableRouting : enableRouting}
             disabled={!selectedNode}
             aria-pressed={routeOptions.length > 0}
-            aria-label="切换分流"
-            title="切换分流"
+            aria-label={t("toggleRoute")}
+            title={t("toggleRoute")}
           >
             <span className={`${routeSwitchThumbClassName} ${routeOptions.length > 0 ? routeSwitchThumbOnClassName : routeSwitchThumbOffClassName}`}>
-              {routeOptions.length > 0 ? "开" : "关"}
+              {routeOptions.length > 0 ? t("routeOn") : t("routeOff")}
             </span>
           </button>
         </div>
@@ -326,14 +328,14 @@ export function NodeDetailPanel({
                     className={routeChipRemoveClassName}
                     onClick={() => removeRouteOption(route)}
                     disabled={!selectedNode || route === MAINLINE_ROUTE_VALUE || route === DEFAULT_BRANCH_ROUTE_VALUE}
-                    aria-label={`删除路由 ${route}`}
+                    aria-label={t("deleteRoute", { route })}
                   >
                     x
                   </button>
                 </span>
               ))
             ) : (
-              <span className={`${monoClassName} text-xs text-(--muted)`}>暂无 route，添加 2-5 个自定义值</span>
+              <span className={`${monoClassName} text-xs text-(--muted)`}>{t("noRoute")}</span>
             )}
           </div>
           <div className={routeEditorRowClassName}>
@@ -347,15 +349,15 @@ export function NodeDetailPanel({
                 addRouteOption();
               }}
               disabled={!selectedNode || routeOptions.length >= 5}
-              placeholder="输入自定义 route，例如 holo"
+              placeholder={t("routePlaceholder")}
             />
             <button
               type="button"
               className={`${actionButtonClassName} inline-grid h-9 w-9 min-w-9 place-items-center self-stretch p-0`}
               onClick={addRouteOption}
               disabled={!selectedNode || !routeDraft.trim() || routeDraft.trim() === MAINLINE_ROUTE_VALUE || routeDraft.trim() === DEFAULT_BRANCH_ROUTE_VALUE || routeOptions.length >= 5}
-              aria-label="添加路由"
-              title="添加路由"
+              aria-label={t("addRoute")}
+              title={t("addRoute")}
             >
               <PlusIcon />
             </button>
@@ -365,14 +367,14 @@ export function NodeDetailPanel({
       </div>
       {routeTargetOptionsForEdit.length > 0 ? (
         <div className={fieldClassName}>
-          <label className={fieldLabelClassName}>分流目标（按 route 发给节点）</label>
+          <label className={fieldLabelClassName}>{t("routeTargets")}</label>
           {routeTargetOptionsForEdit.map((route) => (
             <div key={route} className={routeTargetItemClassName}>
               <label className="mb-0 text-(--text)">{route}</label>
               <InlineSelect
                 value={draftWorkflowRouteTargets[route] ?? ""}
                 options={[
-                  { value: "", label: "未配置" },
+                  { value: "", label: t("notConfigured") },
                   ...routeTargetOptions.map((node) => ({
                     value: node.id,
                     label: `${node.id} - ${node.title}`,
@@ -381,7 +383,7 @@ export function NodeDetailPanel({
                 onChange={(next) => onChangeDraftWorkflowRouteTarget(route, next)}
                 triggerClassName={controlInputClassName}
                 disabled={!selectedNode}
-                ariaLabel={`选择 route ${route} 的目标节点`}
+                ariaLabel={t("selectRouteTarget", { route })}
               />
             </div>
           ))}
@@ -389,7 +391,7 @@ export function NodeDetailPanel({
       ) : null}
       <div className={fieldClassName}>
         <div className={kvHeadClassName}>
-          <label className="block text-xs text-(--muted)">依赖节点（仅上游，可多选）</label>
+          <label className="block text-xs text-(--muted)">{t("dependsOn")}</label>
         </div>
         <div className={depPickerClassName} ref={depEditorRef}>
           <div
@@ -416,7 +418,7 @@ export function NodeDetailPanel({
                 });
               }
             }}
-            aria-label="编辑依赖节点"
+            aria-label={t("editDepends")}
           >
             {draftDependsOn.length ? draftDependsOn.join(",") : "-"}
           </div>
@@ -435,19 +437,19 @@ export function NodeDetailPanel({
                   </label>
                 ))
               ) : (
-                <p className={depEmptyClassName}>暂无可选上游节点</p>
+                <p className={depEmptyClassName}>{t("noDepends")}</p>
               )}
             </div>
           ) : null}
         </div>
       </div>
       <div className={fieldClassName}>
-        <label className={fieldLabelClassName}>允许打回上游</label>
+        <label className={fieldLabelClassName}>{t("allowReject")}</label>
         <InlineSelect
           value={draftAllowReject ? "yes" : "no"}
           options={[
-            { value: "no", label: "否" },
-            { value: "yes", label: "是" },
+            { value: "no", label: t("rejectNo") },
+            { value: "yes", label: t("rejectYes") },
           ]}
           onChange={(next) => {
             onChangeDraftAllowReject(next === "yes");
@@ -456,12 +458,12 @@ export function NodeDetailPanel({
           onClose={onBlurSave}
           triggerClassName={controlInputClassName}
           disabled={!selectedNode}
-          ariaLabel="选择是否允许打回上游"
+          ariaLabel={t("selectReject")}
         />
       </div>
       {draftAllowReject ? (
         <div className={fieldClassName}>
-          <label className={fieldLabelClassName}>最大打回次数</label>
+          <label className={fieldLabelClassName}>{t("maxRejectCount")}</label>
           <input
             className={controlInputClassName}
             type="number"
@@ -476,17 +478,17 @@ export function NodeDetailPanel({
         </div>
       ) : null}
       <div className={fieldClassName}>
-        <label className={fieldLabelClassName}>产物</label>
+        <label className={fieldLabelClassName}>{t("artifacts")}</label>
         <code className={fieldCodeClassName}>
           {selectedNode && selectedNode.artifacts.length
             ? selectedNode.artifacts
               .map((artifact) => `${artifact.type}@v${artifact.schemaVersion} ${artifact.path} (${artifact.hash})`)
               .join("\n")
-            : "空"}
+            : "-"}
         </code>
       </div>
       <button className={actionButtonClassName} onClick={onRetry}>
-        重试节点
+        {t("retryNode")}
       </button>
     </aside>
   );

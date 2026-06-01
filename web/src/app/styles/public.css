@@ -12,7 +12,7 @@
     --warn: #ffb84d;
     --bad: #ff6b6b;
 
-    /* z-index 层级体系 */
+    /* z-index layer system */
     --z-base: 0;
     --z-dropdown: 10;
     --z-sticky: 20;
@@ -22,7 +22,7 @@
     --z-toast: 60;
     --z-tooltip: 70;
 
-    /* 字号阶梯（语义化别名，不替代 Tailwind text-* 原生类）*/
+    /* Type-scale aliases (semantic, does not replace Tailwind text-* native utilities) */
     --text-caption: 0.75rem;
     --text-body-sm: 0.8125rem;
     --text-body: 0.875rem;
@@ -31,7 +31,7 @@
     --text-display: 1.25rem;
   }
 
-  /* 亮色主题变量覆写（实验性，后续版本迭代完善）*/
+  /* Light-theme variable overrides (experimental, to be refined in future iterations) */
   [data-theme="light"] {
     --bg: #f5f7fa;
     --panel: #ffffff;
@@ -47,7 +47,7 @@
     box-sizing: border-box;
   }
 
-  /* Firefox 滚动条样式（scrollbar-color 会触发 Chrome 经典模式，仅限 FF）*/
+  /* Firefox scrollbar style (scrollbar-color triggers Chrome classic mode, Firefox only) */
   @-moz-document url-prefix() {
     * {
       scrollbar-width: thin;
@@ -55,7 +55,7 @@
     }
   }
 
-  /* 网格纹理 + 四周渐隐 */
+  /* Grid texture + four-edge fade */
   #main-scroll {
     background:
       radial-gradient(ellipse at 50% 50%, transparent 40%, var(--bg) 75%),
@@ -73,7 +73,7 @@
     overflow: hidden;
   }
 
-  /* 锁定根节点高度，确保滚动只发生在应用内部容器而非页面本身。 */
+  /* Lock root element height so scrolling only happens inside app containers, not the page itself. */
   html,
   body,
   #root {
@@ -121,7 +121,7 @@
   }
 }
 
-/* 尊重系统降运动偏好：关闭所有过渡/动画 */
+/* Respect system reduced-motion preference: disable all transitions/animations */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

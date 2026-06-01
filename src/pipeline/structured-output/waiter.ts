@@ -78,8 +78,8 @@ export const evaluateObservedEnvelopeWindow = (
   const forRequestId = observed.filter((entry) => entry.envelope.requestId === ctx.requestId);
   if (forRequestId.length > 0) {
     if (!confirmFinal) {
-      // agent 会话未结束前，只记录“已见到候选”，不能提前认定成功/失败。
-      // 否则中途调试 JSON、半成品 envelope 都可能被过早消费。
+      // Before the agent session ends, only record "candidate seen" — cannot prematurely declare success/failure.
+      // Otherwise intermediate debug JSON or half-finished envelopes could be consumed too early.
       return { seenCandidate: true };
     }
     let latestFailure: ContractViolationCode | null = null;
@@ -105,12 +105,12 @@ export const evaluateObservedEnvelopeWindow = (
 };
 
 /**
- * 等待结构化回执。
+ * Wait for a structured receipt.
  *
- * 当传入 AbortSignal 且被触发时，提前退出本地轮询循环。
- * 远端 agent 的停止由上游 executionService 通过 "/stop" 命令处理。
+ * When an AbortSignal is passed and triggered, exit the local polling loop early.
+ * Remote agent stopping is handled by the upstream executionService via the "/stop" command.
  *
- * @param signal 可选的中止信号，用于流水线 stop/retry 时提前退出轮询。
+ * @param signal Optional abort signal, used to exit polling early during pipeline stop/retry.
  */
 export const waitForStructuredEnvelope = async (
   emitter: EventEmitter,

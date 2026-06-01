@@ -86,7 +86,7 @@ export const resolveRuntimePipelineSelector = (
   }
   const pipelineId = typeof selector.pipelineId === "string" ? selector.pipelineId.trim() : "";
   if (!pipelineId) {
-    // runtime API 的 status/stop 路由仍是 /api/pipelines/:pipelineId/*，runId/batchRunId 仅用于“精确命中当前 pipeline 运行”。
+    // runtime API status/stop routes are still /api/pipelines/:pipelineId/*; runId/batchRunId are only used for "precisely hitting the current pipeline run".
     throw new CliError("Missing pipelineId for runtime API selector", {
       code: "INVALID_ARGUMENT",
       exitCode: 2,
@@ -140,8 +140,8 @@ const waitForPipelineWatchSignal = async (
       if (selector.runId) {
         return selector.runId === eventRunId || selector.runId === runIdFromRun;
       }
-      // batchRunId 在 pipeline.updated 中没有稳定字段；这里把更新当作“状态可能变化”的唤醒信号，
-      // 实际终态判断仍由后续 status 请求完成，避免因为事件字段缺失误判终态。
+      // batchRunId has no stable field in pipeline.updated; treat the update as a "state may have changed" wake-up signal,
+      // while the actual terminal-state judgment is still done by a subsequent status request, to avoid misjudging terminal state due to missing event fields.
       if (selector.batchRunId) return true;
       return Boolean(selector.pipelineId);
     };
@@ -336,7 +336,7 @@ const metadataMatchesHealth = (
   if (metadata.serverId && health.serverId) {
     return metadata.serverId === health.serverId;
   }
-  // 兼容旧 metadata：早期 runtime.json 不含 serverId，此时退回 pid/port/endpoint 交叉校验。
+  // Compatibility with old metadata: early runtime.json didn't include serverId; fall back to pid/port/endpoint cross-validation.
   return true;
 };
 
@@ -419,7 +419,7 @@ const cleanupStaleRuntimeArtifacts = async (probe: RuntimeOwnershipProbe): Promi
   if (probe.metadataStale) {
     await rm(getServerRuntimeMetadataPath(), { force: true });
   }
-  // startup.lock 是“开始拉起”的互斥标记，不是 owner 证据；只有健康实例不存在且锁超时才允许清理。
+  // startup.lock is a mutual-exclusion marker for "starting up", not owner evidence; only clean up when no healthy instance exists and the lock is stale.
   if (!probe.ready && probe.lockStale) {
     await rm(getServerStartupLockPath(), { force: true });
   }
@@ -429,8 +429,8 @@ const reconcileRuntimeMetadataWithHealth = async (probe: RuntimeOwnershipProbe):
   if (!probe.health) return probe.metadata;
   const nextMetadata = buildMetadataFromHealth(probe.health);
   if (!metadataMatchesHealth(probe.metadata, probe.health)) {
-    // health 请求已经命中了当前 CLI 期望的 endpoint；只要这份 owner 信息完整，就应该回填 metadata，
-    // 否则 metadata_missing / metadata_mismatch 会在后续 ensure/status/stop 中反复被误判为异常状态。
+    // The health request already matched the endpoint the CLI expects; if this owner info is complete, it should be written back to metadata,
+    // otherwise metadata_missing / metadata_mismatch would repeatedly be misjudged as an abnormal state in subsequent ensure/status/stop calls.
     await writeRuntimeMetadata(nextMetadata);
     return nextMetadata;
   }
@@ -591,7 +591,7 @@ const startLocalApiServer = async (): Promise<ServerLifecycleResult> => {
     }
 
     const launchSpec = await resolveServerLaunchSpec();
-    // 后台 daemon 必须脱离当前 CLI 生命周期运行，否则 watch/start 等命令一结束就会把宿主一并带死。
+    // The background daemon must run detached from the CLI lifecycle; otherwise commands like watch/start would kill the host when they exit.
     const child = spawn(launchSpec.command, launchSpec.args, {
       cwd: launchSpec.cwd,
       detached: true,

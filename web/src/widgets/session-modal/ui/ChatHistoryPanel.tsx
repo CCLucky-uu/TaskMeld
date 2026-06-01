@@ -1,4 +1,5 @@
 import { memo, ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { SessionHistoryItem } from "../../../entities/session";
 import { MarkdownViewer } from "../../../shared/ui";
 import { LiveToolEntry, MergedHistoryEntry } from "../model/session-modal-types";
@@ -117,6 +118,7 @@ export const ChatHistoryPanel = memo(function ChatHistoryPanel({
   onToggleToolOutputCollapsed,
   onVirtualStatsChange,
 }: ChatHistoryPanelProps) {
+  const { t } = useTranslation("session");
   const measuredHeightsRef = useRef<Map<string, number>>(new Map());
   const rowObserverRef = useRef<ResizeObserver | null>(null);
   const canvasRef = useRef<HTMLDivElement | null>(null);
@@ -213,11 +215,11 @@ export const ChatHistoryPanel = memo(function ChatHistoryPanel({
               <span>{item.role}</span>
               <div className="inline-flex items-center gap-2">
                 {modelTag ? <span>{modelTag}</span> : null}
-                <span>{item.ts ? new Date(item.ts).toLocaleString("zh-CN", { hour12: false }) : "-"}</span>
+                <span>{item.ts ? new Date(item.ts).toLocaleString(undefined, { hour12: false }) : "-"}</span>
               </div>
             </header>
             {useMarkdownBubble ? (
-              // Markdown 容器需要允许收缩，否则内部 code block 的最小内容宽度会外溢到气泡外。
+              // Markdown container must allow shrinking, or inner code-block min-content width will spill past the bubble.
               <div className="min-w-0 max-w-full overflow-hidden">
                 <MarkdownViewer content={item.text} />
               </div>
@@ -270,11 +272,11 @@ export const ChatHistoryPanel = memo(function ChatHistoryPanel({
             <header className={`${monoClassName} mb-1.5 flex items-center justify-between gap-[10px] text-xs text-[var(--muted)]`}>
               <span>assistant</span>
               <div className="inline-flex items-center gap-2">
-                <span>思考中...</span>
+                <span>{t("thinking")}</span>
               </div>
             </header>
             <p className="m-0 whitespace-pre-wrap break-words text-[13px] leading-[1.45] text-[var(--muted)]">
-              思考中<span className="inline-block w-[0.6ch] animate-pulse text-center">.</span>
+              {t("thinking")}<span className="inline-block w-[0.6ch] animate-pulse text-center">.</span>
               <span className="inline-block w-[0.6ch] animate-pulse text-center [animation-delay:0.2s]">.</span>
               <span className="inline-block w-[0.6ch] animate-pulse text-center [animation-delay:0.4s]">.</span>
             </p>
@@ -285,6 +287,7 @@ export const ChatHistoryPanel = memo(function ChatHistoryPanel({
 
     return nextRows;
   }, [
+    t,
     historyStatusText,
     mergedHistory,
     liveTools,

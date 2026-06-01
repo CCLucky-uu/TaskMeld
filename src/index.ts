@@ -64,7 +64,7 @@ if (require.main === module) {
     },
   });
 
-  // 创建共享 services（HTTP 路由 + WS handler 共用）
+  // Create shared services (used by both HTTP routes and WS handler)
   const pipelineService = createPipelineService(app);
   const schedulerService = createSchedulerService(app);
   const runLogService = createRunLogService({

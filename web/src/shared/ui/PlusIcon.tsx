@@ -5,6 +5,6 @@ type PlusIconProps = {
 };
 
 export function PlusIcon({ size = 14 }: PlusIconProps) {
-  // 这里继续对外暴露 PlusIcon，方便逐步替换，不强迫业务组件一次性改名。
+  // Exported as PlusIcon for gradual migration — doesn't force business components to rename all at once.
   return <PlusSvgIcon width={String(size)} height={String(size)} />;
 }

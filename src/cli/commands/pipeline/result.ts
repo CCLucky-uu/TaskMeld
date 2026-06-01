@@ -1,4 +1,5 @@
 import { CliError, assertRequiredArg } from "../../errors";
+import { t } from "../../i18n";
 import type { CliCommandHandler, CliRouteDefinition } from "../../types";
 import type { CliPipelineResult, CliPipelineResultNode } from "../../types";
 
@@ -102,7 +103,7 @@ export const pipelineResultCommand: CliCommandHandler = async (input, ctx) => {
     nodes: [],
   };
 
-  // 通过 artifact service 查询 envelope 文件（复用统一读取语义）
+  // Query envelope files via artifact service (reuses unified read semantics)
   const envelopeList = await ctx.app.artifactService.listArtifacts({
     pipelineId,
     runId,
@@ -110,7 +111,7 @@ export const pipelineResultCommand: CliCommandHandler = async (input, ctx) => {
   }) as { items?: Array<{ nodeId?: string | null; relativePath?: string }> };
   const envelopeItems = Array.isArray(envelopeList?.items) ? envelopeList.items : [];
 
-  // 按 nodeId 索引 envelope 的 relativePath
+  // Index envelope relativePath by nodeId
   const envelopePathByNode = new Map<string, string>();
   for (const item of envelopeItems) {
     const nid = item.nodeId?.trim();
@@ -186,17 +187,17 @@ export const pipelineResultRoutes: CliRouteDefinition[] = [
   {
     key: "pipeline.result",
     path: ["pipeline", "result"],
-    description: "输出流水线运行结果",
+    description: t("pipeline.result.description"),
     handler: pipelineResultCommand,
     help: {
       usage: "taskmeld pipeline result <pipelineId> [--node <nodeId>] [--logs] [--format <json|md>]",
-      args: [{ name: "pipelineId", required: true, description: "流水线 ID" }],
+      args: [{ name: "pipelineId", required: true, description: t("pipeline.result.argPipelineId") }],
       options: [
-        { flags: ["--node"], valueName: "nodeId", description: "过滤到指定节点" },
-        { flags: ["--logs"], description: "同时展示处理日志" },
-        { flags: ["--format"], valueName: "json|md", description: "输出格式，默认 md" },
+        { flags: ["--node"], valueName: "nodeId", description: t("pipeline.result.optNode") },
+        { flags: ["--logs"], description: t("pipeline.result.optLogs") },
+        { flags: ["--format"], valueName: "json|md", description: t("pipeline.result.optFormat") },
       ],
-      summary: "输出流水线运行后各节点的产物内容",
+      summary: t("pipeline.result.summary"),
     },
   },
 ];

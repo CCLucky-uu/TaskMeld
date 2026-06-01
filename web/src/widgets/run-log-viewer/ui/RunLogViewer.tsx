@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { CloseIcon } from "../../../shared/ui";
 import { panelHeaderClassName } from "../../../shared/ui/panelClasses";
 import {
@@ -22,12 +23,6 @@ type RunLogViewerProps = {
   onClose: () => void;
 };
 
-const levelLabel: Record<"info" | "warn" | "error", string> = {
-  info: "信息",
-  warn: "警告",
-  error: "错误",
-};
-
 const runLogLevelGroupClassName = "flex flex-wrap gap-2";
 const runLogLevelLabelBaseClassName = "inline-flex cursor-pointer items-center gap-1.5 rounded-none px-2 py-[2px] text-xs uppercase";
 const runLogLevelLabelToneClassName: Record<"info" | "warn" | "error", string> = {
@@ -43,6 +38,7 @@ const actionButtonClassName =
   "mt-0 cursor-pointer border border-[var(--live-25)] bg-transparent px-[10px] py-2 font-semibold text-[var(--live)] hover:bg-[rgba(50,215,186,0.1)]";
 
 export function RunLogViewer({ open, runId, onClose }: RunLogViewerProps) {
+  const { t } = useTranslation("log");
   const vm = useRunLogViewer(open, runId);
   const listRef = useRef<HTMLDivElement | null>(null);
   const detailRef = useRef<HTMLDivElement | null>(null);
@@ -85,17 +81,17 @@ export function RunLogViewer({ open, runId, onClose }: RunLogViewerProps) {
         >
           <div className={panelHeaderClassName}>
             <div>
-              <h2>运行日志</h2>
+              <h2>{t("runLog")}</h2>
               <p className={`${modalSublineClassName} ${monoClassName}`}>run={runId || "-"}</p>
             </div>
-            <button className={drawerCloseClassName} type="button" onClick={onClose} aria-label="关闭">
+            <button className={drawerCloseClassName} type="button" onClick={onClose} aria-label={t("common:action.close")}>
               <CloseIcon />
             </button>
           </div>
 
           <div className="flex flex-wrap items-end gap-3">
             <label className="min-w-55 flex-[1_1_240px]">
-              <span className={fieldLabelClassName}>关键字</span>
+              <span className={fieldLabelClassName}>{t("searchKeyword")}</span>
               <input
                 className={controlInputMonoClassName}
                 value={vm.keywordDraft}
@@ -103,18 +99,18 @@ export function RunLogViewer({ open, runId, onClose }: RunLogViewerProps) {
                 onKeyDown={(event) => {
                   if (event.key === "Enter") vm.applyFilters();
                 }}
-                placeholder="搜索 text / detail"
+                placeholder={t("searchPlaceholder")}
               />
             </label>
             <label className="min-w-40 flex-[0_1_180px]">
-              <span className={fieldLabelClassName}>排序</span>
+              <span className={fieldLabelClassName}>{t("sortOrder")}</span>
               <select className={controlInputMonoClassName} value={vm.order} onChange={(event) => vm.setOrder(event.target.value as "asc" | "desc")}>
-                <option value="desc">最新在前</option>
-                <option value="asc">最早在前</option>
+                <option value="desc">{t("sortNewestFirst")}</option>
+                <option value="asc">{t("sortOldestFirst")}</option>
               </select>
             </label>
             <div className="min-w-55 flex-[1_1_320px]">
-              <span className={fieldLabelClassName}>级别</span>
+              <span className={fieldLabelClassName}>{t("level")}</span>
               <div className={runLogLevelGroupClassName}>
                 {(["info", "warn", "error"] as const).map((level) => (
                   <label key={level} className={`${runLogLevelLabelBaseClassName} ${runLogLevelLabelToneClassName[level]}`}>
@@ -123,28 +119,28 @@ export function RunLogViewer({ open, runId, onClose }: RunLogViewerProps) {
                       checked={vm.selectedLevels.includes(level)}
                       onChange={(event) => vm.toggleLevel(level, event.target.checked)}
                     />
-                    <span>{levelLabel[level]}</span>
+                    <span>{t(level)}</span>
                   </label>
                 ))}
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
-              <button className={actionButtonClassName} type="button" onClick={vm.applyFilters}>应用过滤</button>
-              <button className={actionButtonClassName} type="button" onClick={vm.resetFilters}>重置</button>
-              <a className={actionButtonClassName} href={vm.rawUrl} target="_blank" rel="noreferrer">原始 NDJSON</a>
+              <button className={actionButtonClassName} type="button" onClick={vm.applyFilters}>{t("applyFilters")}</button>
+              <button className={actionButtonClassName} type="button" onClick={vm.resetFilters}>{t("reset")}</button>
+              <a className={actionButtonClassName} href={vm.rawUrl} target="_blank" rel="noreferrer">{t("rawNdjson")}</a>
             </div>
           </div>
 
           <div className={`${monoClassName} grid gap-3 text-xs text-(--muted)`}>
-            <span>已加载 {vm.items.length} / {vm.total}</span>
-            <span>解析失败 {vm.parseErrorCount}</span>
+            <span>{t("loaded", { loaded: vm.items.length, total: vm.total })}</span>
+            <span>{t("parseFailed", { count: vm.parseErrorCount })}</span>
             <span>{vm.keyword ? `keyword=${vm.keyword}` : "keyword=-"}</span>
           </div>
 
           <div className="grid min-h-0 gap-3 min-[761px]:grid-cols-[minmax(420px,1.2fr)_minmax(340px,0.95fr)] max-[760px]:grid-cols-1">
             <section className="grid min-h-0 grid-rows-[minmax(0,1fr)] overflow-hidden border border-(--line) bg-[rgba(15,23,29,0.72)]" ref={listRef}>
-              {vm.error ? <div className={`${monoClassName} grid min-h-45 place-items-center p-6 text-center text-xs text-(--muted)`}>日志加载失败: {vm.error}</div> : null}
-              {!vm.error && vm.items.length === 0 && !vm.loading ? <div className={`${monoClassName} grid min-h-45 place-items-center p-6 text-center text-xs text-(--muted)`}>暂无匹配日志</div> : null}
+              {vm.error ? <div className={`${monoClassName} grid min-h-45 place-items-center p-6 text-center text-xs text-(--muted)`}>{t("loadFailed", { error: vm.error })}</div> : null}
+              {!vm.error && vm.items.length === 0 && !vm.loading ? <div className={`${monoClassName} grid min-h-45 place-items-center p-6 text-center text-xs text-(--muted)`}>{t("noMatch")}</div> : null}
               {vm.items.map((item) => (
                 <button
                   key={item.id}
@@ -154,15 +150,15 @@ export function RunLogViewer({ open, runId, onClose }: RunLogViewerProps) {
                   onClick={() => vm.setSelectedId(item.id)}
                 >
                   <div className={`${monoClassName} flex items-center justify-between gap-3 text-xs text-(--muted)`}>
-                    <span>{new Date(item.ts).toLocaleString("zh-CN", { hour12: false })}</span>
+                    <span>{new Date(item.ts).toLocaleString(undefined, { hour12: false })}</span>
                     <span className={`${runLogLevelLabelBaseClassName} ${runLogLevelLabelToneClassName[item.level]}`}>
-                      {levelLabel[item.level]}
+                      {t(item.level)}
                     </span>
                   </div>
                   <p className="m-0 wrap-break-word whitespace-pre-wrap font-[JetBrains_Mono,monospace] text-[13px] leading-normal">{item.text}</p>
                 </button>
               ))}
-              {vm.loading ? <div className={`${monoClassName} grid min-h-45 place-items-center p-6 text-center text-xs text-(--muted)`}>日志加载中...</div> : null}
+              {vm.loading ? <div className={`${monoClassName} grid min-h-45 place-items-center p-6 text-center text-xs text-(--muted)`}>{t("loading")}</div> : null}
             </section>
 
             <aside className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)] border border-(--line) bg-[rgba(15,23,29,0.72)]" ref={detailRef}>
@@ -183,7 +179,7 @@ export function RunLogViewer({ open, runId, onClose }: RunLogViewerProps) {
                   </div>
                 </>
               ) : (
-                <div className={`${monoClassName} grid min-h-45 place-items-center p-6 text-center text-xs text-(--muted)`}>选择左侧日志后查看 detail</div>
+                <div className={`${monoClassName} grid min-h-45 place-items-center p-6 text-center text-xs text-(--muted)`}>{t("selectToViewDetail")}</div>
               )}
             </aside>
           </div>

@@ -146,8 +146,8 @@ export const createRunStateHelpers = (options: CreateRunStateHelpersOptions) => 
       if (options.graph.isGroupId(current)) {
         groupIds.add(current);
         const group = options.graph.getWorkflowGroupById(current);
-        // 并行组本身不是执行节点，但它控制成员节点与后续 join 分支的状态。
-        // 回放/打回时必须穿透 group，把成员和 group 后面的节点一起纳入重置范围。
+        // A parallel group is not an execution node itself, but it controls the state of its member nodes and subsequent join branches.
+        // Replay/reject must penetrate the group to include members and nodes downstream of the group in the reset scope.
         for (const memberId of group?.members ?? []) {
           queue.push(memberId);
         }

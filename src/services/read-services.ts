@@ -46,7 +46,7 @@ const createAllServices = (app: PipelineRegistry): InternalServices => ({
 export const createReadonlyServices = (app: PipelineRegistry): ReadonlyServices => {
   const services = createAllServices(app);
   return {
-    // 统一工厂用于主线集成，CLI 入口只需传入 registry 即可拿到全部只读 service。
+    // Unified factory for mainline integration; the CLI entry only needs to pass in the registry to get all read-only services.
     system: services.system,
     pipeline: services.pipeline,
     agent: services.agent,

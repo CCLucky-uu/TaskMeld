@@ -33,7 +33,7 @@ export type PipelineOutput = {
   producedAt: string;
 };
 
-/** 用去重键计算短哈希，稳定去重且长度可控。 */
+/** Compute a short hash from a deduplication key; stable dedup with manageable length. */
 export const buildOutputId = (
   pipelineId: string,
   runId: string,

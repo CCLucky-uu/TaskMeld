@@ -489,7 +489,7 @@ export const createGatewayClient = (options: GatewayClientOptions): GatewayClien
     clearTimer(reconnectTimer);
     reconnectTimer = null;
 
-    // S7 fix: 旧 socket 必须显式解绑 listener + close，避免重连时旧实例和监听器闭包滞留
+    // S7 fix: the old socket must have its listeners explicitly removed and be closed, to prevent stale instances and listener closures from lingering during reconnects.
     if (socket) {
       try { socket.removeAllListeners(); } catch { /* noop */ }
       try { socket.close(); } catch { /* noop */ }
@@ -536,9 +536,9 @@ export const createGatewayClient = (options: GatewayClientOptions): GatewayClien
 
       options.onClose?.(code, reason.toString());
 
-      // 握手阶段如果已经判定为鉴权/协议错误，close 只是前面主动断开的收尾动作。
-      // 这里不能再按 failed_transport 继续重连，否则 pairing required / scope-upgrade
-      // 会触发本地无限重连，持续打 127.0.0.1:18789。
+      // If auth/protocol errors were already determined during the handshake phase, the close is just the tail-end of a preceding proactive disconnect.
+      // We must not continue reconnect as failed_transport here, otherwise pairing required / scope-upgrade
+      // would trigger infinite local reconnects, repeatedly hitting 127.0.0.1:18789.
       if (!isManualClose && status !== "failed_auth" && status !== "failed_protocol") {
         scheduleReconnect("failed_transport", `closed:${code}`);
       }

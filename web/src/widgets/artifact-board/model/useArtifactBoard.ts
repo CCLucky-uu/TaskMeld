@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import i18next from "i18next";
 import {
   fetchStoredArtifactsExport,
   fetchStoredArtifactContent,
@@ -51,7 +52,7 @@ export const useArtifactBoard = (pipelineOptions: ArtifactPipelineOption[]) => {
   const loadArtifacts = async (filters: ArtifactFilterState) => {
     const query = resolveArtifactQuery(filters);
     if (!query) {
-      setError("自定义日期范围无效，请检查开始/结束日期。");
+      setError(i18next.t("artifact:dateRangeInvalid"));
       return;
     }
     setLoading(true);
@@ -96,7 +97,7 @@ export const useArtifactBoard = (pipelineOptions: ArtifactPipelineOption[]) => {
   const exportFilteredArtifacts = async () => {
     const query = resolveArtifactQuery(appliedFilters);
     if (!query) {
-      setError("导出失败：当前筛选条件无效。");
+      setError(i18next.t("artifact:exportFailed"));
       return;
     }
     setExporting(true);
@@ -112,7 +113,7 @@ export const useArtifactBoard = (pipelineOptions: ArtifactPipelineOption[]) => {
         dateTo: query.dateTo,
         limit: 20000,
       });
-      // 导出文件只保留产物内容本身，结构按 日期/流水线/节点 三层分组。
+      // Export file keeps only the artifact content itself, grouped by date/pipeline/node three-level structure.
       const rawJson = JSON.stringify(data, null, 2);
       const blob = new Blob([rawJson], { type: "application/json;charset=utf-8" });
       const url = URL.createObjectURL(blob);
@@ -154,7 +155,7 @@ export const useArtifactBoard = (pipelineOptions: ArtifactPipelineOption[]) => {
     ? items.find((item) => `${item.pipelineId}:${item.relativePath}` === selectedItemKey)
     : undefined;
 
-  // 产物目录可能覆盖历史流水线，这里把已有选项和当前结果里的流水线做并集，避免筛选器丢值。
+  // The artifact directory may cover historical pipelines; merge existing options with current results so the filter dropdown never loses entries.
   const mergedPipelineOptions = useMemo(() => {
     const map = new Map<string, ArtifactPipelineOption>();
     for (const item of pipelineOptions) {
@@ -167,10 +168,10 @@ export const useArtifactBoard = (pipelineOptions: ArtifactPipelineOption[]) => {
         map.set(row.pipelineId, { id: row.pipelineId, title: row.pipelineTitle || row.pipelineId });
       }
     }
-    return [...map.values()].sort((a, b) => a.title.localeCompare(b.title, "zh-CN"));
+    return [...map.values()].sort((a, b) => a.title.localeCompare(b.title));
   }, [pipelineOptions, items]);
 
-  // 节点筛选选项来自当前结果，避免引入额外接口并保持和实际产物一致。
+  // Node filter options come from current results to avoid extra API calls and stay consistent with actual artifacts.
   const mergedNodeOptions = useMemo(() => {
     const set = new Set<string>();
     for (const row of items) {
@@ -179,7 +180,7 @@ export const useArtifactBoard = (pipelineOptions: ArtifactPipelineOption[]) => {
       set.add(nodeId);
     }
     return [...set]
-      .sort((a, b) => a.localeCompare(b, "zh-CN"))
+      .sort((a, b) => a.localeCompare(b))
       .map<ArtifactNodeOption>((id) => ({ id }));
   }, [items]);
 

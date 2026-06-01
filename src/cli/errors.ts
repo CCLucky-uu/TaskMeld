@@ -12,7 +12,7 @@ export class CliError extends Error {
   }
 }
 
-// 统一把未知异常规范化，避免 CLI 输出结构漂移。
+// Unify unknown exception normalization to prevent CLI output structure drift.
 export const toCliError = (error: unknown): CliError => {
   if (error instanceof CliError) return error;
   if (error instanceof Error) {
@@ -28,7 +28,7 @@ export const toCliError = (error: unknown): CliError => {
   });
 };
 
-// 在不改动原错误元信息的前提下，为参数类错误附加帮助提示。
+// Without altering the original error metadata, attach a help hint to argument-type errors.
 export const withHelpHint = (error: CliError, hint: string): CliError => {
   if (!hint.trim()) return error;
   if (error.message.includes(hint)) return error;

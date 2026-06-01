@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { GatewayStatus } from "../../../entities/gateway";
 import ChevronRightIcon from "@iconify-react/lucide/chevron-right";
 
@@ -18,6 +19,7 @@ export function TopBar({
   onToggleNav,
   routeText,
 }: TopBarProps) {
+  const { t } = useTranslation("nav");
   const panelIcon = (side: "left" | "right", collapsed: boolean) => (
     <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
       <rect x="1.5" y="1.5" width="13" height="13" rx="2" fill="none" stroke="currentColor" strokeWidth="1.2" />
@@ -37,14 +39,14 @@ export function TopBar({
             className={`mt-0 inline-flex min-h-[32px] min-w-[32px] items-center justify-center border border-(--line) bg-[rgba(15,23,29,0.55)] p-2 text-(--muted) transition-[background-color,color] hover:bg-[#15212a] hover:text-(--text) focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--live)] focus-visible:outline-offset-[-2px] ${navCollapsed ? "bg-[rgba(15,23,29,0.8)] text-(--text)" : ""}`}
             type="button"
             onClick={onToggleNav}
-            aria-label={navCollapsed ? "展开导航" : "收起导航"}
-            title={navCollapsed ? "展开导航" : "收起导航"}
+            aria-label={navCollapsed ? t('expandNav') : t('collapseNav')}
+            title={navCollapsed ? t('expandNav') : t('collapseNav')}
           >
             {panelIcon("left", navCollapsed)}
           </button>
         </div>
         <div className="min-w-0 text-sm text-(--muted)">
-          <span>主页</span>
+          <span>{t('home')}</span>
           <span className="inline-flex px-1.5 align-middle text-(--muted)">
             <ChevronRightIcon className="h-3.5 w-3.5" />
           </span>

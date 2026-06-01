@@ -20,7 +20,7 @@ export type SystemService = {
 
 export const createSystemService = (app: PipelineRegistry): SystemService => {
   const getSnapshot = (): SystemSnapshot => {
-    // 复用 registry 的 bootstrap 聚合结果，保证 CLI 与现有前端看到的是同一份系统快照。
+    // Reuse the registry's aggregated bootstrap result so the CLI sees the same system snapshot as existing frontends.
     const bootstrap = app.getBootstrapPayload();
     return {
       generatedAt: new Date().toISOString(),

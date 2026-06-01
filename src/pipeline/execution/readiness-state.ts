@@ -9,5 +9,5 @@ export const isSleepWaitingState = (candidate: ReadinessStateCandidate) =>
 export const canPromoteToQueuedByDependency = (candidate: ReadinessStateCandidate) =>
   candidate.status === "blocked" ||
   candidate.status === "skipped" ||
-  // 仅允许“依赖未满足”造成的 waiting 被重新入队；sleep waiting 仍需等到 wakeAt 到期。
+  // Only "waiting" caused by unmet dependencies is allowed to be re-enqueued; sleep waiting must still wait until wakeAt expires.
   (candidate.status === "waiting" && !isSleepWaitingState(candidate));

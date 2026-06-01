@@ -11,13 +11,13 @@ const toUniqueList = (items: string[]) => [...new Set(items)];
 // ====== Workflow → Template nodes (unified, with dedup) ======
 
 /**
- * 从 WorkflowDefinitionRuntime 提取模板节点（仅 dependency 类型的出边）。
- * 这是 workflow → template 映射的唯一权威实现。
+ * Extract template nodes from WorkflowDefinitionRuntime (dependency-type outgoing edges only).
+ * This is the single authoritative implementation of the workflow → template mapping.
  */
 export const workflowToTemplateNodes = (workflow: WorkflowDefinitionRuntime): PipelineTemplateNode[] => {
   const incomingByNodeId = new Map<string, string[]>();
   for (const edge of workflow.edges) {
-    // template.dependsOn 只表达依赖边；路由边属于分流语义，不能回写成普通依赖。
+    // template.dependsOn only expresses dependency edges; route edges belong to routing semantics and cannot be written back as ordinary dependencies.
     if (edge.when !== null) continue;
     const prev = incomingByNodeId.get(edge.to) ?? [];
     prev.push(edge.from);

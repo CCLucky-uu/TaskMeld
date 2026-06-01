@@ -33,7 +33,7 @@ export type StoredArtifactContent = {
   meta: Record<string, unknown> | null;
 };
 
-// 导出结构固定为: 日期 -> 流水线 -> 节点 -> content[]
+// Export shape: date -> pipeline -> node -> content[]
 export type StoredArtifactExportData = Record<string, Record<string, Record<string, unknown[]>>>;
 
 const DATE_BUCKET_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -71,7 +71,7 @@ const parseNodeIdFromFileName = (fileName: string, runId: string | null, relativ
   if (!tail) return null;
   const normalizedPath = toUnixPath(relativePath).toLowerCase();
   if (normalizedPath.includes("/envelopes/")) {
-    // envelope 文件名格式: <runId>-<nodeId>-node-<nodeId>-<uuid>-envelope.json
+    // envelope filename format: <runId>-<nodeId>-node-<nodeId>-<uuid>-envelope.json
     const marker = "-node-";
     const markerIndex = tail.indexOf(marker);
     if (markerIndex > 0) {
@@ -80,11 +80,11 @@ const parseNodeIdFromFileName = (fileName: string, runId: string | null, relativ
     }
     return null;
   }
-  // group/adpater 聚合文件格式不稳定（含 itemKey），这里不参与节点筛选，避免误判。
+  // group/adapter aggregate file format is unstable (includes itemKey); skip node filtering here to avoid false positives.
   if (tail.endsWith("-adapter-output") || tail.endsWith("-group-output")) return null;
   const tokens = tail.split("-").filter(Boolean);
   if (tokens.length < 3) return null;
-  // 结构化节点产物命名格式: <runId>-<nodeId>-<artifactIndex>-<safeType>.json
+  // Structured node artifact naming format: <runId>-<nodeId>-<artifactIndex>-<safeType>.json
   let artifactIndexPos = -1;
   for (let i = tokens.length - 1; i >= 0; i -= 1) {
     if (NUMERIC_TOKEN_RE.test(tokens[i])) {
@@ -135,7 +135,7 @@ const parseArtifactPathMeta = (
   const dateBucket = DATE_BUCKET_RE.test(dateRaw) ? dateRaw : formatDateBucketFromIso(updatedAtIso);
   let runId: string | null = null;
   if (segments[2]?.startsWith("batch-")) {
-    // 批跑产物路径: status/date/batchRunId/runId/...
+    // Batch run artifact path: status/date/batchRunId/runId/...
     runId = segments[3]?.startsWith("run-") ? segments[3] : null;
   } else {
     runId = segments[2]?.startsWith("run-") ? segments[2] : null;
@@ -149,7 +149,7 @@ const shouldIncludeArtifactFile = (relativePath: string): boolean => {
   return true;
 };
 
-/** 文件系统扫描（降级路径 / 索引重建用）。 */
+/** Filesystem scan (fallback path / for index rebuild). */
 export const scanStoredArtifacts = async (
   definitions: PipelineDefinition[],
   options?: {
@@ -191,12 +191,12 @@ export const scanStoredArtifacts = async (
 
       if (statusFilter && !statusFilter.has(meta.status)) continue;
       if (runIdFilter && effectiveRunId !== runIdFilter) continue;
-      // batchRunId 扫描过滤：路径含 batch-xxx 段
+      // batchRunId scan filter: path contains batch-xxx segment
       if (batchRunIdFilter && !meta.relativePath.includes(`/${batchRunIdFilter}/`)) continue;
 
       const nodeId = parseNodeIdFromFileName(fileName, effectiveRunId, meta.relativePath);
 
-      // kind 扫描过滤：通过文件名后缀和路径判断
+      // kind scan filter: determined by filename suffix and path
       if (kindFilter) {
         const scanKind =
           meta.relativePath.includes("/envelopes/") ? "envelope"
@@ -245,7 +245,7 @@ const decodeListCursor = (cursor: string): { updatedAt: string; runId: string; f
   }
 };
 
-/** 优先读索引，索引缺失时降级为文件系统扫描。支持 cursor 分页。 */
+/** Prefer reading from index; fall back to filesystem scan when index is missing. Supports cursor pagination. */
 export const listStoredArtifacts = async (
   definitions: PipelineDefinition[],
   options?: {
@@ -264,7 +264,7 @@ export const listStoredArtifacts = async (
   const pipelineIdFilter = options?.pipelineIds?.length ? new Set(options.pipelineIds) : null;
   const limit = Number.isFinite(options?.limit) ? Math.max(1, Math.min(5000, Math.trunc(options?.limit as number))) : 100;
 
-  // 尝试从索引读取（不传 cursor，由外层统一分页）
+  // Try reading from index (without cursor; pagination is handled uniformly by the outer layer)
   const indexItems: StoredArtifactItem[] = [];
   let indexAvailable = false;
 
@@ -279,7 +279,7 @@ export const listStoredArtifacts = async (
       dateTo: options?.dateTo,
       batchRunId: options?.batchRunId,
       runId: options?.runId,
-      limit: 0, // 0 = 无限制，全量读出后统一排序分页
+      limit: 0, // 0 = unlimited; read all then sort and paginate uniformly
     };
     const result = await listIndexRecords(definition.artifactDir, filter);
     if (result.total > 0 || result.items.length > 0) {
@@ -290,7 +290,7 @@ export const listStoredArtifacts = async (
     }
   }
 
-  // 统一的排序与 cursor 分页（index 和 scan 使用相同编码）
+  // Unified sort and cursor pagination (index and scan use the same encoding)
   const sortItems = (items: StoredArtifactItem[]) =>
     items.sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
 
@@ -320,7 +320,7 @@ export const listStoredArtifacts = async (
     return paginateWithCursor(sortItems(indexItems), "index");
   }
 
-  // 降级：文件系统扫描
+  // Fallback: filesystem scan
   const scanItems = await scanStoredArtifacts(definitions, {
     pipelineIds: options?.pipelineIds,
     nodeIds: options?.nodeIds,
@@ -337,7 +337,7 @@ export const listStoredArtifacts = async (
 const resolveArtifactFilePath = (definition: PipelineDefinition, relativePath: string): string | null => {
   const rootAbs = resolve(definition.artifactDir);
   const targetAbs = resolve(rootAbs, relativePath);
-  // 防止路径穿越，只允许读取当前流水线产物目录下文件。
+  // Prevent path traversal; only allow reading files within the current pipeline's artifact directory.
   if (targetAbs !== rootAbs && !targetAbs.startsWith(`${rootAbs}${sep}`)) return null;
   return targetAbs;
 };
@@ -360,7 +360,7 @@ export const readStoredArtifactContent = async (
   }
 
   const parsedObj = toRecord(parsed);
-  // 优先按 kind 字段分发，无 kind 时回退到旧启发式判断（向后兼容）
+  // Prefer dispatching by kind field; fall back to the old heuristic when kind is absent (backward compatible)
   const kind = typeof parsedObj?.kind === "string" ? parsedObj.kind : null;
   const isEnvelope = kind === "envelope" || (!kind && parsedObj && "envelope" in parsedObj);
   const envelopeObj = isEnvelope ? toRecord(parsedObj?.envelope) : null;
@@ -373,7 +373,7 @@ export const readStoredArtifactContent = async (
         .map((item) => toRecord(item)?.content)
         .filter((item) => item !== undefined);
       const logs = Array.isArray(envelopeObj.logs) ? envelopeObj.logs : [];
-      // envelope 预览返回 contents + logs，便于排错。
+      // envelope preview returns contents + logs for easier troubleshooting.
       return {
         contents,
         logs,
@@ -404,7 +404,7 @@ export const exportStoredArtifactContents = async (
     runId?: string;
   },
 ): Promise<StoredArtifactExportData> => {
-  // 优先从索引选候选文件，减少全量 scan；索引缺失时 listStoredArtifacts 自动降级 scan
+  // Prefer index for candidate files to reduce full scan; listStoredArtifacts auto-falls-back to scan when index is missing
   const limit = Number.isFinite(options?.limit) ? Math.max(1, Math.trunc(options?.limit as number)) : 20000;
   const listResult = await listStoredArtifacts(definitions, {
     pipelineIds: options?.pipelineIds,
@@ -434,8 +434,8 @@ export const exportStoredArtifactContents = async (
     if (!out[dateKey]) out[dateKey] = {};
     if (!out[dateKey][pipelineKey]) out[dateKey][pipelineKey] = {};
     if (!out[dateKey][pipelineKey][nodeKey]) out[dateKey][pipelineKey][nodeKey] = [];
-    // 导出只保留产物内容，不包含 runId、文件名等元信息。
-    // 若 content 本身是数组，则展开写入，避免导出结果出现“数组套数组”。
+    // Export keeps only artifact content; no runId, filename or other metadata.
+    // If content is itself an array, flatten it to avoid "array inside array" in the export result.
     if (Array.isArray(content.content)) {
       out[dateKey][pipelineKey][nodeKey].push(...content.content);
     } else {

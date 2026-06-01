@@ -1,0 +1,19 @@
+{
+  "searchPlaceholder": "Search agents (ID/role/output/events)",
+  "searchLabel": "Search agents",
+  "statusFilter": "Agent Status Filter",
+  "all": "All",
+  "busy": "Busy",
+  "idle": "Idle",
+  "switchToList": "Switch to List View",
+  "switchToCard": "Switch to Card View",
+  "role": "Role",
+  "recentNode": "Recent Node",
+  "outputPreview": "Output",
+  "noOutput": "No output",
+  "eventPreview": "Events",
+  "noEvent": "No events",
+  "viewOutput": "View Output",
+  "openSession": "View Session",
+  "noMatch": "No agents found"
+}

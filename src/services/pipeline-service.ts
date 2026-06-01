@@ -240,7 +240,7 @@ export const extractKeywordPoolFromUnknown = (value: unknown, depth = 0): string
   if (!value || typeof value !== "object" || Array.isArray(value)) return [];
 
   const record = value as Record<string, unknown>;
-  // 远端关键词池优先按约定字段提取，兼容现有 list30/list/items 等结构。
+  // Remote keyword pool: prefer extracting from agreed fields first, compatible with existing list30/list/items etc. structures.
   const priorityKeys = ["list30", "list", "keywords", "items", "pool"];
   for (const key of priorityKeys) {
     const candidates = extractKeywordPoolFromUnknown(record[key], depth + 1);
@@ -306,30 +306,30 @@ const buildBatchRunId = (pipelineId: string, snapshot: Record<string, unknown>):
 
 const markRunningRunStopped = (run: ReturnType<PipelineRuntime["runtime"]["getRun"]>) => {
   const now = new Date().toISOString();
-  // 停止是用户主动中止，不应继续让 queued/blocked 节点保持可调度状态。
+  // Stop is a user-initiated abort; queued/blocked nodes should not remain schedulable.
   for (const node of run.nodes) {
     if (node.status === "success" || node.status === "failed" || node.status === "rejected" || node.status === "skipped") continue;
     node.status = "stopped";
     node.finishedAt = node.finishedAt ?? now;
-    node.lastError = node.lastError ?? "用户手动停止流水线";
+    node.lastError = node.lastError ?? "Pipeline manually stopped by user";
   }
   for (const item of run.itemRuns ?? []) {
     if (item.status === "success" || item.status === "failed" || item.status === "rejected" || item.status === "skipped") continue;
     item.status = "stopped";
     item.finishedAt = item.finishedAt ?? now;
-    item.lastError = item.lastError ?? "用户手动停止流水线";
+    item.lastError = item.lastError ?? "Pipeline manually stopped by user";
   }
   for (const group of run.groups ?? []) {
     if (group.status === "success" || group.status === "failed" || group.status === "rejected" || group.status === "skipped") continue;
     group.status = "stopped";
     group.finishedAt = group.finishedAt ?? now;
-    group.lastError = group.lastError ?? "用户手动停止流水线";
+    group.lastError = group.lastError ?? "Pipeline manually stopped by user";
   }
   for (const groupItem of run.groupItemRuns ?? []) {
     if (groupItem.status === "success" || groupItem.status === "failed" || groupItem.status === "rejected" || groupItem.status === "skipped") continue;
     groupItem.status = "stopped";
     groupItem.finishedAt = groupItem.finishedAt ?? now;
-    groupItem.lastError = groupItem.lastError ?? "用户手动停止流水线";
+    groupItem.lastError = groupItem.lastError ?? "Pipeline manually stopped by user";
   }
   run.status = "stopped";
   run.updatedAt = now;
@@ -412,7 +412,7 @@ export const createPipelineService = (app: PipelineRegistry): PipelineService =>
     const definition = app.getPipelineDefinition(pipelineId);
     const runtime = app.getPipelineRuntime(pipelineId);
     if (!definition || !runtime) return null;
-    // 只读 service 直接透出运行态快照，不承担任何写入行为。
+    // Read-only service directly passes through the runtime snapshot; it carries no write behavior.
     return {
       pipelineId: definition.id,
       title: definition.title,
@@ -459,7 +459,7 @@ export const createPipelineService = (app: PipelineRegistry): PipelineService =>
         try {
           remotePayload = JSON.parse(text) as unknown;
         } catch {
-          // 非 JSON 返回也允许继续尝试解析，兼容逗号/换行文本池。
+          // Non-JSON responses are also allowed to continue parsing, compatible with comma/newline text pools.
           remotePayload = text;
         }
       } catch (error) {
@@ -489,7 +489,7 @@ export const createPipelineService = (app: PipelineRegistry): PipelineService =>
       }
 
       runtime.runtime.pushTimeline(
-        `[${pipelineId}] 远程关键词池批跑已启动: ${items.length} 个关键词, 每批 ${started.snapshot.batchSize} 个`,
+        `[${pipelineId}] Remote keyword pool batch started: ${items.length} items, batch size ${started.snapshot.batchSize}`,
         "info",
         { remoteUrl },
       );
@@ -511,9 +511,9 @@ export const createPipelineService = (app: PipelineRegistry): PipelineService =>
 
     const run = runtime.runtime.seedRun(runtime.workflow.getTemplateNodes());
     runtime.runtime.setRun(run);
-    runtime.runtime.pushTimeline(`[${pipelineId}] 已启动新运行: ${run.id}`);
+    runtime.runtime.pushTimeline(`[${pipelineId}] New run started: ${run.id}`);
     runtime.runtime.emitPipeline();
-    // start 只负责发起运行，不承诺在返回时已执行完成。
+    // start is only responsible for initiating the run; it does not promise completion upon return.
     void runtime.pipeline.drainPipeline(`run:start:${run.id}`).then(() => {
       runtime.runtime.touchRun(runtime.runtime.getRun());
     });
@@ -539,7 +539,7 @@ export const createPipelineService = (app: PipelineRegistry): PipelineService =>
         error: "run_not_found",
       };
     }
-    // status 命令只表达“当前是否仍在运行”，非运行态改为返回精简联合结构。
+    // The status command only expresses "whether it's currently running"; non-running states return a simplified union structure.
     return attachIdentityToPipelineStatusResult(buildPipelineStatusResult({
       pipelineId,
       run: detail.run,
@@ -580,7 +580,7 @@ export const createPipelineService = (app: PipelineRegistry): PipelineService =>
           runtime.pipeline.abortRunControllers(runState.id);
         }
         markRunningRunStopped(runState);
-        runtime.runtime.pushTimeline(`[${pipelineId}] 已请求停止单次运行: ${runState.id}`, "warn");
+        runtime.runtime.pushTimeline(`[${pipelineId}] Stop requested for run: ${runState.id}`, "warn");
         runtime.runtime.emitPipeline();
         const stoppedStatus = buildPipelineExecutionStatus({
           pipelineId,
@@ -610,7 +610,7 @@ export const createPipelineService = (app: PipelineRegistry): PipelineService =>
         error: "batch_run_not_running",
       };
     }
-    // 中止当前正在执行的节点，同时向远端 agent 发送 /stop 命令
+    // Abort the currently executing node, and also send /stop to the remote agent
     if (runState.id) {
       runtime.pipeline.abortRunControllers(runState.id);
     }
@@ -640,7 +640,7 @@ export const createPipelineService = (app: PipelineRegistry): PipelineService =>
   };
 
   const runPipeline = async (pipelineId: string): Promise<PipelineRunResult> => {
-    // run 仅作为兼容入口，语义等价到 start。
+    // run exists only as a compatibility entry point; semantically equivalent to start.
     return startPipeline(pipelineId);
   };
 
@@ -687,7 +687,7 @@ export const createPipelineService = (app: PipelineRegistry): PipelineService =>
       try {
         remotePayload = JSON.parse(text) as unknown;
       } catch {
-        // 非 JSON 文本也允许继续解析，避免上游切到纯文本池时整条批跑入口不可用。
+        // Non-JSON text is also allowed to continue parsing, to prevent the entire batch-run entry from becoming unusable when upstream switches to a plain-text pool.
         remotePayload = text;
       }
     } catch (error) {
@@ -700,7 +700,7 @@ export const createPipelineService = (app: PipelineRegistry): PipelineService =>
       };
     }
 
-    // sourceField 视为“优先路径”而非严格依赖：路径缺失时退回全量解析以保持兼容。
+    // sourceField is treated as a "preferred path" not a strict dependency: fall back to full parsing when path is missing to maintain compatibility.
     const preferredPayload = remoteBatchPlugin.sourceField
       ? readNestedValueByPath(remotePayload, remoteBatchPlugin.sourceField)
       : null;
@@ -722,7 +722,7 @@ export const createPipelineService = (app: PipelineRegistry): PipelineService =>
       };
     }
     runtime.runtime.pushTimeline(
-      `[${input.pipelineId}] 远程关键词池批跑已启动: ${items.length} 个关键词, 每批 ${started.snapshot.batchSize} 个`,
+      `[${input.pipelineId}] Remote keyword pool batch started: ${items.length} items, batch size ${started.snapshot.batchSize}`,
       "info",
       { remoteUrl },
     );
@@ -738,7 +738,7 @@ export const createPipelineService = (app: PipelineRegistry): PipelineService =>
   const retryNode = async (input: PipelineRetryInput): Promise<PipelineRetryResult> => {
     const runtime = getRuntimeByPipelineId(app, input.pipelineId);
     if (!runtime) return { ok: false, pipelineId: input.pipelineId, error: "pipeline_not_found" };
-    // 中止当前正在执行的节点，避免旧节点与新重试冲突（同时向远端 agent 发送 /stop 命令）
+    // Abort the currently executing node to avoid old node conflicting with new retry (also send /stop to remote agent)
     const runState = runtime.runtime.getRun();
     if (runState.id) {
       runtime.pipeline.abortRunControllers(runState.id);

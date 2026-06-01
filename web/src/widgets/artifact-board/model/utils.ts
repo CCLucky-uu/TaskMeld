@@ -98,7 +98,7 @@ export const buildArtifactDateGroups = (items: StoredArtifactItem[]): ArtifactDa
       );
       const total = runs.reduce((sum, run) => sum + run.items.length, 0);
       const latestUpdatedAtMs = runs[0]?.latestUpdatedAtMs ?? 0;
-      // 产物列表来自后端，pipelineTitle 已经按 pipelineId 回填，这里直接取最近一条即可。
+      // Artifact list comes from the backend; pipelineTitle is already filled by pipelineId, just take the most recent entry.
       const pipelineTitle = runs[0]?.items[0]?.pipelineTitle ?? pipelineId;
       pipelineGroups.push({
         pipelineId,

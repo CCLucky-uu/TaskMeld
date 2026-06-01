@@ -124,7 +124,7 @@ export const registerPipelineWorkflowWsMethods = (registry: WsMethodRegistry): v
     }
     const run = runtime.runtime.seedRun(runtime.workflow.getTemplateNodes());
     runtime.runtime.setRun(run);
-    runtime.runtime.pushTimeline(`[${pipelineId}] 工作流定义已更新，节点数: ${normalized.nodes.length}`);
+    runtime.runtime.pushTimeline(`[${pipelineId}] Workflow definition updated, node count: ${normalized.nodes.length}`);
     runtime.runtime.emitPipeline();
     return { ok: true, payload: { ok: true, workflow: normalized, run, pipelineId } };
   });

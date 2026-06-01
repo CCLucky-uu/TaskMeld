@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { AgentItem, fetchAgents } from "../../../entities/agent";
 import { GatewayStatus } from "../../../entities/gateway";
 import {
@@ -33,6 +34,7 @@ import {
 } from "../../../entities/pipeline";
 import { fetchSessions, SessionItem } from "../../../entities/session";
 import { TimelineItem } from "../../../entities/timeline";
+import { NavKey } from "../../../widgets/nav-panel/model/navItem";
 import { onWsEvent } from "../../../shared/ws-client";
 import { dispatchGatewayWsEvent } from "../../../shared/realtime/gateway-events";
 import { useNodeRetryFeature } from "../../../features/node-retry";
@@ -85,7 +87,7 @@ const DEFAULT_REMOTE_BATCH_PLUGIN: WorkflowRemoteBatchPlugin = {
 };
 const DEFAULT_WORKFLOW_PLUGINS: WorkflowPlugins = {
   remoteBatch: DEFAULT_REMOTE_BATCH_PLUGIN,
-  // 调度器历史行为默认可用，插件化后默认继续开启，避免老流水线升级后功能突然隐藏。
+  // Scheduler was historically enabled by default; after plugin-ification, keep it enabled by default so upgraded legacy pipelines don't silently lose the feature.
   scheduler: { enabled: true },
 };
 const MAINLINE_ROUTE_VALUE = "yes";
@@ -134,8 +136,8 @@ const collectVisibleNodeIdsForBranch = (
     .map((edge) => edge.to);
   const groupMembersById = new Map(workflow.groups.map((group) => [group.id, group.members]));
 
-  // 派生 itemKey 会复制祖先节点状态，便于分支内继续读取上游产物；
-  // 运行视图需要按“这个分支实际会走到哪些节点”过滤，避免把上下文复制误读成重复执行。
+  // Derived itemKey copies ancestor node state so branches can read upstream artifacts;
+  // the run view must filter to "which nodes this branch actually reaches" to avoid misreading context copies as duplicate execution.
   while (queue.length > 0) {
     const entityId = queue.shift();
     if (!entityId || visitedEntities.has(entityId)) continue;
@@ -164,7 +166,8 @@ const collectVisibleNodeIdsForBranch = (
 };
 
 export function useControlPlanePage() {
-  const [active, setActive] = useState("总览");
+  const { t } = useTranslation("common");
+  const [active, setActive] = useState<NavKey>("overview");
   const [activePipelineId, setActivePipelineId] = useState<PipelineId>("");
   const [sessionModalOpen, setSessionModalOpen] = useState(false);
   const [selectedAgentId, setSelectedAgentId] = useState("");
@@ -387,7 +390,7 @@ export function useControlPlanePage() {
           .map((node) => ({ id: node.id, title: node.title }));
     const groupOptions = inferredGroups
       .filter((group) => !disallowedIds.has(group.id))
-      .map((group) => ({ id: group.id, title: `并行组 ${group.id}` }));
+      .map((group) => ({ id: group.id, title: `${t("modal:fieldLabel.group")} ${group.id}` }));
     return [...nodeOptions, ...groupOptions];
   }, [selectedNode?.id, templateNodes, workflow, inferredGroups]);
   const groupUpstreamOptions = useMemo(() => {
@@ -396,7 +399,7 @@ export function useControlPlanePage() {
       ...templateNodes.filter((node) => !memberIds.has(node.id)).map((node) => ({ id: node.id, title: node.title })),
       ...inferredGroups
         .filter((group) => group.id !== selectedGroup?.id && !group.members.some((memberId) => memberIds.has(memberId)))
-        .map((group) => ({ id: group.id, title: `并行组 ${group.id}` })),
+        .map((group) => ({ id: group.id, title: `${t("modal:fieldLabel.group")} ${group.id}` })),
     ];
   }, [selectedGroup?.members, selectedGroup?.id, templateNodes, inferredGroups]);
   const newGroupUpstreamOptions = useMemo(() => {
@@ -405,7 +408,7 @@ export function useControlPlanePage() {
       ...templateNodes.filter((node) => !memberIds.has(node.id)).map((node) => ({ id: node.id, title: node.title })),
       ...inferredGroups
         .filter((group) => !group.members.some((memberId) => memberIds.has(memberId)))
-        .map((group) => ({ id: group.id, title: `并行组 ${group.id}` })),
+        .map((group) => ({ id: group.id, title: `${t("modal:fieldLabel.group")} ${group.id}` })),
     ];
   }, [templateNodes, draftNewGroupMembers, inferredGroups]);
   const groupMemberOptions = useMemo(
@@ -432,13 +435,13 @@ export function useControlPlanePage() {
       if (!group.members.some((memberId) => workflowNodeIds.has(memberId))) continue;
       options.push({
         id: group.id,
-        title: `支线并行组 | ${group.id} | ${group.members.join(", ")}`,
+        title: `${t("pipeline:branchNodes")} | ${group.id} | ${group.members.join(", ")}`,
       });
     }
     for (const node of branchNodes) {
       options.push({
         id: node.id,
-        title: `支线 | ${node.title} | agent:${node.executor.agentId}`,
+        title: `${t("pipeline:branchNodes")} | ${node.title} | agent:${node.executor.agentId}`,
       });
     }
     return options;
@@ -447,7 +450,7 @@ export function useControlPlanePage() {
   const newNodeDependencyOptions = useMemo(
     () => [
       ...templateNodes.map((node) => ({ id: node.id, title: node.title })),
-      ...inferredGroups.map((group) => ({ id: group.id, title: `并行组 ${group.id}` })),
+      ...inferredGroups.map((group) => ({ id: group.id, title: `${t("modal:fieldLabel.group")} ${group.id}` })),
     ],
     [templateNodes, inferredGroups],
   );
@@ -594,7 +597,7 @@ export function useControlPlanePage() {
     }
 
     if ([pipelineListResult, agentsResult, sessionsResult, ...workflowPayloads].some((entry) => entry.status === "rejected")) {
-      setActionMessage((current) => current || "部分数据加载失败，已保留可用数据。");
+      setActionMessage((current) => current || t("actionMessage.partialLoadFailed"));
     }
   }, [getPipelineStateSnapshot, setDraftNewNodeAgentId]);
 
@@ -664,8 +667,7 @@ export function useControlPlanePage() {
           if (boot.status) setGateway(boot.status);
           if (boot.pipelines) {
             const pipelineEntries = Object.entries(boot.pipelines);
-            // bootstrap 表示服务端当前全量快照；这里必须按服务端结果整体替换，
-            // 避免断线重连后把已删除流水线继续从本地旧状态并回列表里。
+            // bootstrap is the server's current full snapshot; must replace wholesale so deleted pipelines don't leak back into the list from stale local state after reconnect.
             setPipelineList(pipelineEntries.map(([pipelineId, entry]) => ({ id: pipelineId, title: entry.title })));
             setPipelineStateById((prev) => {
               const next: Record<string, PipelineViewState> = {};
@@ -848,13 +850,13 @@ export function useControlPlanePage() {
     async (pipelineId: PipelineId, plugins: WorkflowPlugins) => {
       const currentWorkflow = getPipelineStateSnapshot(pipelineId, pipelineStateById).workflow;
       if (!currentWorkflow) {
-        setActionMessage("插件配置保存失败: workflow 未加载");
+        setActionMessage(t("actionMessage.pluginSaveFailedNoWorkflow"));
         return;
       }
       const nextWorkflow: WorkflowDefinition = {
         ...currentWorkflow,
         plugins,
-        // 调度器插件关闭时同步关闭 scheduler.enabled，避免界面关闭后后台仍继续自动调度。
+        // When the scheduler plugin is disabled, also disable scheduler.enabled to prevent background auto-scheduling after the UI is turned off.
         scheduler: plugins.scheduler.enabled
           ? currentWorkflow.scheduler
           : {
@@ -871,7 +873,7 @@ export function useControlPlanePage() {
         }));
       } catch (error) {
         const message = getApiErrorMessage(error);
-        setActionMessage(`插件配置保存失败: ${message}`);
+        setActionMessage(t("actionMessage.pluginSaveFailed", { message }));
       }
     },
     [getPipelineStateSnapshot, pipelineStateById],
@@ -883,7 +885,7 @@ export function useControlPlanePage() {
       const title = input.title?.trim() ?? "";
       const cloneFrom = input.cloneFrom?.trim() || undefined;
       if (!pipelineId) {
-        return { ok: false as const, message: "流水线 ID 不能为空" };
+        return { ok: false as const, message: t("actionMessage.idEmpty", { field: "pipelineId" }) };
       }
 
       setIsCreatingPipeline(true);
@@ -896,11 +898,11 @@ export function useControlPlanePage() {
         setSelectedNodeId("");
         setSelectedGroupId("");
         setEditingPipelineId(null);
-        setActionMessage(`流水线 ${createdPipelineId} 已创建`);
+        setActionMessage(t("actionMessage.pipelineCreated", { id: createdPipelineId }));
         return { ok: true as const, pipelineId: createdPipelineId };
       } catch (error) {
         const message = getApiErrorMessage(error);
-        setActionMessage(`新增流水线失败: ${message}`);
+        setActionMessage(t("actionMessage.createPipelineFailed", { message }));
         return { ok: false as const, message };
       } finally {
         setIsCreatingPipeline(false);
@@ -914,10 +916,10 @@ export function useControlPlanePage() {
       const normalizedPipelineId = pipelineId.trim();
       const normalizedTitle = title.trim();
       if (!normalizedPipelineId) {
-        return { ok: false as const, message: "pipelineId 不能为空" };
+        return { ok: false as const, message: t("actionMessage.idEmpty", { field: "pipelineId" }) };
       }
       if (!normalizedTitle) {
-        return { ok: false as const, message: "流水线标题不能为空" };
+        return { ok: false as const, message: t("actionMessage.pipelineTitleEmpty") };
       }
 
       setIsRenamingPipeline(true);
@@ -925,11 +927,11 @@ export function useControlPlanePage() {
       try {
         await renamePipelineReq(normalizedPipelineId, normalizedTitle);
         await refresh();
-        setActionMessage(`流水线 ${normalizedPipelineId} 标题已更新`);
+        setActionMessage(t("actionMessage.pipelineTitleUpdated", { id: normalizedPipelineId }));
         return { ok: true as const, pipelineId: normalizedPipelineId };
       } catch (error) {
         const message = getApiErrorMessage(error);
-        setActionMessage(`流水线重命名失败: ${message}`);
+        setActionMessage(t("actionMessage.renamePipelineFailed", { message }));
         return { ok: false as const, message };
       } finally {
         setIsRenamingPipeline(false);
@@ -941,7 +943,7 @@ export function useControlPlanePage() {
   const deletePipeline = useCallback(
     async (pipelineId: PipelineId) => {
       if (!pipelineId.trim()) {
-        return { ok: false as const, message: "pipelineId 不能为空" };
+        return { ok: false as const, message: t("actionMessage.idEmpty", { field: "pipelineId" }) };
       }
 
       setIsDeletingPipeline(true);
@@ -954,11 +956,11 @@ export function useControlPlanePage() {
           setSelectedGroupId("");
         }
         await refresh();
-        setActionMessage(`流水线 ${pipelineId} 已删除`);
+        setActionMessage(t("actionMessage.pipelineDeleted", { id: pipelineId }));
         return { ok: true as const, pipelineId };
       } catch (error) {
         const message = getApiErrorMessage(error);
-        setActionMessage(`删除流水线失败: ${message}`);
+        setActionMessage(t("actionMessage.deletePipelineFailed", { message }));
         return { ok: false as const, message };
       } finally {
         setIsDeletingPipeline(false);
@@ -997,7 +999,7 @@ export function useControlPlanePage() {
       await refresh();
     } catch (error) {
       const message = getApiErrorMessage(error);
-      setActionMessage(`启动运行失败: ${message}`);
+      setActionMessage(t("actionMessage.runStartFailed", { message }));
     } finally {
       updatePipelineState(pipelineId, (prev) => ({ ...prev, isRunning: false }));
     }
@@ -1030,7 +1032,7 @@ export function useControlPlanePage() {
         ),
       );
       const remoteUrl = pluginState.url.trim();
-      // 远端关键词池默认按每批 5 个执行，避免单批过大导致处理耗时过长。
+      // Remote keyword pool defaults to batch size 5 to avoid excessive per-batch processing time.
       const result = await startRemoteBatchRun(pipelineId, {
         batchSize: pluginState.batchSize,
         startBatch: normalizedStartBatch,
@@ -1040,13 +1042,16 @@ export function useControlPlanePage() {
         updatePipelineState(pipelineId, (prev) => ({ ...prev, batchRunState: result.state ?? prev.batchRunState }));
       }
       setActionMessage(
-        `远程关键词池批跑已启动: 从第 ${normalizedStartBatch} 批开始, 共 ${result.totalFetched ?? result.state?.totalItems ?? 0} 个, 每批 ${result.state?.batchSize ?? 5
-        } 个`,
+        t("actionMessage.remoteBatchStarted", {
+          startBatch: normalizedStartBatch,
+          totalItems: result.totalFetched ?? result.state?.totalItems ?? 0,
+          batchSize: result.state?.batchSize ?? 5,
+        }),
       );
       await refresh();
     } catch (error) {
       const message = getApiErrorMessage(error);
-      setActionMessage(`远程关键词池批跑启动失败: ${message}`);
+      setActionMessage(t("actionMessage.remoteBatchStartFailed", { message }));
     } finally {
       setIsBatchOperating(false);
     }
@@ -1059,11 +1064,11 @@ export function useControlPlanePage() {
       if (result.state) {
         updatePipelineState(pipelineId, (prev) => ({ ...prev, batchRunState: result.state ?? prev.batchRunState }));
       }
-      setActionMessage("已请求停止批跑（当前批次完成后生效）");
+      setActionMessage(t("actionMessage.batchStopRequested"));
       await refresh();
     } catch (error) {
       const message = getApiErrorMessage(error);
-      setActionMessage(`停止批跑失败: ${message}`);
+      setActionMessage(t("actionMessage.batchStopFailed", { message }));
     } finally {
       setIsBatchOperating(false);
     }
@@ -1078,11 +1083,11 @@ export function useControlPlanePage() {
         updatePipelineState(pipelineId, (prev) => ({ ...prev, batchRunState: result.status?.batchRun ?? prev.batchRunState }));
       }
       updatePipelineState(pipelineId, (prev) => ({ ...prev, isRunning: false }));
-      setActionMessage(result.mode === "remote_batch" ? "已请求停止批跑（当前执行节点收到停止信号后生效）" : "已请求停止流水线");
+      setActionMessage(result.mode === "remote_batch" ? t("actionMessage.batchStopNodeRequested") : t("actionMessage.pipelineStopRequested"));
       await refresh();
     } catch (error) {
       const message = getApiErrorMessage(error);
-      setActionMessage(`停止流水线失败: ${message}`);
+      setActionMessage(t("actionMessage.stopPipelineFailed", { message }));
     } finally {
       setIsBatchOperating(false);
     }
@@ -1096,11 +1101,11 @@ export function useControlPlanePage() {
     includeWorkflowConfig: boolean;
   }): { ok: true; workflow: WorkflowDefinition } | { ok: false; error: string } => {
     if (!workflow || !selectedNode) {
-      return { ok: false, error: "节点配置保存失败: workflow 未加载" };
+      return { ok: false, error: t("actionMessage.nodeSaveFailedNoWorkflow") };
     }
     const target = workflow.nodes.find((node) => node.id === selectedNode.id);
     if (!target) {
-      return { ok: false, error: `节点配置保存失败: 找不到 workflow 节点(${selectedNode.id})` };
+      return { ok: false, error: t("actionMessage.nodeSaveFailedNodeNotFound", { nodeId: selectedNode.id }) };
     }
 
     const title = draftTitle.trim();
@@ -1117,7 +1122,7 @@ export function useControlPlanePage() {
 
     if (includeNodeConfig) {
       if (!title || !agentId) {
-        return { ok: false, error: "节点配置保存失败: 标题/Agent 不能为空" };
+        return { ok: false, error: t("actionMessage.nodeSaveFailedEmptyFields") };
       }
       const validEntityIds = new Set<string>([
         ...workflow.nodes.map((node) => node.id),
@@ -1125,18 +1130,18 @@ export function useControlPlanePage() {
       ]);
       const badDepends = dependsOn.find((dep) => !validEntityIds.has(dep) || dep === selectedNode.id);
       if (badDepends) {
-        return { ok: false, error: `节点配置保存失败: 非法依赖(${badDepends})` };
+        return { ok: false, error: t("actionMessage.nodeSaveFailedInvalidDep", { depId: badDepends }) };
       }
       const disallowedDepends = getDisallowedDependencyIdsForNode(workflow, selectedNode.id);
       const invalidParallelDepends = dependsOn.find((dep) => disallowedDepends.has(dep));
       if (invalidParallelDepends) {
-        return { ok: false, error: `节点配置保存失败: 并行组内禁止依赖(${invalidParallelDepends})` };
+        return { ok: false, error: t("actionMessage.nodeSaveFailedParallelGroupDep", { depId: invalidParallelDepends }) };
       }
     }
 
     if (includeWorkflowConfig) {
       if (allowed.length > 5) {
-        return { ok: false, error: "路由策略保存失败: allowed 最多 5 个" };
+        return { ok: false, error: t("actionMessage.routeSaveFailedMaxAllowed") };
       }
     }
 
@@ -1159,7 +1164,7 @@ export function useControlPlanePage() {
           route === MAINLINE_ROUTE_VALUE,
       );
       if (invalidRouteTarget) {
-        return { ok: false, error: `路由策略保存失败: 非法分流目标(${invalidRouteTarget[0]} -> ${invalidRouteTarget[1]})` };
+        return { ok: false, error: t("actionMessage.routeSaveFailedInvalidTarget", { route: invalidRouteTarget[0], targetId: invalidRouteTarget[1] }) };
       }
     }
 
@@ -1192,18 +1197,18 @@ export function useControlPlanePage() {
         })(),
     );
 
-    // uiLane 仅用于主线/支线展示，不应隐式改写执行 edges。
-    // 执行边只能通过“上游依赖”和“路由目标”两个显式编辑入口更新。
+    // uiLane is only for main/branch display and must not implicitly rewrite execution edges.
+    // Execution edges can only be updated through the two explicit edit entry points: "upstream dependencies" and "route targets".
     let nextEdges = [...workflow.edges];
     if (includeNodeConfig) {
-      // 上游依赖只对应 dependency 边（when=null）。
+      // Upstream dependencies only correspond to dependency edges (when=null).
       nextEdges = dedupeEdges([
         ...nextEdges.filter((edge) => !(edge.to === selectedNode.id && edge.when === null)),
         ...dependsOn.map((dep) => ({ from: dep, to: selectedNode.id, when: null as string | null })),
       ]);
     }
     if (includeWorkflowConfig) {
-      // 路由目标只对应 route 边（when=route），不能复用 dependency 边。
+      // Route targets only correspond to route edges (when=route); cannot reuse dependency edges.
       nextEdges = nextEdges.filter((edge) => !(edge.from === selectedNode.id && edge.when !== null));
       nextEdges = dedupeEdges([
         ...nextEdges,
@@ -1239,18 +1244,18 @@ export function useControlPlanePage() {
       }
       const validation = validateWorkflowBeforeSave(built.workflow);
       if (!validation.ok) {
-        setActionMessage(`workflow 配置保存失败: ${validation.message}`);
+        setActionMessage(t("validation.workflowConfigSaveFailed", { message: validation.message }));
         return;
       }
       await saveWorkflowDefinitionReq(activePipelineId, built.workflow);
       updatePipelineState(activePipelineId, (prev) => ({ ...prev, workflow: built.workflow }));
       await refresh();
       if (!opts?.silentSuccess) {
-        setActionMessage(`节点 ${selectedNode.id} workflow 配置已保存`);
+        setActionMessage(t("actionMessage.nodeWorkflowSaved", { nodeId: selectedNode.id }));
       }
     } catch (error) {
       const message = getApiErrorMessage(error);
-      setActionMessage(`workflow 配置保存失败: ${message}`);
+      setActionMessage(t("validation.workflowConfigSaveFailed", { message }));
     } finally {
       setIsSavingWorkflowConfig(false);
     }
@@ -1284,17 +1289,17 @@ export function useControlPlanePage() {
     const nextGroupId = draftGroupId.trim();
     const memberIds = Array.from(new Set(draftGroupMembers.map((item) => item.trim()).filter(Boolean)));
     if (!nextGroupId) {
-      setActionMessage("并行组保存失败: 组 ID 不能为空");
+      setActionMessage(t("actionMessage.groupSaveFailedEmptyId"));
       return;
     }
     if (memberIds.length < 2) {
-      setActionMessage("并行组保存失败: 组成员至少 2 个");
+      setActionMessage(t("actionMessage.groupSaveFailedMinMembers"));
       return;
     }
     const validNodeIds = new Set(workflow.nodes.map((node) => node.id));
     const invalidMember = memberIds.find((id) => !validNodeIds.has(id));
     if (invalidMember) {
-      setActionMessage(`并行组保存失败: 非法成员(${invalidMember})`);
+      setActionMessage(t("actionMessage.groupSaveFailedInvalidMember", { memberId: invalidMember }));
       return;
     }
     const upstreamIds = Array.from(new Set(draftGroupUpstreams.map((item) => item.trim()).filter(Boolean)));
@@ -1304,7 +1309,7 @@ export function useControlPlanePage() {
     ]);
     const invalidUpstream = upstreamIds.find((id) => !validEntityIds.has(id) || memberIds.includes(id) || id === nextGroupId);
     if (invalidUpstream) {
-      setActionMessage(`并行组保存失败: 非法组上游(${invalidUpstream})`);
+      setActionMessage(t("actionMessage.groupSaveFailedInvalidUpstream", { upstreamId: invalidUpstream }));
       return;
     }
 
@@ -1318,7 +1323,7 @@ export function useControlPlanePage() {
     });
     const groupValidation = validateWorkflowBeforeSave(nextWorkflow);
     if (!groupValidation.ok) {
-      setActionMessage(`并行组保存失败: ${groupValidation.message}`);
+      setActionMessage(t("actionMessage.groupSaveFailed", { message: groupValidation.message }));
       return;
     }
 
@@ -1327,11 +1332,11 @@ export function useControlPlanePage() {
       await saveWorkflowDefinitionReq(activePipelineId, nextWorkflow);
       updatePipelineState(activePipelineId, (prev) => ({ ...prev, workflow: nextWorkflow }));
       setSelectedGroupId(nextGroupId);
-      setActionMessage(`并行组 ${nextGroupId} 配置已保存`);
+      setActionMessage(t("actionMessage.groupSaved", { groupId: nextGroupId }));
       await refresh();
     } catch (error) {
       const message = getApiErrorMessage(error);
-      setActionMessage(`并行组保存失败: ${message}`);
+      setActionMessage(t("actionMessage.groupSaveFailed", { message }));
     } finally {
       setIsSavingGroupConfig(false);
     }
@@ -1355,16 +1360,16 @@ export function useControlPlanePage() {
     setIsSavingNodeConfig(true);
     setActionMessage("");
     try {
-      // 顺序编辑可能发生在未激活的流水线卡片上，这里必须显式使用来源 pipelineId 保存。
+      // Order editing may happen on a non-active pipeline card; must explicitly use the source pipelineId to save.
       await saveWorkflowDefinitionReq(pipelineId, nextWorkflow);
       updatePipelineState(pipelineId, (prev) => ({ ...prev, workflow: nextWorkflow }));
       setActivePipelineId(pipelineId);
       setSelectedNodeId(nodeId);
-      setActionMessage(`节点 ${nodeId} 顺序已${direction === "up" ? "上移" : "下移"}`);
+      setActionMessage(direction === "up" ? t("actionMessage.nodeMovedUp", { nodeId }) : t("actionMessage.nodeMovedDown", { nodeId }));
       await refresh();
     } catch (error) {
       const message = getApiErrorMessage(error);
-      setActionMessage(`节点顺序保存失败: ${message}`);
+      setActionMessage(t("actionMessage.nodeMoveFailed", { message }));
     } finally {
       setIsSavingNodeConfig(false);
     }
@@ -1385,16 +1390,18 @@ export function useControlPlanePage() {
     setIsSavingNodeConfig(true);
     setActionMessage("");
     try {
-      // 拖拽排序和按钮排序走同一条显式 pipeline 保存链路，避免 A/B 卡片切换时写错目标。
+      // Drag-and-drop reorder and button reorder share the same explicit pipeline save path to avoid writing to the wrong target when switching between pipeline A/B cards.
       await saveWorkflowDefinitionReq(pipelineId, nextWorkflow);
       updatePipelineState(pipelineId, (prev) => ({ ...prev, workflow: nextWorkflow }));
       setActivePipelineId(pipelineId);
       setSelectedNodeId(nodeId);
-      setActionMessage(`节点 ${nodeId} 已拖动到 ${targetNodeId} ${position === "after" ? "后" : "前"}`);
+      setActionMessage(position === "after"
+        ? t("actionMessage.nodeReorderedAfter", { nodeId, targetNodeId })
+        : t("actionMessage.nodeReorderedBefore", { nodeId, targetNodeId }));
       await refresh();
     } catch (error) {
       const message = getApiErrorMessage(error);
-      setActionMessage(`节点拖动保存失败: ${message}`);
+      setActionMessage(t("actionMessage.nodeReorderFailed", { message }));
     } finally {
       setIsSavingNodeConfig(false);
     }
@@ -1402,30 +1409,30 @@ export function useControlPlanePage() {
 
   const saveWorkflowJsonDraft = useCallback(async () => {
     if (!workflowJsonDraft.trim()) {
-      setActionMessage("workflow JSON 不能为空");
+      setActionMessage(t("actionMessage.workflowJsonEmpty"));
       return;
     }
     let parsed: WorkflowDefinition;
     try {
       parsed = JSON.parse(workflowJsonDraft) as WorkflowDefinition;
     } catch (error) {
-      setActionMessage(`workflow JSON 非法: ${String(error)}`);
+      setActionMessage(t("actionMessage.workflowJsonInvalid", { error: String(error) }));
       return;
     }
     setIsSavingWorkflowJson(true);
     try {
       const validation = validateWorkflowBeforeSave(parsed);
       if (!validation.ok) {
-        setActionMessage(`workflow JSON 保存失败: ${validation.message}`);
+        setActionMessage(t("actionMessage.workflowJsonSaveFailed", { message: validation.message }));
         return;
       }
       await saveWorkflowDefinitionReq(activePipelineId, parsed);
       updatePipelineState(activePipelineId, (prev) => ({ ...prev, workflow: parsed }));
       await refresh();
-      setActionMessage("workflow JSON 已保存");
+      setActionMessage(t("actionMessage.workflowJsonSaved"));
     } catch (error) {
       const message = getApiErrorMessage(error);
-      setActionMessage(`workflow JSON 保存失败: ${message}`);
+      setActionMessage(t("actionMessage.workflowJsonSaveFailed", { message }));
     } finally {
       setIsSavingWorkflowJson(false);
     }
@@ -1443,7 +1450,7 @@ export function useControlPlanePage() {
       }
       const validation = validateWorkflowBeforeSave(built.workflow);
       if (!validation.ok) {
-        setActionMessage(`节点配置保存失败: ${validation.message}`);
+        setActionMessage(t("validation.nodeConfigSaveFailed", { message: validation.message }));
         return;
       }
       await saveWorkflowDefinitionReq(activePipelineId, built.workflow);
@@ -1482,12 +1489,12 @@ export function useControlPlanePage() {
         ),
       }));
       if (!opts?.silentSuccess) {
-        setActionMessage(`节点 ${selectedNode.id} 配置已保存`);
+        setActionMessage(t("actionMessage.nodeSaved", { nodeId: selectedNode.id }));
       }
       await refresh();
     } catch (error) {
       const message = getApiErrorMessage(error);
-      setActionMessage(`节点配置保存失败: ${message}`);
+      setActionMessage(t("actionMessage.nodeSaveFailed", { message }));
     } finally {
       setIsSavingNodeConfig(false);
     }
@@ -1519,7 +1526,7 @@ export function useControlPlanePage() {
 
   const addTemplateNode = async () => {
     if (!workflow) {
-      setActionMessage("新增节点失败: workflow 未加载");
+      setActionMessage(t("actionMessage.nodeAddFailedNoWorkflow"));
       return;
     }
     const nodeId = draftNewNodeId.trim();
@@ -1528,11 +1535,11 @@ export function useControlPlanePage() {
     const instruction = draftNewNodeInstruction.trim();
 
     if (!nodeId || !title || !agentId) {
-      setActionMessage("新增节点失败: 节点ID/标题/Agent 不能为空");
+      setActionMessage(t("actionMessage.nodeAddFailedEmptyFields"));
       return;
     }
     if (templateNodes.some((node) => node.id === nodeId)) {
-      setActionMessage(`新增节点失败: 节点ID重复(${nodeId})`);
+      setActionMessage(t("actionMessage.nodeAddFailedDuplicateId", { nodeId }));
       return;
     }
 
@@ -1544,7 +1551,7 @@ export function useControlPlanePage() {
     ]);
     const badDepends = dependsOn.find((dep) => !validEntityIds.has(dep) || dep === nodeId);
     if (badDepends) {
-      setActionMessage(`新增节点失败: 非法依赖(${badDepends})`);
+      setActionMessage(t("actionMessage.nodeAddFailedInvalidDep", { depId: badDepends }));
       return;
     }
 
@@ -1586,7 +1593,7 @@ export function useControlPlanePage() {
     };
     const nodeWorkflowValidation = validateWorkflowBeforeSave(nextWorkflow);
     if (!nodeWorkflowValidation.ok) {
-      setActionMessage(`新增节点失败: ${nodeWorkflowValidation.message}`);
+      setActionMessage(t("actionMessage.nodeAddFailed", { message: nodeWorkflowValidation.message }));
       return;
     }
 
@@ -1600,12 +1607,12 @@ export function useControlPlanePage() {
       setDraftNewNodeInstruction("");
       setDraftNewNodeDependsOn([]);
       setIsCreateNodeModalOpen(false);
-      setActionMessage(`节点 ${nodeId} 已新增`);
+      setActionMessage(t("actionMessage.nodeAdded", { nodeId }));
       await refresh();
       setSelectedNodeId(nodeId);
     } catch (error) {
       const message = getApiErrorMessage(error);
-      setActionMessage(`新增节点失败: ${message}`);
+      setActionMessage(t("actionMessage.nodeAddFailed", { message }));
     } finally {
       setIsAddingNode(false);
     }
@@ -1613,27 +1620,27 @@ export function useControlPlanePage() {
 
   const addParallelGroup = async () => {
     if (!workflow) {
-      setActionMessage("新增并行组失败: workflow 未加载");
+      setActionMessage(t("actionMessage.groupAddFailedNoWorkflow"));
       return;
     }
     const groupId = draftNewGroupId.trim();
     if (!groupId) {
-      setActionMessage("新增并行组失败: 组 ID 不能为空");
+      setActionMessage(t("actionMessage.groupAddFailedEmptyId"));
       return;
     }
     if (workflow.groups.some((group) => group.id === groupId)) {
-      setActionMessage(`新增并行组失败: 组 ID 已存在(${groupId})`);
+      setActionMessage(t("actionMessage.groupAddFailedDuplicateId", { groupId }));
       return;
     }
     const memberIds = Array.from(new Set(draftNewGroupMembers.map((item) => item.trim()).filter(Boolean)));
     if (memberIds.length < 2) {
-      setActionMessage("新增并行组失败: 组成员至少 2 个");
+      setActionMessage(t("actionMessage.groupAddFailedMinMembers"));
       return;
     }
     const validNodeIds = new Set(workflow.nodes.map((node) => node.id));
     const badMember = memberIds.find((id) => !validNodeIds.has(id));
     if (badMember) {
-      setActionMessage(`新增并行组失败: 非法成员(${badMember})`);
+      setActionMessage(t("actionMessage.groupAddFailedInvalidMember", { memberId: badMember }));
       return;
     }
     const upstreamIds = Array.from(new Set(draftNewGroupUpstreams.map((item) => item.trim()).filter(Boolean)));
@@ -1643,7 +1650,7 @@ export function useControlPlanePage() {
     ]);
     const invalidUpstream = upstreamIds.find((id) => !validEntityIds.has(id) || memberIds.includes(id) || id === groupId);
     if (invalidUpstream) {
-      setActionMessage(`新增并行组失败: 非法组上游(${invalidUpstream})`);
+      setActionMessage(t("actionMessage.groupAddFailedInvalidUpstream", { upstreamId: invalidUpstream }));
       return;
     }
 
@@ -1685,7 +1692,7 @@ export function useControlPlanePage() {
     };
     const groupWorkflowValidation = validateWorkflowBeforeSave(nextWorkflow);
     if (!groupWorkflowValidation.ok) {
-      setActionMessage(`新增并行组失败: ${groupWorkflowValidation.message}`);
+      setActionMessage(t("actionMessage.groupAddFailed", { message: groupWorkflowValidation.message }));
       return;
     }
 
@@ -1702,11 +1709,11 @@ export function useControlPlanePage() {
       setIsCreateNodeModalOpen(false);
       setSelectedNodeId("");
       setSelectedGroupId(groupId);
-      setActionMessage(`并行组 ${groupId} 已新增`);
+      setActionMessage(t("actionMessage.groupAdded", { groupId }));
       await refresh();
     } catch (error) {
       const message = getApiErrorMessage(error);
-      setActionMessage(`新增并行组失败: ${message}`);
+      setActionMessage(t("actionMessage.groupAddFailed", { message }));
     } finally {
       setIsAddingNode(false);
     }
@@ -1714,20 +1721,20 @@ export function useControlPlanePage() {
 
   const deleteTemplateNodeById = async (nodeId: string) => {
     if (!workflow) {
-      setActionMessage("删除节点失败: workflow 未加载");
+      setActionMessage(t("actionMessage.nodeDeleteFailedNoWorkflow"));
       return;
     }
     const nodeToDelete = templateNodes.find((node) => node.id === nodeId);
     if (!nodeToDelete) return;
     if (templateNodes.length <= 1) {
-      setActionMessage("删除节点失败: 至少保留一个节点");
+      setActionMessage(t("actionMessage.nodeDeleteFailedMinNodes"));
       return;
     }
 
     const nextNodes = workflow.nodes.filter((node) => node.id !== nodeId);
 
-    // 删除中间节点时自动重连：如果被删节点恰好有一个依赖入边和一个依赖出边，
-    // 则把前驱直接连到后继，避免产生孤立节点导致 mainline_last 验证失败。
+    // Auto-reconnect when deleting a middle node: if the deleted node has exactly one dependency in-edge and one out-edge,
+    // connect its predecessor directly to its successor to avoid orphan nodes that trigger mainline_last validation failures.
     const incomingEdges = workflow.edges.filter((edge) => edge.to === nodeId);
     const outgoingEdges = workflow.edges.filter((edge) => edge.from === nodeId);
     const incomingDep = incomingEdges.filter((e) => e.when === null);
@@ -1767,12 +1774,12 @@ export function useControlPlanePage() {
       await saveWorkflowDefinitionReq(activePipelineId, nextWorkflow);
       updatePipelineState(activePipelineId, (prev) => ({ ...prev, workflow: nextWorkflow }));
       setDeleteTargetNodeId("");
-      setActionMessage(`节点 ${nodeToDelete.id} 已删除`);
+      setActionMessage(t("actionMessage.nodeDeleted", { nodeId: nodeToDelete.id }));
       await refresh();
       setSelectedNodeId((currentSelectedId) => (currentSelectedId === nodeId ? "" : currentSelectedId));
     } catch (error) {
       const message = getApiErrorMessage(error);
-      setActionMessage(`删除节点失败: ${message}`);
+      setActionMessage(t("actionMessage.nodeDeleteFailed", { message }));
     } finally {
       setIsDeletingNode(false);
     }
@@ -1780,12 +1787,12 @@ export function useControlPlanePage() {
 
   const deleteParallelGroupById = async (groupId: string) => {
     if (!workflow) {
-      setActionMessage("删除并行组失败: workflow 未加载");
+      setActionMessage(t("actionMessage.groupDeleteFailedNoWorkflow"));
       return;
     }
     const targetGroup = materializeParallelGroups(workflow, workflow.nodes, workflow.edges, workflow.groups).find((group) => group.id === groupId);
     if (!targetGroup) {
-      setActionMessage(`删除并行组失败: 找不到并行组(${groupId})`);
+      setActionMessage(t("actionMessage.groupDeleteFailedNotFound", { groupId }));
       return;
     }
 
@@ -1820,11 +1827,11 @@ export function useControlPlanePage() {
       updatePipelineState(activePipelineId, (prev) => ({ ...prev, workflow: nextWorkflow }));
       setDeleteTargetGroupId("");
       setSelectedGroupId((current) => (current === groupId ? "" : current));
-      setActionMessage(`并行组 ${groupId} 已删除`);
+      setActionMessage(t("actionMessage.groupDeleted", { groupId }));
       await refresh();
     } catch (error) {
       const message = getApiErrorMessage(error);
-      setActionMessage(`删除并行组失败: ${message}`);
+      setActionMessage(t("actionMessage.groupDeleteFailed", { message }));
     } finally {
       setIsDeletingNode(false);
     }

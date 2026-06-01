@@ -13,5 +13,6 @@
     "strict": true,
     "types": ["vite/client"]
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": ["src/shared/i18n/generate-types.ts"]
 }
