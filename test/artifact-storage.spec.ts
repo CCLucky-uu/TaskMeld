@@ -259,7 +259,8 @@ const run = async () => {
     }
 
     // 日期筛选（在索引创建前测试，确保 scan 路径生效）
-    const futureFiltered = await listStoredArtifacts([definition], { dateFrom: "2026-06-01" });
+    const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const futureFiltered = await listStoredArtifacts([definition], { dateFrom: tomorrow });
     assert.equal(futureFiltered.items.length, 0, "dateFrom in the future should return no results");
 
     const pastFiltered = await listStoredArtifacts([definition], { dateFrom: "2026-05-01", dateTo: "2026-05-31" });

@@ -383,12 +383,12 @@ const run = async () => {
       },
     ],
   });
-  assert.match(routePrompt, /## 分流规则/, "route node prompt should include route rules");
+  assert.match(routePrompt, /## Routing Rules/, "route node prompt should include route rules");
   assert.match(routePrompt, /`yes` -> `n-yes`/, "route node prompt should include route target mapping");
-  assert.match(routePrompt, /## 节点目标\n请根据命中结果把条目分发到对应下游节点。/, "route node prompt should keep node target");
-  assert.match(routePrompt, /## 下游打回反馈（请优先修正）/, "route node prompt should keep reject feedback section");
-  assert.match(routePrompt, /## 打回配置/, "allowReject=true prompt should include reject config section");
-  assert.match(routePrompt, /### 打回规则/, "allowReject=true prompt should include reject rules section");
+  assert.match(routePrompt, /## Node Objective\n请根据命中结果把条目分发到对应下游节点。/, "route node prompt should keep node target");
+  assert.match(routePrompt, /## Downstream Rejection Feedback \(please prioritize fixes\)/, "route node prompt should keep reject feedback section");
+  assert.match(routePrompt, /## Rejection Configuration/, "allowReject=true prompt should include reject config section");
+  assert.match(routePrompt, /### Rejection Rules/, "allowReject=true prompt should include reject rules section");
 
   const noRejectPrompt = createNodeExecutionPrompt({
     runId: "run-no-reject-1",
@@ -406,8 +406,8 @@ const run = async () => {
     allowedRoutes: [],
     routeTargets: [],
   });
-  assert.doesNotMatch(noRejectPrompt, /## 打回配置/, "allowReject=false prompt should not include reject config section");
-  assert.doesNotMatch(noRejectPrompt, /### 打回规则/, "allowReject=false prompt should not include reject rules section");
+  assert.doesNotMatch(noRejectPrompt, /## Rejection Configuration/, "allowReject=false prompt should not include reject config section");
+  assert.doesNotMatch(noRejectPrompt, /### Rejection Rules/, "allowReject=false prompt should not include reject rules section");
 
   console.log("workflow-v2 tests passed");
 };

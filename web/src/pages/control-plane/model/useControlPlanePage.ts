@@ -58,6 +58,7 @@ import {
   updateParallelGroupInWorkflow,
   validateWorkflowBeforeSave,
 } from "./controlPlaneUtils";
+import { buildWorkflowAfterNodeDelete } from "./workflowEditUtils";
 import { useControlPlaneDraftState } from "./useControlPlaneDraftState";
 
 type DerivedItemKeyMeta = {
@@ -1731,42 +1732,12 @@ export function useControlPlanePage() {
       return;
     }
 
-    const nextNodes = workflow.nodes.filter((node) => node.id !== nodeId);
-
-    // Auto-reconnect when deleting a middle node: if the deleted node has exactly one dependency in-edge and one out-edge,
-    // connect its predecessor directly to its successor to avoid orphan nodes that trigger mainline_last validation failures.
-    const incomingEdges = workflow.edges.filter((edge) => edge.to === nodeId);
-    const outgoingEdges = workflow.edges.filter((edge) => edge.from === nodeId);
-    const incomingDep = incomingEdges.filter((e) => e.when === null);
-    const outgoingDep = outgoingEdges.filter((e) => e.when === null);
-    const reconnectEdge =
-      incomingDep.length === 1 && outgoingDep.length === 1
-        ? { from: incomingDep[0].from, to: outgoingDep[0].to, when: null as string | null }
-        : null;
-
-    const removedEdgeKeys = new Set(
-      [...incomingEdges, ...outgoingEdges].map((e) => `${e.from}|${e.when ?? ""}|${e.to}`),
-    );
-    const nextEdges = reconnectEdge
-      ? [
-          ...workflow.edges.filter(
-            (edge) => !removedEdgeKeys.has(`${edge.from}|${edge.when ?? ""}|${edge.to}`),
-          ),
-          reconnectEdge,
-        ]
-      : workflow.edges.filter((edge) => edge.from !== nodeId && edge.to !== nodeId);
-    const nextGroups = workflow.groups
-      .map((group) => ({
-        ...group,
-        members: group.members.filter((member) => member !== nodeId),
-      }))
-      .filter((group) => group.members.length >= 2);
-    const nextWorkflow: WorkflowDefinition = {
-      ...workflow,
-      nodes: nextNodes,
-      edges: nextEdges,
-      groups: nextGroups,
-    };
+    const nextWorkflow = buildWorkflowAfterNodeDelete(workflow, nodeId);
+    const deleteWorkflowValidation = validateWorkflowBeforeSave(nextWorkflow);
+    if (!deleteWorkflowValidation.ok) {
+      setActionMessage(t("actionMessage.nodeDeleteFailed", { message: deleteWorkflowValidation.message }));
+      return;
+    }
 
     setIsDeletingNode(true);
     setActionMessage("");

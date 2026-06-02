@@ -101,7 +101,7 @@ export const registerPipelineWorkflowWsMethods = (registry: WsMethodRegistry): v
 
     const parseResult = readWorkflowDefinitionFromRawDetailed(params.workflow ?? params);
     if (!parseResult.ok) {
-      return { ok: false, error: parseResult.error };
+      return { ok: false, error: { error: parseResult.error, detail: parseResult.detail } };
     }
     const next = parseResult.workflow;
     let normalized: WorkflowDefinitionRuntime;
@@ -109,18 +109,30 @@ export const registerPipelineWorkflowWsMethods = (registry: WsMethodRegistry): v
       normalized = normalizeWorkflowFallbacksWithStorage(next, { workflowFilePath: definition.workflowFilePath });
     } catch (error) {
       const err = error as Error & { detail?: string };
-      return { ok: false, error: err.message || "invalid_persisted_workflow_definition" };
+      return {
+        ok: false,
+        error: {
+          error: err.message || "invalid_persisted_workflow_definition",
+          detail: err.detail,
+        },
+      };
     }
     const validation = validateWorkflowDefinition(normalized);
     if (!validation.ok) {
-      return { ok: false, error: validation.error };
+      return { ok: false, error: { error: validation.error, detail: validation.detail } };
     }
     runtime.workflow.setWorkflow(normalized);
     try {
       saveWorkflowDefinitionWithStorage(normalized, { workflowFilePath: definition.workflowFilePath });
     } catch (error) {
       const err = error as Error & { detail?: string };
-      return { ok: false, error: err.message || "invalid_workflow_definition" };
+      return {
+        ok: false,
+        error: {
+          error: err.message || "invalid_workflow_definition",
+          detail: err.detail,
+        },
+      };
     }
     const run = runtime.runtime.seedRun(runtime.workflow.getTemplateNodes());
     runtime.runtime.setRun(run);

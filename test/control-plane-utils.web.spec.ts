@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import type { WorkflowDefinition } from "../web/src/entities/pipeline/types";
 import { validateWorkflowBeforeSave } from "../web/src/pages/control-plane/model/controlPlaneUtils";
+import { buildWorkflowAfterNodeDelete } from "../web/src/pages/control-plane/model/workflowEditUtils";
 
 const makeBaseWorkflow = (): WorkflowDefinition => ({
   version: "3.0",
@@ -83,6 +84,25 @@ const run = () => {
   const yesRouteEdgeResult = validateWorkflowBeforeSave(yesRouteEdge);
   assert.equal(yesRouteEdgeResult.ok, false, "yes must not be saved as a route edge");
   if (!yesRouteEdgeResult.ok) assert.match(yesRouteEdgeResult.message, /yes/);
+
+  const explicitOutputWorkflow = {
+    ...makeBaseWorkflow(),
+    output: { mode: "explicit" as const, nodeId: "n2" },
+  };
+  const deletedOutputWorkflow = buildWorkflowAfterNodeDelete(explicitOutputWorkflow, "n2");
+  assert.equal(
+    deletedOutputWorkflow.output?.mode,
+    "mainline_last",
+    "deleting explicit output node should reset output mode before backend save",
+  );
+  assert.equal(deletedOutputWorkflow.output?.nodeId, null, "deleted output node should not remain referenced");
+  assert.deepEqual(
+    deletedOutputWorkflow.edges,
+    [
+      { from: "n1", to: "n3", when: null },
+    ],
+    "deleting middle node should reconnect single dependency predecessor and successor",
+  );
 
   console.log("control-plane-utils web tests passed");
 };
