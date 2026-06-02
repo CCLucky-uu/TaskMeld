@@ -18,6 +18,7 @@ export type WritableServices = {
   pipeline: Pick<PipelineService, "startPipeline" | "getPipelineExecutionStatus" | "stopPipeline" | "runPipeline" | "retryNode" | "getOutput" | "listOutputs" | "listLinks" | "getQueue">;
   session: Pick<SessionService, "sendMessage" | "sendMessageAndWaitForReply">;
   scheduler: SchedulerService;
+  agent: Pick<AgentService, "createAgent" | "updateAgent" | "deleteAgent">;
 };
 
 export type AppServices = {
@@ -82,6 +83,11 @@ export const createAppServices = (app: PipelineRegistry): AppServices => {
         sendMessageAndWaitForReply: services.session.sendMessageAndWaitForReply,
       },
       scheduler: services.scheduler,
+      agent: {
+        createAgent: services.agent.createAgent,
+        updateAgent: services.agent.updateAgent,
+        deleteAgent: services.agent.deleteAgent,
+      },
     },
   };
 };

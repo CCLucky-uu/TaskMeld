@@ -30,9 +30,12 @@ type AgentListCardProps = {
   agents: AgentListCardItem[];
   onOpenAgentSession: (agentId: string) => void;
   onOpenAgentOutput: (agentId: string) => void;
+  onCreateAgent: () => void;
+  onEditAgent: (agentId: string) => void;
+  onDeleteAgent: (agentId: string) => void;
 };
 
-export function AgentListCard({ agents, onOpenAgentSession, onOpenAgentOutput }: AgentListCardProps) {
+export function AgentListCard({ agents, onOpenAgentSession, onOpenAgentOutput, onCreateAgent, onEditAgent, onDeleteAgent }: AgentListCardProps) {
   const [searchKeyword, setSearchKeyword] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "busy" | "idle">("all");
   const [viewMode, setViewMode] = useState<"card" | "list">("card");
@@ -49,6 +52,14 @@ export function AgentListCard({ agents, onOpenAgentSession, onOpenAgentOutput }:
       {/* Top area only keeps search and filter tools — low-value stats that waste space are removed. */}
       <div className={`flex h-[66px] items-center border-b border-(--line) ${gridTileClassName}`}>
         <div className="flex w-full items-center gap-0 overflow-hidden px-8">
+          <button
+            className={primaryActionButtonClassName}
+            type="button"
+            onClick={onCreateAgent}
+          >
+            + {t('createAgent')}
+          </button>
+          <span className={`${gridTileClassName} h-8 w-3 shrink-0`} aria-hidden="true" />
           <input
             className={`${controlInputClassName} m-0 h-8 min-w-[260px] flex-[1_1_420px] py-0 leading-none`}
             value={searchKeyword}
@@ -153,6 +164,26 @@ export function AgentListCard({ agents, onOpenAgentSession, onOpenAgentOutput }:
                       type="button"
                       onClick={(event) => {
                         event.stopPropagation();
+                        onEditAgent(agent.id);
+                      }}
+                    >
+                      {t('editAgent')}
+                    </button>
+                    <button
+                      className={actionButtonClassName}
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onDeleteAgent(agent.id);
+                      }}
+                    >
+                      {t('deleteAgent')}
+                    </button>
+                    <button
+                      className={actionButtonClassName}
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
                         onOpenAgentOutput(agent.id);
                       }}
                     >
@@ -204,6 +235,26 @@ export function AgentListCard({ agents, onOpenAgentSession, onOpenAgentOutput }:
                     {agent.lastActiveAt ? new Date(agent.lastActiveAt).toLocaleString(undefined, { hour12: false }) : "-"}
                   </p>
                   <div className="flex items-center justify-end gap-2">
+                    <button
+                      className={actionButtonClassName}
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onEditAgent(agent.id);
+                      }}
+                    >
+                      {t('editAgent')}
+                    </button>
+                    <button
+                      className={actionButtonClassName}
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onDeleteAgent(agent.id);
+                      }}
+                    >
+                      {t('deleteAgent')}
+                    </button>
                     <button
                       className={actionButtonClassName}
                       type="button"

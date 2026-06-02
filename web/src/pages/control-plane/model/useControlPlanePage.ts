@@ -2014,5 +2014,11 @@ export function useControlPlanePage() {
     isDeletingNode,
     deleteTemplateNodeById,
     deleteParallelGroupById,
+    refreshAgents: async () => {
+      try {
+        const result = await fetchAgents();
+        setAgents(result);
+      } catch { /* best-effort refresh */ }
+    },
   };
 }

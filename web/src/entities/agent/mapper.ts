@@ -17,7 +17,9 @@ export function mapAgents(items: unknown): AgentItem[] {
     .map((item, index) => {
       const obj = (item ?? {}) as Record<string, unknown>;
       const id = String(obj.id ?? obj.name ?? obj.key ?? `agent-${index}`);
+      const name = String(obj.name ?? obj.id ?? `agent-${index}`);
       const role = String(obj.role ?? "agent");
+      const workspace = String(obj.workspace ?? "");
       const state = String(obj.status ?? obj.state ?? "");
       const online = Boolean(
         obj.online ?? obj.enabled ?? (state ? state === "online" || state === "ready" || state === "active" : true),
@@ -25,7 +27,7 @@ export function mapAgents(items: unknown): AgentItem[] {
       const lastActiveAtMs =
         toEpochMs(obj.lastActiveAtMs ?? obj.lastActiveAt ?? obj.updatedAt ?? obj.lastSeenAt ?? obj.endedAt) ?? null;
       const lastActiveAt = lastActiveAtMs ? new Date(lastActiveAtMs).toISOString() : null;
-      return { id, role, online, lastActiveAt, lastActiveAtMs };
+      return { id, name, role, workspace, online, lastActiveAt, lastActiveAtMs };
     })
     .sort((a, b) => {
       const aMs = a.lastActiveAtMs ?? -1;

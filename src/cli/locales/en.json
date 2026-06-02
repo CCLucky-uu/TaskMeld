@@ -66,6 +66,27 @@
       "argMessage": "Message content",
       "optSession": "Session ID (default: main)",
       "optStream": "Stream reply content"
+    },
+    "create": {
+      "description": "Create a new agent",
+      "summary": "Create a new agent on the gateway",
+      "argName": "Agent name",
+      "optWorkspace": "Workspace path for the agent"
+    },
+    "update": {
+      "description": "Update an existing agent",
+      "summary": "Update an existing agent's name or workspace",
+      "argAgentId": "Agent ID to update",
+      "optName": "New agent name",
+      "optWorkspace": "New workspace path"
+    },
+    "delete": {
+      "description": "Delete an agent",
+      "summary": "Delete an agent from the gateway",
+      "argAgentId": "Agent ID to delete",
+      "optDeleteFiles": "Also delete the agent's workspace files",
+      "optConfirm": "Confirm deletion (required for actual delete)",
+      "confirmRequired": "Dry run only. Pass --confirm to actually delete the agent."
     }
   },
   "artifact": {

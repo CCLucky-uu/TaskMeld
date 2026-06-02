@@ -1,5 +1,6 @@
 import type { WsMethodRegistry } from "./types";
 import { asRecord, formatError } from "./utils";
+import { resolveDefaultWorkspacePath } from "../../app/user-config";
 
 const toEpochMs = (value: unknown): number | null => {
   if (typeof value === "number" && Number.isFinite(value)) return value;
@@ -108,6 +109,68 @@ export const registerAgentWsMethods = (registry: WsMethodRegistry): void => {
       const obj = (payload ?? {}) as Record<string, unknown>;
       const file = (obj.file ?? payload) as unknown;
       return { ok: true, payload: { item: file ?? null, raw: payload } };
+    } catch (error) {
+      return { ok: false, error: formatError(error) };
+    }
+  });
+
+  // Equivalent to CLI-side resolveDefaultWorkspacePath; the frontend uses this WS method
+  // to resolve the default path, avoiding hardcoded path assembly in the browser.
+  registry.register("agent.defaultWorkspace", async (params, _ctx) => {
+    try {
+      const name = typeof params.name === "string" ? params.name.trim() : "";
+      const workspace = await resolveDefaultWorkspacePath(name);
+      return { ok: true, payload: { workspace } };
+    } catch (error) {
+      return { ok: false, error: formatError(error) };
+    }
+  });
+
+  registry.register("agent.create", async (params, ctx) => {
+    try {
+      const name = typeof params.name === "string" ? params.name.trim() : "";
+      if (!name) return { ok: false, error: "invalid_agent_name" };
+      let workspace: string;
+      if (typeof params.workspace === "string" && params.workspace.trim()) {
+        workspace = params.workspace.trim();
+      } else {
+        workspace = await resolveDefaultWorkspacePath(name);
+      }
+      const payload = await ctx.services.client.sendReq(
+        "agents.create", { name, workspace },
+      );
+      return { ok: true, payload: payload ?? {} };
+    } catch (error) {
+      return { ok: false, error: formatError(error) };
+    }
+  });
+
+  registry.register("agent.update", async (params, ctx) => {
+    try {
+      const agentId = typeof params.agentId === "string" ? params.agentId.trim() : "";
+      if (!agentId) return { ok: false, error: "invalid_agent_id" };
+      const updateParams: Record<string, unknown> = { agentId };
+      if (typeof params.name === "string" && params.name.trim()) updateParams.name = params.name.trim();
+      if (typeof params.workspace === "string" && params.workspace.trim()) updateParams.workspace = params.workspace.trim();
+      const payload = await ctx.services.client.sendReq(
+        "agents.update", updateParams,
+      );
+      return { ok: true, payload: payload ?? {} };
+    } catch (error) {
+      return { ok: false, error: formatError(error) };
+    }
+  });
+
+  registry.register("agent.delete", async (params, ctx) => {
+    try {
+      const agentId = typeof params.agentId === "string" ? params.agentId.trim() : "";
+      if (!agentId) return { ok: false, error: "invalid_agent_id" };
+      const deleteParams: Record<string, unknown> = { agentId };
+      if (typeof params.deleteFiles === "boolean") deleteParams.deleteFiles = params.deleteFiles;
+      const payload = await ctx.services.client.sendReq(
+        "agents.delete", deleteParams,
+      );
+      return { ok: true, payload: payload ?? {} };
     } catch (error) {
       return { ok: false, error: formatError(error) };
     }

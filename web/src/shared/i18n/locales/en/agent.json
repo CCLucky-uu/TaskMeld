@@ -15,5 +15,34 @@
   "noEvent": "No events",
   "viewOutput": "View Output",
   "openSession": "View Session",
-  "noMatch": "No agents found"
+  "noMatch": "No agents found",
+  "editAgent": "Edit",
+  "deleteAgent": "Delete",
+  "createAgent": "New Agent",
+  "createAgentTitle": "Create Agent",
+  "editAgentTitle": "Edit Agent",
+  "deleteAgentTitle": "Delete Agent",
+  "deleteAgentConfirm": "This agent will be deleted.",
+  "deleteAgentNote": "Optionally also delete workspace files.",
+  "deleteFiles": "Delete workspace files",
+  "fieldLabel": {
+    "agentName": "Agent Name",
+    "agentWorkspace": "Workspace path"
+  },
+  "placeholder": {
+    "agentName": "e.g. my-agent",
+    "agentWorkspace": "Auto-detected from existing agents"
+  },
+  "creating": "Creating...",
+  "updating": "Updating...",
+  "deleting": "Deleting...",
+  "action": {
+    "confirmCreate": "Create Agent",
+    "confirmUpdate": "Update Agent",
+    "confirmDelete": "Delete Agent"
+  },
+  "error": {
+    "nameRequired": "Agent name is required",
+    "atLeastOne": "At least one field must be provided"
+  }
 }
