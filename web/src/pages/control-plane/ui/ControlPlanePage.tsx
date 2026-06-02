@@ -34,6 +34,7 @@ import {
 } from "../../../shared/ui/surfaceClassNames";
 import { controlPlaneNavItems } from "../model/controlPlaneNavItems";
 import { useControlPlanePage } from "../model/useControlPlanePage";
+import { useAgentCrudModal } from "../model/useAgentCrudModal";
 import type { NavKey } from "../../../widgets/nav-panel/model/navItem";
 import PlusIcon from "@iconify-react/lucide/plus";
 const smallModalPanelClassName = `${modalPanelBaseClassName} w-[min(560px,94vw)]`;
@@ -163,7 +164,7 @@ export function ControlPlanePage({
   onNavigateHome,
   focusPipelineId,
 }: ControlPlanePageProps) {
-  const { t } = useTranslation(["modal", "common", "nav", "pipeline"]);
+  const { t } = useTranslation(["modal", "common", "nav", "pipeline", "agent"]);
   const translatedStatusLabel = useMemo(() => Object.fromEntries(
     Object.entries(statusLabel).map(([key, val]) => [key, t(`common:status.${val}`)]),
   ), [t]);
@@ -221,6 +222,7 @@ export function ControlPlanePage({
   const [renamePipelineError, setRenamePipelineError] = useState("");
   const [deletePipelineTargetId, setDeletePipelineTargetId] = useState<string | null>(null);
   const [deletePipelineError, setDeletePipelineError] = useState("");
+  const agentCrud = useAgentCrudModal({ agents: vm.agentCards, refreshAgents: vm.refreshAgents });
   const [dispatchBoardOpen, setDispatchBoardOpen] = useState(false);
   const renamePipelineTarget = vm.pipelineList.find((item) => item.id === renamePipelineTargetId) ?? null;
   const deletePipelineTarget = vm.pipelineList.find((item) => item.id === deletePipelineTargetId) ?? null;
@@ -407,6 +409,7 @@ export function ControlPlanePage({
         setWorkflowJsonModalOpen(false);
         return;
       }
+      if (agentCrud.closeOnEscape()) return;
       if (pluginModalPipelineId) {
         blurActiveElement();
         setPluginModalPipelineId(null);
@@ -415,6 +418,7 @@ export function ControlPlanePage({
     window.addEventListener("keydown", handleKeydown);
     return () => window.removeEventListener("keydown", handleKeydown);
   }, [
+    agentCrud.closeOnEscape,
     createPipelineModalOpen,
     renamePipelineTargetId,
     deletePipelineTargetId,
@@ -630,6 +634,9 @@ export function ControlPlanePage({
               agents={vm.agentCards}
               onOpenAgentSession={vm.openSessionModalForAgent}
               onOpenAgentOutput={(agentId) => vm.setAgentOutputModalAgentId(agentId)}
+              onCreateAgent={agentCrud.create.open}
+              onEditAgent={agentCrud.edit.open}
+              onDeleteAgent={agentCrud.delete.open}
             />
           ) : effectivePageRoute === "artifacts" ? (
             <ArtifactBoard
@@ -916,6 +923,155 @@ export function ControlPlanePage({
               disabled={!deletePipelineTargetId || vm.isDeletingPipeline}
             >
               {vm.isDeletingPipeline ? t("modal:deleting") : t("modal:action.confirmDeletePipeline")}
+            </button>
+          </div>
+      </ModalLayer>
+
+      <ModalLayer
+        open={agentCrud.create.isOpen}
+        onClose={agentCrud.create.close}
+        panelClassName={smallModalPanelClassName}
+        ariaLabel={t("agent:createAgentTitle")}
+      >
+          <div className={panelHeaderClassName}>
+            <h2>{t("agent:createAgentTitle")}</h2>
+            <button
+              className={drawerCloseClassName}
+              type="button"
+              onClick={agentCrud.create.close}
+              aria-label={t("modal:close")}
+            >
+              <CloseIcon />
+            </button>
+          </div>
+          <div className={fieldClassName}>
+            <label className={fieldLabelClassName}>{t("agent:fieldLabel.agentName")}</label>
+            <input
+              className={controlSingleLineMonoClassName}
+              value={agentCrud.create.name}
+              onChange={(event) => agentCrud.create.syncWorkspaceFromName(event.target.value)}
+              placeholder={t("agent:placeholder.agentName")}
+            />
+          </div>
+          <div className={fieldClassName}>
+            <label className={fieldLabelClassName}>{t("agent:fieldLabel.agentWorkspace")}</label>
+            <input
+              className={controlSingleLineMonoClassName}
+              value={agentCrud.create.workspace}
+              onChange={(event) => agentCrud.create.setWorkspace(event.target.value)}
+              placeholder={t("agent:placeholder.agentWorkspace")}
+            />
+          </div>
+          {agentCrud.create.error ? (
+            <p className={`${modalSublineClassName} text-(--bad)`}>{agentCrud.create.error}</p>
+          ) : null}
+          <div className={actionRowClassName}>
+            <button
+              className={actionButtonClassName}
+              type="button"
+              onClick={() => void agentCrud.create.submit()}
+              disabled={agentCrud.create.isLoading || !agentCrud.create.name.trim()}
+            >
+              {agentCrud.create.isLoading ? t("agent:creating") : t("agent:action.confirmCreate")}
+            </button>
+          </div>
+      </ModalLayer>
+
+      <ModalLayer
+        open={agentCrud.edit.isOpen}
+        onClose={agentCrud.edit.close}
+        panelClassName={smallModalPanelClassName}
+        ariaLabel={t("agent:editAgentTitle")}
+      >
+          <div className={panelHeaderClassName}>
+            <h2>{t("agent:editAgentTitle")}</h2>
+            <button
+              className={drawerCloseClassName}
+              type="button"
+              onClick={agentCrud.edit.close}
+              aria-label={t("modal:close")}
+            >
+              <CloseIcon />
+            </button>
+          </div>
+          <p className={modalSublineClassName}>
+            Agent ID: <code>{agentCrud.edit.id}</code>
+          </p>
+          <div className={fieldClassName}>
+            <label className={fieldLabelClassName}>{t("agent:fieldLabel.agentName")}</label>
+            <input
+              className={controlSingleLineMonoClassName}
+              value={agentCrud.edit.name}
+              onChange={(event) => agentCrud.edit.setName(event.target.value)}
+              placeholder={t("agent:placeholder.agentName")}
+            />
+          </div>
+          <div className={fieldClassName}>
+            <label className={fieldLabelClassName}>{t("agent:fieldLabel.agentWorkspace")}</label>
+            <input
+              className={controlSingleLineMonoClassName}
+              value={agentCrud.edit.workspace}
+              onChange={(event) => agentCrud.edit.setWorkspace(event.target.value)}
+              placeholder={t("agent:placeholder.agentWorkspace")}
+            />
+          </div>
+          {agentCrud.edit.error ? (
+            <p className={`${modalSublineClassName} text-(--bad)`}>{agentCrud.edit.error}</p>
+          ) : null}
+          <div className={actionRowClassName}>
+            <button
+              className={actionButtonClassName}
+              type="button"
+              onClick={() => void agentCrud.edit.submit()}
+              disabled={agentCrud.edit.isLoading || (!agentCrud.edit.name.trim() && !agentCrud.edit.workspace.trim())}
+            >
+              {agentCrud.edit.isLoading ? t("agent:updating") : t("agent:action.confirmUpdate")}
+            </button>
+          </div>
+      </ModalLayer>
+
+      <ModalLayer
+        open={agentCrud.delete.isOpen}
+        onClose={agentCrud.delete.close}
+        panelClassName={smallModalPanelClassName}
+        ariaLabel={t("agent:deleteAgentTitle")}
+      >
+          <div className={panelHeaderClassName}>
+            <h2>{t("agent:deleteAgentTitle")}</h2>
+            <button
+              className={drawerCloseClassName}
+              type="button"
+              onClick={agentCrud.delete.close}
+              aria-label={t("modal:close")}
+            >
+              <CloseIcon />
+            </button>
+          </div>
+          <p className={modalSublineClassName}>
+            {t("agent:deleteAgentConfirm")} <code>{agentCrud.delete.id}</code>.
+          </p>
+          <p className={modalSublineClassName}>{t("agent:deleteAgentNote")}</p>
+          <div className={fieldClassName}>
+            <label className="flex items-center gap-2 text-xs text-[var(--muted)] cursor-pointer">
+              <input
+                type="checkbox"
+                checked={agentCrud.delete.files}
+                onChange={(event) => agentCrud.delete.setFiles(event.target.checked)}
+              />
+              {t("agent:deleteFiles")}
+            </label>
+          </div>
+          {agentCrud.delete.error ? (
+            <p className={`${modalSublineClassName} text-(--bad)`}>{agentCrud.delete.error}</p>
+          ) : null}
+          <div className={actionRowClassName}>
+            <button
+              className={actionButtonClassName}
+              type="button"
+              onClick={() => void agentCrud.delete.submit()}
+              disabled={agentCrud.delete.isLoading}
+            >
+              {agentCrud.delete.isLoading ? t("agent:deleting") : t("agent:action.confirmDelete")}
             </button>
           </div>
       </ModalLayer>

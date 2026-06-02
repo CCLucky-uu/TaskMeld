@@ -120,6 +120,9 @@ export type CliAgentService = {
     input: { sessionId: string; message: string; mode?: "auto" | "chat" | "sessions" },
     options?: { timeoutMs?: number; onChunk?: (text: string) => void },
   ): Promise<unknown>;
+  createAgent(params: { name: string; workspace?: string }): Promise<unknown>;
+  updateAgent(params: { agentId: string; name?: string; workspace?: string }): Promise<unknown>;
+  deleteAgent(params: { agentId: string; deleteFiles?: boolean }): Promise<unknown>;
 };
 
 export type CliSessionService = {

@@ -66,6 +66,27 @@
       "argMessage": "消息内容",
       "optSession": "会话 ID（默认 main）",
       "optStream": "流式输出回复内容"
+    },
+    "create": {
+      "description": "创建新的智能体",
+      "summary": "在网关上创建新的智能体",
+      "argName": "智能体名称",
+      "optWorkspace": "智能体工作区路径"
+    },
+    "update": {
+      "description": "更新已有智能体",
+      "summary": "更新已有智能体的名称或工作区",
+      "argAgentId": "要更新的智能体 ID",
+      "optName": "新智能体名称",
+      "optWorkspace": "新工作区路径"
+    },
+    "delete": {
+      "description": "删除智能体",
+      "summary": "从网关删除智能体",
+      "argAgentId": "要删除的智能体 ID",
+      "optDeleteFiles": "同时删除智能体的工作区文件",
+      "optConfirm": "确认删除（必须传入才会实际执行）",
+      "confirmRequired": "仅预览。传入 --confirm 以实际删除智能体。"
     }
   },
   "artifact": {
