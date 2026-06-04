@@ -1,7 +1,7 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
   "name": "taskmeld",
-  "version": "0.1.50",
+  "version": "0.1.51",
   "description": "Agent pipeline orchestration platform — CLI, HTTP/WS backend, React console",
   "main": "dist/src/index.js",
   "bin": {
