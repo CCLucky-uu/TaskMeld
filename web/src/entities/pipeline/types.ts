@@ -239,6 +239,7 @@ export type WorkflowDefinition = {
   nodes: WorkflowNode[];
   edges: Array<{ from: string; to: string; when: string | null }>;
   groups: WorkflowGroup[];
+  output?: { mode: "mainline_last"; nodeId?: null } | { mode: "explicit"; nodeId: string };
 };
 
 export type WorkflowGroup = {

@@ -38,8 +38,8 @@ export type WsMethodContext = {
 export type WsMethodHandler = (
   params: Record<string, unknown>,
   ctx: WsMethodContext,
-) => { ok: boolean; payload?: unknown; error?: string }
-  | Promise<{ ok: boolean; payload?: unknown; error?: string }>;
+) => { ok: boolean; payload?: unknown; error?: unknown }
+  | Promise<{ ok: boolean; payload?: unknown; error?: unknown }>;
 
 export type WsMethodRegistry = {
   register(method: string, handler: WsMethodHandler): void;

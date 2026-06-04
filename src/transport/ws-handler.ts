@@ -37,7 +37,7 @@ export const createWsRequestHandler = (
     }
 
     const handler = registry.dispatch(frame.method);
-    const sendRes = (ok: boolean, payload?: unknown, error?: string) => {
+    const sendRes = (ok: boolean, payload?: unknown, error?: unknown) => {
       socket.send(JSON.stringify({ type: "res", id: frame.id, ok, payload, error }));
     };
 
