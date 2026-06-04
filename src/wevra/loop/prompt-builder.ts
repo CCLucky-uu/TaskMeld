@@ -24,44 +24,32 @@ interface PipelinePromptContext {
 export function buildGlobalPrompt(ctx: GlobalPromptContext): string {
   const sections: string[] = []
 
-  // Identity
   sections.push(`## Identity
-你是 Wevra，TaskMeld 内置的 AI 助手。你帮助用户管理 pipeline、agent 和工作流。使用中文回复。`)
+You are Wevra, an Agent developed by the TaskMeld team, running within the TaskMeld workflow orchestration platform. You interact directly with the system through tools to help users manage, monitor, and diagnose pipelines and agents.
 
-  // 全局记忆
+## Guidelines
+- When uncertain, ask the user first. Never guess or fabricate data.
+- Be concise. Lead with the conclusion, then provide details.
+- When a tool call fails: bad arguments → fix and retry once / timeout or unknown error → tell the user what happened.
+
+## Common Workflows
+- Inspect a pipeline: pipeline_list for overview → pipeline_get for details → pipeline_status for runtime state
+- Diagnose failures: pipeline_status to confirm failure → pipeline_diagnose for initial analysis → session_history for deep investigation
+- Create a pipeline: confirm name, nodes, and trigger conditions with the user first → pipeline_create → present the result`)
+
   if (ctx.memories.length > 0) {
     const memoryLines = ctx.memories.map(m =>
-      `- ${m.content} (重要性: ${m.importance})`,
+      `- ${m.content} (importance: ${m.importance})`,
     ).join('\n')
     sections.push(`## Global Memory\n${memoryLines}`)
   }
 
-  // Pipeline 摘要列表
-  if (ctx.pipelines.length > 0) {
-    const pipelineLines = ctx.pipelines.map(p =>
-      `- ${p.id}: "${p.name}"${p.description ? ` — ${p.description}` : ''}`,
-    ).join('\n')
-    sections.push(`## Pipelines\n${pipelineLines}`)
-  }
-
-  // Skills（always-active 的完整内容）
-  for (const skill of ctx.alwaysSkills) {
-    sections.push(`## ${skill.name}\n${skill.content}`)
-  }
-
-  // Skill 索引（Layer 1）
   if (ctx.skillIndex.length > 0) {
     const indexLines = ctx.skillIndex.map(s =>
       `- ${s.name}: ${s.description}`,
     ).join('\n')
-    sections.push(`## Available Skills\n${indexLines}\n\n使用 skill.load 工具加载完整 Skill 内容。`)
+    sections.push(`## Available Skills\n${indexLines}\n\nUse the skill_load tool to load full skill content when needed.`)
   }
-
-  // Constraints
-  sections.push(`## Constraints
-- 不确定时问用户，不要猜测
-- 破坏性操作前先确认
-- 工具调用失败时先分析原因再重试`)
 
   return sections.join('\n\n')
 }
@@ -69,52 +57,35 @@ export function buildGlobalPrompt(ctx: GlobalPromptContext): string {
 export function buildPipelinePrompt(ctx: PipelinePromptContext): string {
   const sections: string[] = []
 
-  // Identity
   sections.push(`## Identity
-你是 Wevra，当前处于流水线 "${ctx.pipelineName}" (${ctx.pipelineId}) 的专属会话中。
-你只能操作该流水线。操作其他流水线需要用户确认。使用中文回复。`)
+You are Wevra, an Agent developed by the TaskMeld team, currently assigned to pipeline "${ctx.pipelineName}" (${ctx.pipelineId}).
+You may only operate on this pipeline. Accessing other pipelines requires user approval.
 
-  // 流水线记忆
+## Guidelines
+- When uncertain, ask the user first. Never guess or fabricate data.
+- Be concise. Lead with the conclusion, then provide details.
+- When a tool call fails: bad arguments → fix and retry once / timeout or unknown error → tell the user what happened.
+
+## Pipeline Context
+- ID: ${ctx.pipelineId}
+- Name: ${ctx.pipelineName}
+- Description: ${ctx.pipelineDescription}
+- Nodes:
+${ctx.nodes.map(n => `  - ${n.id} "${n.name}": ${n.description}`).join('\n')}`)
+
   if (ctx.memories.length > 0) {
     const memoryLines = ctx.memories.map(m =>
-      `- ${m.content} (重要性: ${m.importance})`,
+      `- ${m.content} (importance: ${m.importance})`,
     ).join('\n')
     sections.push(`## Pipeline Memory\n${memoryLines}`)
-  }
-
-  // 流水线节点详情
-  const nodeLines = ctx.nodes.map(n =>
-    `- ${n.id} "${n.name}": ${n.description}`,
-  ).join('\n')
-  sections.push(`## Pipeline Context
-Pipeline: "${ctx.pipelineName}"
-Description: ${ctx.pipelineDescription}
-Nodes:
-${nodeLines}`)
-
-  // Skills
-  for (const skill of ctx.alwaysSkills) {
-    sections.push(`## ${skill.name}\n${skill.content}`)
   }
 
   if (ctx.skillIndex.length > 0) {
     const indexLines = ctx.skillIndex.map(s =>
       `- ${s.name}: ${s.description}`,
     ).join('\n')
-    sections.push(`## Available Skills\n${indexLines}\n\n使用 skill.load 工具加载完整 Skill 内容。`)
+    sections.push(`## Available Skills\n${indexLines}\n\nUse the skill_load tool to load full skill content when needed.`)
   }
-
-  // Permissions
-  sections.push(`## Permissions
-当前会话仅可操作 pipeline "${ctx.pipelineId}"。
-操作其他 pipeline 需要用户确认。
-不可访问全局记忆或其他流水线记忆。`)
-
-  // Constraints
-  sections.push(`## Constraints
-- 不确定时问用户，不要猜测
-- 破坏性操作前先确认
-- 工具调用失败时先分析原因再重试`)
 
   return sections.join('\n\n')
 }
