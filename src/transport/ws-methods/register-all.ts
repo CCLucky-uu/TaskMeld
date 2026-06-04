@@ -12,6 +12,7 @@ import { registerArtifactWsMethods } from "./artifacts";
 import { registerLogWsMethods } from "./logs";
 import { registerGatewayWsMethods } from "./gateway";
 import { registerTimelineWsMethods } from "./timeline";
+import { registerWevraWsMethods } from "./wevra";
 
 export const registerAllWsMethods = (registry: WsMethodRegistry): void => {
   registerPipelineWsMethods(registry);
@@ -27,4 +28,5 @@ export const registerAllWsMethods = (registry: WsMethodRegistry): void => {
   registerLogWsMethods(registry);
   registerGatewayWsMethods(registry);
   registerTimelineWsMethods(registry);
+  registerWevraWsMethods(registry);
 };

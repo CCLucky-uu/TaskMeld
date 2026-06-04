@@ -1,0 +1,121 @@
+import type { StreamEvent, LoopResult, RuntimeModelConfig } from './types'
+import { loadConfig, getAvailableModels, getDefaultModelId, resolveModel, type WevraConfig } from './config'
+import { Brain, type DebugCallback } from './brain'
+import { ToolRegistry } from './tools/registry'
+import { ToolExecutor } from './tools/executor'
+import { ConversationManager, type SessionData, type ConversationMeta } from './conversation'
+import { WevraMemory } from './memory'
+import { SkillRegistry, createSkillRegistry } from './skills'
+import { WevraLoop, type LoopCallbacks } from './loop/agent-loop'
+import { buildGlobalPrompt } from './loop/prompt-builder'
+
+// Builtin tools
+import { pipelineTools } from './tools/builtin/pipeline'
+import { agentTools } from './tools/builtin/agent'
+import { artifactTools } from './tools/builtin/artifact'
+import { sessionTools } from './tools/builtin/session'
+import { systemTools } from './tools/builtin/system'
+import { webTools } from './tools/builtin/web'
+import { createMemoryTools } from './tools/builtin/memory'
+import { createSkillTools } from './tools/builtin/skill'
+
+export class WevraAgent {
+  readonly brain: Brain | null
+  readonly toolRegistry: ToolRegistry
+  readonly toolExecutor: ToolExecutor
+  readonly conversations: ConversationManager
+  readonly memory: WevraMemory
+  readonly skills: SkillRegistry
+  readonly loop: WevraLoop
+  readonly config: WevraConfig
+  private currentModelId: string
+  private currentModel: RuntimeModelConfig
+
+  constructor(configOverrides?: Partial<WevraConfig> & { model?: RuntimeModelConfig }) {
+    this.config = loadConfig(configOverrides)
+    this.toolRegistry = new ToolRegistry()
+    this.memory = new WevraMemory()
+    this.skills = createSkillRegistry()
+    this.registerTools()
+
+    const defaultModel = configOverrides?.model
+      ?? resolveModel(getDefaultModelId().split('/')[0] || '', getDefaultModelId().split('/')[1] || '')
+      ?? null
+
+    if (!defaultModel || !defaultModel.apiKey) {
+      this.currentModel = null as unknown as RuntimeModelConfig
+      this.currentModelId = ''
+      this.brain = null as unknown as Brain
+    } else {
+      this.currentModel = defaultModel
+      this.currentModelId = `${defaultModel.providerId}/${defaultModel.modelId}`
+      this.brain = new Brain(defaultModel, this.config.llmTimeoutMs)
+    }
+
+    this.conversations = new ConversationManager(this.config.dataDir, this.toolRegistry, {
+      buildGlobalPrompt: (scope) => buildGlobalPrompt({
+        memories: this.memory.getEntries('global'),
+        alwaysSkills: this.skills.getAlwaysActive(),
+        skillIndex: this.skills.list(),
+        pipelines: [],
+        scope,
+      }),
+    })
+
+    this.toolExecutor = new ToolExecutor(this.toolRegistry, this.config)
+    this.loop = new WevraLoop(this.brain, this.toolExecutor, this.toolRegistry, this.skills, this.memory, this.config)
+  }
+
+  async init(): Promise<void> {
+    await this.conversations.loadAll()
+  }
+
+  async chat(message: string, conversationId: string, callbacks?: LoopCallbacks & { providerId?: string; modelId?: string }): Promise<LoopResult & { conversationId: string }> {
+    if (!this.brain) return { type: 'error', content: 'No LLM model configured', iterations: 0, conversationId }
+
+    let brain = this.brain
+    let loop = this.loop
+
+    if (callbacks?.providerId && callbacks?.modelId) {
+      const newModel = resolveModel(callbacks.providerId, callbacks.modelId)
+      if (!newModel) return { type: 'error', content: `Model "${callbacks.providerId}/${callbacks.modelId}" disabled`, iterations: 0, conversationId }
+      const newModelId = `${newModel.providerId}/${newModel.modelId}`
+      if (newModelId !== this.currentModelId) {
+        brain = new Brain(newModel, this.config.llmTimeoutMs)
+        loop = new WevraLoop(brain, this.toolExecutor, this.toolRegistry, this.skills, this.memory, this.config)
+      }
+    }
+
+    const conv = this.conversations.getConversation(conversationId)
+    if (!conv) return { type: 'error', content: 'Conversation not found', iterations: 0, conversationId }
+
+    const userMsg = { role: 'user' as const, content: message }
+    await this.conversations.appendMessage(conversationId, userMsg)
+    const fullHistory = await this.conversations.getFullMessages(conversationId)
+
+    brain.setDebugCallback(callbacks?.onDebug ? (dbg) => callbacks.onDebug!(dbg) : null)
+
+    const session: SessionData = { id: `sess-${conv.id}`, conversationId: conv.id, frozenPrompt: conv.frozenPrompt, frozenTools: this.toolRegistry.toToolDefinitions() }
+    const result = await loop.run(fullHistory, session, callbacks)
+    return { ...result, conversationId: conv.id }
+  }
+
+  async newConversation() { return this.conversations.createConversation('global') }
+  async renameConversation(id: string, title: string) { return this.conversations.renameConversation(id, title) }
+
+  getConversations() { return this.conversations.listConversations() }
+  async viewConversation(id: string) { return this.conversations.viewConversation(id) }
+
+  getAvailableModels() { return getAvailableModels() }
+  getDefaultModelId() { return getDefaultModelId() }
+
+  getStatus() {
+    return { conversations: this.conversations.listConversations().length, tools: this.toolRegistry.size, skills: this.skills.size, model: this.currentModelId, modelsAvailable: this.brain ? getAvailableModels().length : 0 }
+  }
+
+  private registerTools() {
+    for (const tool of [...pipelineTools, ...agentTools, ...artifactTools, ...sessionTools, ...systemTools, ...webTools]) this.toolRegistry.register(tool)
+    for (const tool of createMemoryTools(this.memory)) this.toolRegistry.register(tool)
+    for (const tool of createSkillTools(this.skills)) this.toolRegistry.register(tool)
+  }
+}

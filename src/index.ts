@@ -10,6 +10,9 @@ import { createApiHandler } from "./server/http-handler";
 import { createWsBroker } from "./transport/ws-broker";
 import { createWsRequestHandler } from "./transport/ws-handler";
 import { registerAllWsMethods } from "./transport/ws-methods/register-all";
+import { initWevraWs } from "./transport/ws-methods/wevra";
+import { WevraAgent } from "./wevra";
+import { getAvailableModels } from "./wevra/config";
 import { resolveTaskMeldDataPath } from "./app/data-dir";
 import { createPipelineService } from "./services/pipeline-service";
 import { createSchedulerService } from "./services/scheduler-service";
@@ -108,6 +111,12 @@ if (require.main === module) {
     handleRequest: wsHandler.handleMessage,
   });
   app.runtime.setBroadcast(wsBroker.broadcast);
+
+  // Initialize Wevra Agent
+  const wevraAgent = new WevraAgent();
+  initWevraWs(wevraAgent, wsBroker);
+  await wevraAgent.init();  // 恢复对话
+  console.log(`wevra-ready  model=${wevraAgent.getStatus().model}  tools=${wevraAgent.toolRegistry.size}  conversations=${wevraAgent.getStatus().conversations}`);
 
   void appContext.initialize();
 
