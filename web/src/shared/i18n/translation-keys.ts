@@ -376,6 +376,7 @@ export type modalKey =
 
 export type navKey =
   | "overview"
+  | "wevra"
   | "agents"
   | "pipeline"
   | "pipelineRuns"
@@ -925,6 +926,7 @@ export type TranslationKey =
   | "modal:deleteGroupNote"
   | "modal:workflowJsonLabel"
   | "nav:overview"
+  | "nav:wevra"
   | "nav:agents"
   | "nav:pipeline"
   | "nav:pipelineRuns"

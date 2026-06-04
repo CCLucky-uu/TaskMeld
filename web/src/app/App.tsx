@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ControlPlanePage } from "../pages/control-plane/ui/ControlPlanePage";
 import type { NavKey } from "../widgets/nav-panel/model/navItem";
+import { WevraChatPanel } from "../widgets/wevra-panel/ui/WevraChatPanel";
 import i18n from "../shared/i18n";
 
 const PIPELINE_ROUTE_PATH = "/pipeline";
@@ -157,6 +158,7 @@ export default function App() {
         {t("skipToContent")}
       </a>
       {content}
+      <WevraChatPanel />
     </>
   );
 }

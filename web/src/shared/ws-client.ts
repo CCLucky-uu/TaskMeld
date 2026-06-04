@@ -21,10 +21,8 @@ export class ApiError extends Error {
 type PendingRequest = {
   resolve: (payload: unknown) => void;
   reject: (error: Error) => void;
-  timer: ReturnType<typeof setTimeout>;
 };
 
-const DEFAULT_TIMEOUT_MS = 15_000;
 let requestCounter = 0;
 const pending = new Map<string, PendingRequest>();
 const eventHandlers = new Set<(event: GatewayWsEvent) => void>();
@@ -63,7 +61,6 @@ const connect = (): Promise<void> => {
       try { frame = JSON.parse(raw.data as string); } catch { return; }
       if (frame.type === "res" && frame.id && pending.has(frame.id)) {
         const entry = pending.get(frame.id)!;
-        clearTimeout(entry.timer);
         pending.delete(frame.id);
         if (frame.ok) entry.resolve(frame.payload);
         else entry.reject(new ApiError(String(frame.error ?? "request_failed"), 500, frame.error));
@@ -97,11 +94,7 @@ export const wsRequest = async <T = unknown>(
   await connect();
   const id = `req-${++requestCounter}`;
   return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => {
-      pending.delete(id);
-      reject(new Error(`request_timeout:${method}`));
-    }, DEFAULT_TIMEOUT_MS);
-    pending.set(id, { resolve: resolve as (p: unknown) => void, reject, timer });
+    pending.set(id, { resolve: resolve as (p: unknown) => void, reject });
     ws!.send(JSON.stringify({ type: "req", id, method, params }));
   });
 };

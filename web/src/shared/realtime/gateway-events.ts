@@ -48,7 +48,7 @@ export type GatewayWsEvent =
   | { type: "gateway.frame"; payload?: GatewayFramePayload }
   | { type: "pipeline.updated"; payload?: PipelineUpdatedPayload }
   | { type: "timeline.updated"; payload?: TimelineUpdatedPayload }
-  | { type: string; payload?: unknown };
+  | { type: string; method?: string; payload?: unknown };
 
 export type GatewayWsHandlers = {
   bootstrap?: (payload?: GatewayBootstrapPayload) => void;
@@ -62,12 +62,13 @@ export type GatewayWsHandlers = {
 
 export function parseGatewayWsEvent(raw: string): GatewayWsEvent | null {
   try {
-    const parsed = JSON.parse(raw) as { type?: unknown; payload?: unknown };
+    const parsed = JSON.parse(raw) as { type?: unknown; method?: unknown; payload?: unknown };
     if (typeof parsed?.type !== "string") {
       return null;
     }
     return {
       type: parsed.type,
+      ...(typeof parsed.method === "string" ? { method: parsed.method } : {}),
       payload: parsed.payload,
     };
   } catch {
