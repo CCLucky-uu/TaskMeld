@@ -11,6 +11,26 @@ export interface ToolAnnotations {
 
 export type PermissionLevel = 'auto' | 'confirm' | 'elevated'
 
+export type ExecutionMode = 'plan' | 'normal' | 'auto'
+
+export interface ToolPreferences {
+  mode: ExecutionMode
+  alwaysAllow: string[]
+  alwaysDeny: string[]
+}
+
+export const DEFAULT_TOOL_PREFERENCES: ToolPreferences = {
+  mode: 'normal',
+  alwaysAllow: [],
+  alwaysDeny: [],
+}
+
+export interface ConfirmRequest {
+  toolCallId: string
+  toolName: string
+  toolArgs: Record<string, unknown>
+}
+
 export interface ToolDefinition {
   name: string
   description: string
@@ -28,6 +48,7 @@ export interface ToolCall {
 export interface ToolResult {
   output: string
   isError: boolean
+  needsConfirmation?: boolean
   toolCallId?: string
   metadata?: Record<string, unknown>
   attachments?: Attachment[]
@@ -54,6 +75,7 @@ export interface Tool extends ToolDefinition {
 export interface ToolContext {
   sessionId: string
   messageId: string
+  preferences: ToolPreferences
   abortSignal: AbortSignal
   requestPermission(action: string): Promise<boolean>
   services: unknown
@@ -109,6 +131,8 @@ export type StreamEventType =
   | 'tool_delta'
   | 'tool_end'
   | 'step_finish'
+  | 'confirm_request'
+  | 'confirm_response'
   | 'error'
 
 export interface StreamEvent {

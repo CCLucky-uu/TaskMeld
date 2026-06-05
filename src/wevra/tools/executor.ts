@@ -1,7 +1,9 @@
-import type { ToolCall, ToolResult, ToolContext } from '../types'
+import type { ToolCall, ToolResult, ToolContext, ToolPreferences } from '../types'
+import { DEFAULT_TOOL_PREFERENCES } from '../types'
 import type { ToolRegistry } from './registry'
 import type { WevraConfig } from '../config'
 import { truncateOutput } from './result'
+import { resolvePermission } from '../preferences'
 
 export class ToolExecutor {
   constructor(
@@ -40,7 +42,23 @@ export class ToolExecutor {
       }
     }
 
-    // Step 3: 鉴权（Phase 1 全部放行）
+    // Step 3: permission
+    const prefs = ctx.preferences ?? DEFAULT_TOOL_PREFERENCES
+    const result = resolvePermission(call.name, tool.annotations, prefs)
+    console.log(`[wevra:perm] tool=${call.name} mode=${prefs.mode} readOnly=${tool.annotations.readOnly} destructive=${tool.annotations.destructive} requiresConfirm=${tool.annotations.requiresConfirmation} → ${result.decision}`)
+    if (result.decision === 'deny') {
+      return {
+        output: result.reason!,
+        isError: true,
+      }
+    }
+    if (result.decision === 'confirm') {
+      return {
+        output: `Confirmation required for "${call.name}".`,
+        isError: false,
+        needsConfirmation: true,
+      }
+    }
 
     // Step 4: 执行（带超时 + AbortSignal）
     const controller = new AbortController()

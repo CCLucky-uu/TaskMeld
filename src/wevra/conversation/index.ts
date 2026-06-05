@@ -3,7 +3,7 @@ import { existsSync, createReadStream } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { createHash } from 'node:crypto'
 import { createInterface } from 'node:readline'
-import type { Message, ToolDefinition } from '../types'
+import type { Message, ToolDefinition, ToolPreferences } from '../types'
 import type { ToolRegistry } from '../tools/registry'
 
 // ── 类型 ──
@@ -21,6 +21,7 @@ export interface ConversationMeta {
   archived: boolean
   frozenPrompt: string
   frozenTools: string[]
+  toolPreferences?: ToolPreferences
 }
 
 interface ConversationIndex {
@@ -268,6 +269,33 @@ export class ConversationManager {
   getConversation(id: string): ConversationMeta | undefined {
     if (!this.index) return undefined
     return this.index.conversations.find(c => c.id === id)
+  }
+
+  async setToolPreference(
+    id: string,
+    key: 'mode' | 'alwaysAllow' | 'alwaysDeny',
+    value: string,
+    action?: 'add' | 'remove',
+  ): Promise<void> {
+    const index = await this.loadIndex()
+    const conv = index.conversations.find(c => c.id === id)
+    if (!conv) return
+    if (!conv.toolPreferences) {
+      conv.toolPreferences = { mode: 'normal', alwaysAllow: [], alwaysDeny: [] }
+    }
+    if (key === 'mode') {
+      conv.toolPreferences.mode = value as ToolPreferences['mode']
+    } else {
+      const list = conv.toolPreferences[key]
+      if (action === 'add' && !list.includes(value)) {
+        list.push(value)
+      } else if (action === 'remove') {
+        const idx = list.indexOf(value)
+        if (idx >= 0) list.splice(idx, 1)
+      }
+    }
+    this.saveIndex()
+    await this.flushIndex()
   }
 }
 

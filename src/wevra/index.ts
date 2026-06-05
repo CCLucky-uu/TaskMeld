@@ -1,4 +1,5 @@
-import type { StreamEvent, LoopResult, RuntimeModelConfig } from './types'
+import type { StreamEvent, LoopResult, RuntimeModelConfig, ToolPreferences } from './types'
+import { DEFAULT_TOOL_PREFERENCES } from './types'
 import { loadConfig, getAvailableModels, getDefaultModelId, resolveModel, type WevraConfig } from './config'
 import { Brain, type DebugCallback } from './brain'
 import { ToolRegistry } from './tools/registry'
@@ -8,6 +9,7 @@ import { WevraMemory } from './memory'
 import { SkillRegistry, createSkillRegistry } from './skills'
 import { WevraLoop, type LoopCallbacks } from './loop/agent-loop'
 import { buildGlobalPrompt } from './loop/prompt-builder'
+import { loadUserPreferences, resolvePreferences, saveUserPreferences } from './preferences'
 
 // Builtin tools
 import { pipelineTools } from './tools/builtin/pipeline'
@@ -30,6 +32,7 @@ export class WevraAgent {
   readonly config: WevraConfig
   private currentModelId: string
   private currentModel: RuntimeModelConfig
+  private userGlobalPrefs: ToolPreferences = { ...DEFAULT_TOOL_PREFERENCES }
 
   constructor(configOverrides?: Partial<WevraConfig> & { model?: RuntimeModelConfig }) {
     this.config = loadConfig(configOverrides)
@@ -67,6 +70,7 @@ export class WevraAgent {
   }
 
   async init(): Promise<void> {
+    this.userGlobalPrefs = await loadUserPreferences(this.config.dataDir)
     await this.conversations.loadAll()
   }
 
@@ -95,8 +99,11 @@ export class WevraAgent {
 
     brain.setDebugCallback(callbacks?.onDebug ? (dbg) => callbacks.onDebug!(dbg) : null)
 
+    const prefs = resolvePreferences(conv.toolPreferences, this.userGlobalPrefs)
+    console.log(`[wevra:prefs] conversationId=${conversationId} convMode=${conv.toolPreferences?.mode ?? 'undefined'} globalMode=${this.userGlobalPrefs.mode} resolvedMode=${prefs.mode}`)
+
     const session: SessionData = { id: `sess-${conv.id}`, conversationId: conv.id, frozenPrompt: conv.frozenPrompt, frozenTools: this.toolRegistry.toToolDefinitions() }
-    const result = await loop.run(fullHistory, session, callbacks)
+    const result = await loop.run(fullHistory, session, callbacks, prefs)
     return { ...result, conversationId: conv.id }
   }
 
@@ -111,6 +118,16 @@ export class WevraAgent {
 
   getStatus() {
     return { conversations: this.conversations.listConversations().length, tools: this.toolRegistry.size, skills: this.skills.size, model: this.currentModelId, modelsAvailable: this.brain ? getAvailableModels().length : 0 }
+  }
+
+  getConversationPreferences(conversationId: string) {
+    const conv = this.conversations.getConversation(conversationId)
+    return resolvePreferences(conv?.toolPreferences, this.userGlobalPrefs)
+  }
+
+  async saveGlobalPreferences(prefs: ToolPreferences): Promise<void> {
+    this.userGlobalPrefs = prefs;
+    await saveUserPreferences(this.config.dataDir, prefs);
   }
 
   private registerTools() {
