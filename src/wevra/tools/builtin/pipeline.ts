@@ -1,8 +1,8 @@
 import type { Tool } from '../../types'
 
 const MOCK_PIPELINES = [
-  { id: 'pipe-001', name: '每日数据报告', description: '每天凌晨拉取数据生成报告', status: 'idle', nodeCount: 3 },
-  { id: 'pipe-002', name: '代码审查流水线', description: '自动代码审查和质量检查', status: 'running', nodeCount: 4 },
+  { id: 'pipe-001', name: 'Daily Data Report', description: 'Fetch data and generate report daily at midnight', status: 'idle', nodeCount: 3 },
+  { id: 'pipe-002', name: 'Code Review Pipeline', description: 'Automated code review and quality checks', status: 'running', nodeCount: 4 },
 ]
 
 export const pipelineTools: Tool[] = [
@@ -36,9 +36,9 @@ export const pipelineTools: Tool[] = [
         output: JSON.stringify({
           ...pipeline,
           nodes: [
-            { id: 'node-1', name: '数据拉取', description: '从 API 拉取原始数据' },
-            { id: 'node-2', name: '数据清洗', description: '去重、格式化' },
-            { id: 'node-3', name: '报告生成', description: '汇总并输出报告' },
+            { id: 'node-1', name: 'Data Fetch', description: 'Fetch raw data from API' },
+            { id: 'node-2', name: 'Data Cleaning', description: 'Deduplicate and format' },
+            { id: 'node-3', name: 'Report Generation', description: 'Aggregate and output report' },
           ],
           edges: [
             { from: 'node-1', to: 'node-2' },

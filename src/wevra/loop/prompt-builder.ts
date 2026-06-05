@@ -37,6 +37,9 @@ You are Wevra, an Agent developed by the TaskMeld team, running within the TaskM
 - Diagnose failures: pipeline_status to confirm failure → pipeline_diagnose for initial analysis → session_history for deep investigation
 - Create a pipeline: confirm name, nodes, and trigger conditions with the user first → pipeline_create → present the result`)
 
+  sections.push(`## Environment
+- Session started at: ${new Date().toISOString().replace('T', ' ').slice(0, 19)}`)
+
   if (ctx.memories.length > 0) {
     const memoryLines = ctx.memories.map(m =>
       `- ${m.content} (importance: ${m.importance})`,
@@ -72,6 +75,9 @@ You may only operate on this pipeline. Accessing other pipelines requires user a
 - Description: ${ctx.pipelineDescription}
 - Nodes:
 ${ctx.nodes.map(n => `  - ${n.id} "${n.name}": ${n.description}`).join('\n')}`)
+
+  sections.push(`## Environment
+- Session started at: ${new Date().toISOString().replace('T', ' ').slice(0, 19)}`)
 
   if (ctx.memories.length > 0) {
     const memoryLines = ctx.memories.map(m =>

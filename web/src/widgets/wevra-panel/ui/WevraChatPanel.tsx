@@ -53,6 +53,8 @@ function ConvBtn({
   onRenameSubmit,
   onEditTitleChange,
   onEditCancel,
+  onArchive,
+  onDelete,
 }: {
   c: ConvMeta;
   isActive: boolean;
@@ -63,29 +65,59 @@ function ConvBtn({
   onRenameSubmit: () => void;
   onEditTitleChange: (title: string) => void;
   onEditCancel: () => void;
+  onArchive?: (id: string) => void;
+  onDelete?: (id: string) => void;
 }) {
-  return editingId === c.id ? (
-    <input
-      autoFocus
-      className="w-full border border-(--live) bg-(--panel) px-1.5 py-1 text-xs text-(--text) outline-none"
-      value={editTitle}
-      onBlur={onRenameSubmit}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") onRenameSubmit();
-        if (e.key === "Escape") onEditCancel();
-      }}
-      onChange={(e) => onEditTitleChange(e.target.value)}
-    />
-  ) : (
-    <button
-      type="button"
-      className={`${navBtn} ${isActive ? activeBg : inactiveBg}`}
-      onClick={() => onSelect(c.id)}
-      onDoubleClick={() => onDoubleClick(c.id, c.title)}
-      title={c.title}
-    >
-      {c.title}
-    </button>
+  if (editingId === c.id) {
+    return (
+      <input
+        autoFocus
+        className="w-full border border-(--live) bg-(--panel) px-1.5 py-1 text-xs text-(--text) outline-none"
+        value={editTitle}
+        onBlur={onRenameSubmit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") onRenameSubmit();
+          if (e.key === "Escape") onEditCancel();
+        }}
+        onChange={(e) => onEditTitleChange(e.target.value)}
+      />
+    );
+  }
+  return (
+    <div className="group relative">
+      <button
+        type="button"
+        className={`${navBtn} ${isActive ? activeBg : inactiveBg} pr-8`}
+        onClick={() => onSelect(c.id)}
+        onDoubleClick={() => onDoubleClick(c.id, c.title)}
+        title={c.title}
+      >
+        {c.title}
+      </button>
+      {c.archived ? (
+        onDelete && (
+          <button
+            type="button"
+            className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity border-none bg-transparent cursor-pointer p-0.5 text-[#ff6b6b] hover:text-[#ff4444]"
+            title="Delete permanently"
+            onClick={(e) => { e.stopPropagation(); onDelete(c.id); }}
+          >
+            ✕
+          </button>
+        )
+      ) : (
+        onArchive && (
+          <button
+            type="button"
+            className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity border-none bg-transparent cursor-pointer p-0.5 text-(--muted) hover:text-(--text)"
+            title="Archive"
+            onClick={(e) => { e.stopPropagation(); onArchive(c.id); }}
+          >
+            ⤓
+          </button>
+        )
+      )}
+    </div>
   );
 }
 
@@ -181,15 +213,18 @@ export function WevraChatPanel({
     try {
       const r = (await wsRequest("wevra.conversations.view", {
         conversationId: id,
-      })) as { messages?: RawMessage[] };
+      })) as { messages?: RawMessage[]; lastPromptTokens?: number };
       dispatch({ type: "reset", msgs: restoreMessages(r?.messages ?? []) });
       setConvId(id);
-      setContextUsed(0);
+      setContextUsed(r?.lastPromptTokens ?? 0);
+      // Restore mode from conversation metadata
+      const meta = convs.find((c) => c.id === id);
+      setExecMode(meta?.mode ?? "normal");
     } catch {
       dispatch({ type: "reset", msgs: [] });
       setContextUsed(0);
     }
-  }, []);
+  }, [convs]);
 
   // WS
   useEffect(() => {
@@ -395,6 +430,35 @@ export function WevraChatPanel({
     setEditingId(null);
   }, [editingId, editTitle]);
 
+  const refreshConvs = useCallback(async () => {
+    try {
+      const list = (await wsRequest("wevra.conversations.list", {})) as {
+        conversations?: ConvMeta[];
+      };
+      setConvs(list?.conversations ?? []);
+    } catch { /* */ }
+  }, []);
+
+  const archiveConv = useCallback(async (id: string) => {
+    await wsRequest("wevra.conversations.archive", { conversationId: id }).catch(() => {});
+    await refreshConvs();
+    if (activeId === id) {
+      const fresh = convs.filter((c) => !c.archived && c.id !== id);
+      const next = fresh.sort((a, b) => (b.lastActiveAt ?? 0) - (a.lastActiveAt ?? 0))[0];
+      if (next) { setActiveId(next.id); await loadConv(next.id); }
+    }
+  }, [activeId, convs, refreshConvs, loadConv]);
+
+  const deleteConv = useCallback(async (id: string) => {
+    await wsRequest("wevra.conversations.delete", { conversationId: id }).catch(() => {});
+    await refreshConvs();
+    if (activeId === id) {
+      const remaining = convs.filter((c) => c.id !== id);
+      const next = remaining.sort((a, b) => (b.lastActiveAt ?? 0) - (a.lastActiveAt ?? 0))[0];
+      if (next) { setActiveId(next.id); await loadConv(next.id); }
+    }
+  }, [activeId, convs, refreshConvs, loadConv]);
+
   // Group by scope
   const globalConvs = convs.filter((c) => (c.scope ?? "global") === "global");
   const pipelineConvs = convs.filter((c) => (c.scope ?? "global") !== "global");
@@ -499,6 +563,7 @@ export function WevraChatPanel({
                   onRenameSubmit={renameDone}
                   onEditTitleChange={setEditTitle}
                   onEditCancel={() => setEditingId(null)}
+                  onArchive={archiveConv}
                 />
               ))}
               </div>
@@ -517,6 +582,7 @@ export function WevraChatPanel({
                       onRenameSubmit={renameDone}
                       onEditTitleChange={setEditTitle}
                       onEditCancel={() => setEditingId(null)}
+                      onDelete={deleteConv}
                     />
                   ))}
                 </>
@@ -536,6 +602,7 @@ export function WevraChatPanel({
                       onRenameSubmit={renameDone}
                       onEditTitleChange={setEditTitle}
                       onEditCancel={() => setEditingId(null)}
+                      onArchive={archiveConv}
                     />
                   ))}
                   {arch.length > 0 && (
@@ -553,6 +620,7 @@ export function WevraChatPanel({
                           onRenameSubmit={renameDone}
                           onEditTitleChange={setEditTitle}
                           onEditCancel={() => setEditingId(null)}
+                          onDelete={deleteConv}
                         />
                       ))}
                     </>

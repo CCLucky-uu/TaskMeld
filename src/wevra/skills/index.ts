@@ -32,52 +32,52 @@ export class SkillRegistry {
   }
 }
 
-// ── 内置 Skills ──
+// ── Built-in Skills ──
 
 export const BUILTIN_SKILLS: SkillDef[] = [
   {
     name: 'core-behavior',
-    description: '核心行为规范',
+    description: 'Core behavior guidelines',
     invocation: 'always',
-    content: `## 行为规范
-- 不确定时问用户，不要猜测
-- 破坏性操作（删除等）前先确认
-- 工具调用失败时先分析原因再重试，不要直接放弃
-- 回答简洁，避免冗余
-- 使用中文回复`,
+    content: `## Behavior Guidelines
+- When uncertain, ask the user. Never guess or fabricate data.
+- Confirm with the user before destructive operations (e.g., deletion).
+- When a tool call fails, analyze the cause before retrying. Do not give up immediately.
+- Be concise. Avoid redundancy.
+- Reply in English.`,
   },
   {
     name: 'pipeline-management',
-    description: '创建和管理 pipeline 的推荐流程',
+    description: 'Recommended workflow for creating and managing pipelines',
     invocation: 'auto',
-    content: `## Pipeline 管理流程
-当用户要创建或修改 pipeline 时：
-1. 先用 pipeline.list 查看现有 pipeline，避免重复
-2. 如果是修改，先用 pipeline.get 查看当前定义
-3. 创建/修改后确认结果
-4. 如需运行，用 pipeline.run 启动
+    content: `## Pipeline Management Workflow
+When the user wants to create or modify a pipeline:
+1. Start with pipeline_list to review existing pipelines and avoid duplicates.
+2. If modifying, use pipeline_get to inspect the current definition first.
+3. After creation/modification, confirm the result.
+4. If a run is needed, use pipeline_run to start it.
 
-注意事项：
-- Pipeline 名称应简洁明了
-- 创建前确认用户的需求，不要假设节点结构`,
+Notes:
+- Pipeline names should be concise and descriptive.
+- Confirm the user's requirements before creation. Do not assume the node structure.`,
   },
   {
     name: 'failure-diagnosis',
-    description: '分析 pipeline 运行失败的原因并给出修复建议',
+    description: 'Analyze pipeline run failures and provide fix suggestions',
     invocation: 'auto',
-    content: `## 失败诊断流程
-当 pipeline 运行失败时：
-1. 用 pipeline.status 查看整体运行状态
-2. 用 pipeline.diagnose 获取初步分析
-3. 如果需要深入：
-   - 用 session.history 查看该节点 agent 的对话历史
-   - 用 artifact.get 读取该节点的输出产物
-4. 综合信息后给出：
-   - 失败根因
-   - 影响范围
-   - 修复建议
+    content: `## Failure Diagnosis Workflow
+When a pipeline run fails:
+1. Use pipeline_status to check the overall run state.
+2. Use pipeline_diagnose for an initial analysis.
+3. If deeper investigation is needed:
+   - Use session_history to review the agent conversation history for that node.
+   - Use artifact_get to read the output artifacts from that node.
+4. Synthesize the information to provide:
+   - Root cause of the failure.
+   - Scope of impact.
+   - Suggested fix.
 
-不要猜测失败原因，必须基于实际数据。`,
+Do not guess the failure cause. Base your analysis on actual data.`,
   },
 ]
 

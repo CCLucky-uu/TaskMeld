@@ -28,7 +28,7 @@ export class Brain {
 
   async summarize(messages: Message[]): Promise<string> {
     const response = await this.client.chat([
-      { role: 'system', content: '你是一个对话摘要助手。将以下对话压缩为简洁的摘要，保留关键信息、决策和未完成的任务。用中文回复。' },
+      { role: 'system', content: 'You are a conversation summarizer. Compress the following conversation into a concise summary, preserving key information, decisions, and pending tasks. Reply in English.' },
       { role: 'user', content: formatMessages(messages) },
     ])
     return response.content

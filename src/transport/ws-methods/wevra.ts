@@ -76,7 +76,15 @@ export const registerWevraWsMethods = (registry: WsMethodRegistry): void => {
     try {
       const id = typeof params.conversationId === "string" ? params.conversationId.trim() : "";
       if (!id) return { ok: false, error: "conversation_id_required" };
-      return { ok: true, payload: { messages: await wevraInstance.viewConversation(id) } };
+      const conv = wevraInstance.getConversations().find(c => c.id === id);
+      return {
+        ok: true,
+        payload: {
+          messages: await wevraInstance.viewConversation(id),
+          lastPromptTokens: conv?.lastPromptTokens ?? 0,
+          lastCompletionTokens: conv?.lastCompletionTokens ?? 0,
+        },
+      };
     } catch (error) { return { ok: false, error: formatError(error) }; }
   });
 
@@ -99,6 +107,26 @@ export const registerWevraWsMethods = (registry: WsMethodRegistry): void => {
     } catch (error) { return { ok: false, error: formatError(error) }; }
   });
 
+  registry.register("wevra.conversations.archive", async (params) => {
+    if (!wevraInstance) return { ok: false, error: "wevra_not_initialized" };
+    try {
+      const id = typeof params.conversationId === "string" ? params.conversationId.trim() : "";
+      if (!id) return { ok: false, error: "conversation_id_required" };
+      await wevraInstance.conversations.archiveConversation(id);
+      return { ok: true, payload: {} };
+    } catch (error) { return { ok: false, error: formatError(error) }; }
+  });
+
+  registry.register("wevra.conversations.delete", async (params) => {
+    if (!wevraInstance) return { ok: false, error: "wevra_not_initialized" };
+    try {
+      const id = typeof params.conversationId === "string" ? params.conversationId.trim() : "";
+      if (!id) return { ok: false, error: "conversation_id_required" };
+      await wevraInstance.conversations.deleteConversation(id);
+      return { ok: true, payload: {} };
+    } catch (error) { return { ok: false, error: formatError(error) }; }
+  });
+
   // ── 聊天 ──
 
   registry.register("wevra.chat", async (params) => {
@@ -111,8 +139,28 @@ export const registerWevraWsMethods = (registry: WsMethodRegistry): void => {
       const providerId = typeof params.provider === "string" ? params.provider.trim() : undefined;
       const modelId = typeof params.model === "string" ? params.model.trim() : undefined;
 
+      // Insert mode marker if mode changed since last saved marker
+      const convMeta = wevraInstance.getConversations().find(c => c.id === conversationId);
+      const currentMode = convMeta?.mode ?? "normal";
+      const messages = await wevraInstance.viewConversation(conversationId);
+      let lastSavedMode = "";
+      for (let i = messages.length - 1; i >= 0; i--) {
+        const m = messages[i];
+        if (m.role === "system") {
+          const match = m.content.match(/^\[mode:(\w+)\]$/);
+          if (match) { lastSavedMode = match[1]; break; }
+        }
+      }
+      if (currentMode !== lastSavedMode) {
+        await wevraInstance.conversations.appendMessage(conversationId, { role: "system", content: `[mode:${currentMode}]` });
+      }
+
       const onStream = (event: StreamEvent) => {
         if (!brokerInstance) return;
+        // Persist token usage to conversation index
+        if (event.usage) {
+          wevraInstance!.conversations.updateTokenUsage(conversationId, event.usage.promptTokens, event.usage.completionTokens).catch(() => {});
+        }
         brokerInstance.broadcast({ type: "event", method: "wevra.stream", payload: { sessionId: conversationId, stream: mapStreamType(event.type), phase: mapStreamPhase(event.type), content: event.content, toolCall: event.toolCall, toolResult: event.toolResult, usage: event.usage, error: event.error } });
       };
       const onDebug = (dbg: unknown) => {

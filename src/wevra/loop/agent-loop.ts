@@ -9,10 +9,16 @@ import type { SessionData } from '../conversation'
 import type { WevraConfig } from '../config'
 import { generateMessageId } from '../util'
 
+const MODE_PROMPTS: Record<string, string> = {
+  normal: 'Normal mode is active. Read-only tools execute freely. Write and destructive tools require user confirmation before execution.',
+  plan: 'Plan mode is active. You have read-only access — write and destructive tools are unavailable until the user switches mode.',
+  auto: 'Auto mode is active. All tools are available without confirmation.',
+}
+
 export interface LoopCallbacks {
   onStream?: (event: StreamEvent) => void
   onDebug?: (payload: unknown) => void
-  /** 消息写入回调 — 循环中每产生 assistant/tool 消息时调用 */
+  /** Message write callback — called for each assistant/tool message produced in the loop */
   onMessage?: (message: Message) => Promise<void>
   onConfirm?: (req: ConfirmRequest) => Promise<'allow' | 'deny' | 'always-allow'>
 }
@@ -41,31 +47,27 @@ export class WevraLoop {
     while (iterations < this.config.maxIterations) {
       iterations++
 
-      // 构建请求消息：frozen prompt (cacheable) + history + dynamic context
-      const modeStr = preferences?.mode ?? 'normal'
-      const modePrompt = modeStr === 'plan'
-        ? `Plan mode is active. You have read-only access — write and destructive tools are unavailable until the user switches mode.`
-        : modeStr === 'auto'
-        ? `Auto mode is active. All tools are available without confirmation.`
-        : ''
-      let lastUserIdx = -1
-      for (let i = fullHistory.length - 1; i >= 0; i--) {
-        if (fullHistory[i].role === 'user') { lastUserIdx = i; break }
-      }
-      const segments: Message[] = [
-        { role: 'system', content: session.frozenPrompt },
-        ...fullHistory.slice(0, lastUserIdx),
-      ]
-      if (modePrompt) {
-        segments.push({ role: 'system', content: modePrompt })
-      }
-      segments.push(...fullHistory.slice(lastUserIdx))
-      const requestMessages = segments
+      // Build request messages: frozen prompt (cacheable) + history with mode markers expanded
+      const expandedHistory = fullHistory.map(msg => {
+        if (msg.role === 'system') {
+          const match = msg.content.match(/^\[mode:(\w+)\]$/)
+          if (match) {
+            const prompt = MODE_PROMPTS[match[1]] ?? ''
+            return prompt ? { ...msg, content: prompt } : null
+          }
+        }
+        return msg
+      }).filter((msg): msg is Message => msg !== null)
 
-      // LLM 推理（流式）
+      const requestMessages: Message[] = [
+        { role: 'system', content: session.frozenPrompt },
+        ...expandedHistory,
+      ]
+
+      // LLM inference (streaming)
       let assistantContent = ''
       const toolCalls: ToolCall[] = []
-      let reasoningContent = ''  // DeepSeek reasoning_content 需要回传
+      let reasoningContent = ''  // DeepSeek reasoning_content must be passed back
 
       for await (const event of this.brain.streamChat(requestMessages, allTools)) {
         callbacks?.onStream?.(event)
@@ -83,7 +85,7 @@ export class WevraLoop {
         }
       }
 
-      // 追加 assistant 消息
+      // Append assistant message
       const assistantMsg: Message = {
         role: 'assistant',
         content: assistantContent,
@@ -93,7 +95,7 @@ export class WevraLoop {
       fullHistory.push(assistantMsg)
       await callbacks?.onMessage?.(assistantMsg)
 
-      // 无 tool calls → 结束
+      // No tool calls → done
       if (toolCalls.length === 0) {
         return {
           type: 'text',
@@ -102,11 +104,11 @@ export class WevraLoop {
         }
       }
 
-      // 执行 tool calls
+      // Execute tool calls
       const toolCtx = this.buildToolContext(session.id, preferences ?? DEFAULT_TOOL_PREFERENCES)
       const results = await this.executor.executeAll(toolCalls, toolCtx)
 
-      // 处理需要确认的 tool calls
+      // Handle tool calls that need user confirmation
       const finalResults: typeof results = []
       for (let i = 0; i < results.length; i++) {
         if (results[i].needsConfirmation && callbacks?.onConfirm) {
@@ -146,7 +148,7 @@ export class WevraLoop {
         }
       }
 
-      // 追加 tool results
+      // Append tool results
       for (let i = 0; i < toolCalls.length; i++) {
         const result = finalResults[i]
         const toolMsg: Message = {
@@ -165,8 +167,7 @@ export class WevraLoop {
         })
       }
 
-      // 循环回到顶部重新从磁盘加载最新历史
-      // （fullHistory 已在内存中更新，无需重新加载）
+      // Loop back to top — fullHistory is already updated in memory, no reload needed
     }
 
     return {

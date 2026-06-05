@@ -56,11 +56,11 @@ class OpenAICompatClient implements LLMClient {
     const decoder = new TextDecoder()
     let buffer = ''
 
-    // 累积 tool call 的状态
+    // Accumulate tool call state
     const toolCalls = new Map<number, { id: string; name: string; arguments: string }>()
     let thinkingStarted = false
     let textStarted = false
-    let reasoningContent = ''  // 累积 reasoning_content 用于回传
+    let reasoningContent = ''  // Accumulate reasoning_content for passthrough
 
     try {
       while (true) {
@@ -85,8 +85,8 @@ class OpenAICompatClient implements LLMClient {
             const delta = chunk.choices?.[0]?.delta
             if (!delta) continue
 
-            // DeepSeek reasoning_content — 仅当有实际内容时才视为 thinking
-            // DeepSeek V4 在回复阶段会发 reasoning_content: "NULL" 字符串，需要过滤
+            // DeepSeek reasoning_content — only treat as thinking when there is actual content
+            // DeepSeek V4 sends reasoning_content: "NULL" string during reply phase, must be filtered
             const hasReasoning = delta.reasoning_content !== undefined
               && delta.reasoning_content !== null
               && delta.reasoning_content !== 'NULL'
@@ -102,17 +102,17 @@ class OpenAICompatClient implements LLMClient {
               continue
             }
 
-            // 如果 reasoning_content 字段存在但为空值，说明 thinking 已结束
+            // If reasoning_content field exists but is empty, thinking has ended
             if (delta.reasoning_content !== undefined && thinkingStarted) {
               yield { type: 'thinking_end' }
               thinkingStarted = false
             }
 
-            // 文本内容 — 过滤 DeepSeek 的 "NULL" 占位
+            // Text content — filter DeepSeek's "NULL" placeholder
             const content = delta.content
             if (content && content !== 'NULL') {
               if (!textStarted) {
-                // 思考结束（如果有）
+                // End thinking (if active)
                 if (thinkingStarted) {
                   yield { type: 'thinking_end' }
                   thinkingStarted = false
@@ -129,7 +129,7 @@ class OpenAICompatClient implements LLMClient {
                 const idx = tc.index
                 if (!toolCalls.has(idx)) {
                   toolCalls.set(idx, { id: tc.id ?? '', name: '', arguments: '' })
-                  // 不在此处 yield tool_start，等 finish_reason 到后再吐出完整参数
+                  // Don't yield tool_start here; wait for finish_reason to emit complete arguments
                 }
                 const existing = toolCalls.get(idx)!
                 if (tc.id) existing.id = tc.id
@@ -138,7 +138,7 @@ class OpenAICompatClient implements LLMClient {
               }
             }
 
-            // Usage（流式结束时可能有）
+            // Usage (may be present at end of stream)
             if (chunk.usage) {
               yield {
                 type: 'step_finish',
@@ -155,8 +155,12 @@ class OpenAICompatClient implements LLMClient {
               }
               if (textStarted && finishReason !== 'tool_calls') {
                 yield { type: 'text_end' }
+                // Pass reasoning_content for non-tool-call responses
+                if (reasoningContent) {
+                  yield { type: 'step_finish', content: reasoningContent }
+                }
               }
-              // 如果是 tool_calls，yield 完整累积的 tool calls + reasoning_content
+              // If tool_calls, yield accumulated tool calls + reasoning_content
               if (finishReason === 'tool_calls' && toolCalls.size > 0) {
                 for (const tc of toolCalls.values()) {
                   yield {
@@ -168,14 +172,14 @@ class OpenAICompatClient implements LLMClient {
                     },
                   }
                 }
-                // 把 reasoning_content 通过 step_finish 带给 agent-loop
+                // Pass reasoning_content to agent-loop via step_finish
                 if (reasoningContent) {
                   yield { type: 'step_finish', content: reasoningContent }
                 }
               }
             }
           } catch {
-            // 忽略无法解析的行
+            // Ignore unparseable lines
           }
         }
       }
@@ -184,7 +188,7 @@ class OpenAICompatClient implements LLMClient {
     }
   }
 
-  // ── 内部方法 ──
+  // ── Internal methods ──
 
   private buildUrl(path: string): string {
     const base = this.modelConfig.baseUrl.replace(/\/+$/, '')
@@ -200,12 +204,12 @@ class OpenAICompatClient implements LLMClient {
       stream,
     }
 
-    // max_tokens 字段名由 compat 决定
+    // max_tokens field name is determined by compat
     if (this.modelConfig.maxTokens) {
       req[compat.maxTokensField] = this.modelConfig.maxTokens
     }
 
-    // temperature — 思考模式下被忽略则不发送
+    // temperature — skip if ignored in thinking mode
     if (!(compat.temperatureIgnoredInThinking && thinking)) {
       req.temperature = 1
     }
@@ -224,7 +228,7 @@ class OpenAICompatClient implements LLMClient {
       req.reasoning_effort = 'high'
     }
 
-    // DeepSeek 特有：extra_body thinking toggle
+    // DeepSeek-specific: extra_body thinking toggle
     if (compat.extraBodyThinkingToggle && thinking) {
       req.extra_body = { thinking: { type: 'enabled' } }
     }
@@ -247,7 +251,7 @@ class OpenAICompatClient implements LLMClient {
         return {
           role: 'assistant',
           content: m.content || null,
-          // 仅 DeepSeek 需要回传
+          // Only DeepSeek needs passthrough
           ...(compat.requiresReasoningContentPassthrough && m.reasoningContent
             ? { reasoning_content: m.reasoningContent }
             : {}),
@@ -326,7 +330,7 @@ class OpenAICompatClient implements LLMClient {
 
 }
 
-// ── 工具函数 ──
+// ── Utilities ──
 
 function safeParseJSON(raw: string): Record<string, unknown> {
   try { return JSON.parse(raw) } catch { /* continue */ }

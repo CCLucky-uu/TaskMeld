@@ -1,4 +1,4 @@
-import { appendFile, mkdir, writeFile, readFile, rename, unlink } from 'node:fs/promises'
+import { appendFile, mkdir, writeFile, readFile, unlink } from 'node:fs/promises'
 import { existsSync, createReadStream } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { createHash } from 'node:crypto'
@@ -6,7 +6,7 @@ import { createInterface } from 'node:readline'
 import type { Message, ToolDefinition, ToolPreferences } from '../types'
 import type { ToolRegistry } from '../tools/registry'
 
-// ── 类型 ──
+// ── Types ──
 
 export type ConversationScope = 'global' | `pipeline:${string}`
 
@@ -21,14 +21,17 @@ export interface ConversationMeta {
   archived: boolean
   frozenPrompt: string
   frozenTools: string[]
+  mode: 'plan' | 'normal' | 'auto'
   toolPreferences?: ToolPreferences
+  lastPromptTokens?: number
+  lastCompletionTokens?: number
 }
 
 interface ConversationIndex {
   conversations: ConversationMeta[]
 }
 
-// ── 工具函数 ──
+// ── Utilities ──
 
 function generateId(scope: ConversationScope, ts: number): string {
   const prefix = scope === 'global' ? 'global' : scope.replace('pipeline:', 'pipe-')
@@ -52,12 +55,12 @@ export class ConversationManager {
     private promptBuilder: { buildGlobalPrompt(scope?: ConversationScope): string },
   ) {}
 
-  // ── 路径 ──
+  // ── Paths ──
 
   private getIndexPath() { return join(this.dataDir, 'conversations', 'index.json') }
   private getConvPath(id: string) { return join(this.dataDir, 'conversations', `${id}.jsonl`) }
 
-  // ── Index 操作 ──
+  // ── Index operations ──
 
   private async loadIndex(): Promise<ConversationIndex> {
     if (this.index) return this.index
@@ -66,14 +69,14 @@ export class ConversationManager {
 
     if (!existsSync(indexPath)) {
       await mkdir(baseDir, { recursive: true })
-      // 首次启动自动创建默认全局对话
+      // Auto-create a default global conversation on first startup
       const now = Date.now()
       const ts = now
       const id = generateId('global', ts)
       this.index = {
         conversations: [{
           id,
-          title: '新对话',
+          title: 'New conversation',
           scope: 'global',
           messageCount: 0,
           createdAt: now,
@@ -82,6 +85,7 @@ export class ConversationManager {
           archived: false,
           frozenPrompt: this.promptBuilder.buildGlobalPrompt('global'),
           frozenTools: this.registry.toToolDefinitions().map(t => t.name),
+          mode: 'normal',
         }],
       }
       await writeFile(this.getConvPath(id), '')
@@ -103,13 +107,13 @@ export class ConversationManager {
 
   private saveIndex() { this.indexDirty = true }
 
-  // ── 启动恢复 ──
+  // ── Startup recovery ──
 
   async loadAll(): Promise<ConversationMeta[]> {
     const index = await this.loadIndex()
     this.checkArchived()
     await this.flushIndex()
-    // 崩溃恢复：检查所有对话文件末尾完整性，同时填充消息缓存
+    // Crash recovery: check all conversation files for integrity, and populate message cache
     for (const c of index.conversations) {
       await this.repairConvJsonl(c)
       const path = this.getConvPath(c.id)
@@ -120,7 +124,7 @@ export class ConversationManager {
     return index.conversations
   }
 
-  /** 24h 过期检查 */
+  /** 24h expiry check */
   private checkArchived(): void {
     if (!this.index) return
     const now = Date.now()
@@ -134,7 +138,7 @@ export class ConversationManager {
     if (changed) this.saveIndex()
   }
 
-  /** 崩溃恢复：检查 JSONL 末尾 */
+  /** Crash recovery: check JSONL tail integrity */
   private async repairConvJsonl(meta: ConversationMeta): Promise<void> {
     const path = this.getConvPath(meta.id)
     if (!existsSync(path)) return
@@ -150,7 +154,7 @@ export class ConversationManager {
     }
 
     if (toolCallIds.size > 0) {
-      // 从后往前找最后一个有 toolCalls 的 assistant 消息，截断到该消息之前
+      // Find the last assistant message with toolCalls from the end, truncate to before it
       let truncIdx = -1
       for (let i = messages.length - 1; i >= 0; i--) {
         const msg = messages[i]
@@ -159,7 +163,7 @@ export class ConversationManager {
           break
         }
       }
-      // fallback: 找不到 assistant-with-toolcalls 时回退到最后一个 user 消息之前
+      // fallback: if no assistant-with-toolcalls found, fall back to before the last user message
       if (truncIdx < 0) {
         for (let i = messages.length - 1; i >= 0; i--) {
           if (messages[i].role === 'user') { truncIdx = i - 1; break }
@@ -178,7 +182,7 @@ export class ConversationManager {
     }
   }
 
-  // ── 消息读写 ──
+  // ── Message read/write ──
 
   async appendMessage(convId: string, message: Message): Promise<void> {
     const line = JSON.stringify(message)
@@ -192,14 +196,14 @@ export class ConversationManager {
       if (message.role === 'assistant') {
         conv.lastAssistantAt = Date.now()
       }
-      // 发消息自动解档
+      // Sending a message auto-unarchives
       if (conv.archived) {
         conv.archived = false
       }
       this.saveIndex()
       await this.flushIndex()
     }
-    // 同步更新消息缓存
+    // Sync update to message cache
     const cached = this.messageCache.get(convId)
     if (cached) cached.push(message)
   }
@@ -225,14 +229,14 @@ export class ConversationManager {
     return messages
   }
 
-  // ── 对话操作 ──
+  // ── Conversation operations ──
 
   async createConversation(scope: ConversationScope = 'global'): Promise<ConversationMeta> {
     const index = await this.loadIndex()
     const ts = Date.now()
     const conv: ConversationMeta = {
       id: generateId(scope, ts),
-      title: '新对话',
+      title: 'New conversation',
       scope,
       messageCount: 0,
       createdAt: ts,
@@ -241,6 +245,7 @@ export class ConversationManager {
       archived: false,
       frozenPrompt: this.promptBuilder.buildGlobalPrompt(scope),
       frozenTools: this.registry.toToolDefinitions().map(t => t.name),
+      mode: 'normal',
     }
     index.conversations.push(conv)
     await writeFile(this.getConvPath(conv.id), '')
@@ -285,6 +290,7 @@ export class ConversationManager {
     }
     if (key === 'mode') {
       conv.toolPreferences.mode = value as ToolPreferences['mode']
+      conv.mode = value as 'plan' | 'normal' | 'auto'
     } else {
       const list = conv.toolPreferences[key]
       if (action === 'add' && !list.includes(value)) {
@@ -297,9 +303,43 @@ export class ConversationManager {
     this.saveIndex()
     await this.flushIndex()
   }
+
+  async updateTokenUsage(convId: string, promptTokens: number, completionTokens: number): Promise<void> {
+    if (!this.index) return
+    const conv = this.index.conversations.find(c => c.id === convId)
+    if (!conv) return
+    conv.lastPromptTokens = promptTokens
+    conv.lastCompletionTokens = completionTokens
+    this.saveIndex()
+    await this.flushIndex()
+  }
+
+  async archiveConversation(convId: string): Promise<void> {
+    if (!this.index) return
+    const conv = this.index.conversations.find(c => c.id === convId)
+    if (!conv || conv.archived) return
+    conv.archived = true
+    this.saveIndex()
+    await this.flushIndex()
+  }
+
+  async deleteConversation(convId: string): Promise<void> {
+    if (!this.index) return
+    const idx = this.index.conversations.findIndex(c => c.id === convId)
+    if (idx === -1) return
+    this.index.conversations.splice(idx, 1)
+    this.messageCache.delete(convId)
+    this.saveIndex()
+    await this.flushIndex()
+    // Delete the JSONL file
+    const path = this.getConvPath(convId)
+    if (existsSync(path)) {
+      await unlink(path).catch(() => {})
+    }
+  }
 }
 
-// ── Session 数据 ──
+// ── Session data ──
 
 export interface SessionData {
   id: string

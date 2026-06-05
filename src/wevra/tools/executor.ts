@@ -14,7 +14,7 @@ export class ToolExecutor {
   async execute(call: ToolCall, ctx: ToolContext): Promise<ToolResult> {
     const tool = this.registry.get(call.name)
 
-    // Step 1: 查找
+    // Step 1: Lookup
     if (!tool) {
       const available = Array.from(this.registry['tools'].keys()).join(', ')
       return {
@@ -23,7 +23,7 @@ export class ToolExecutor {
       }
     }
 
-    // Step 2: 校验
+    // Step 2: Validate
     if (tool.validate) {
       const result = tool.validate(call.arguments)
       if (!result.valid) {
@@ -60,9 +60,9 @@ export class ToolExecutor {
       }
     }
 
-    // Step 4: 执行（带超时 + AbortSignal）
+    // Step 4: Execute (with timeout + AbortSignal)
     const controller = new AbortController()
-    // 将传入的 abortSignal 链接到新 controller
+    // Chain the incoming abortSignal to the new controller
     ctx.abortSignal.addEventListener('abort', () => controller.abort(), { once: true })
 
     try {
@@ -72,7 +72,7 @@ export class ToolExecutor {
         controller,
       )
 
-      // Step 5: 截断
+      // Step 5: Truncate
       return {
         ...result,
         output: truncateOutput(result.output, this.config.maxToolOutputChars),

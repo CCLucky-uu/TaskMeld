@@ -3,13 +3,13 @@ import { readFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { resolveTaskMeldDataPath } from '../app/data-dir'
 
-// ── Data dir — 复用全局路径规则 ──
+// ── Data dir — reuse global path rules ──
 
 function getDataDir(): string {
   return resolveTaskMeldDataPath('wevra')
 }
 
-// ── 内置厂商库 ──
+// ── Built-in provider library ──
 
 const BUILTIN_PROVIDERS: Record<string, ProviderProfile> = {
   deepseek: {
@@ -102,7 +102,7 @@ const BUILTIN_PROVIDERS: Record<string, ProviderProfile> = {
     ],
   },
   xiaomi: {
-    name: '小米 MiMo',
+    name: 'Xiaomi MiMo',
     baseUrl: 'https://token-plan-cn.xiaomimimo.com/v1',
     api: 'openai-completions',
     models: [
@@ -204,7 +204,7 @@ export interface WevraConfig {
   dataDir: string
 }
 
-// ── 加载配置 ──
+// ── Load config ──
 
 export function loadConfig(overrides?: Partial<WevraConfig>): WevraConfig {
   const dataDir = getDataDir()
@@ -231,7 +231,7 @@ export function loadConfig(overrides?: Partial<WevraConfig>): WevraConfig {
   }
 }
 
-// ── 模型管理 ──
+// ── Model management ──
 
 let _modelsCache: { models: RuntimeModelConfig[]; defaultModel: string } | null = null
 
@@ -250,7 +250,7 @@ export function resolveModel(providerId: string, modelId: string): RuntimeModelC
   const found = models.find(m => `${m.providerId}/${m.modelId}` === key)
   if (found) return found
 
-  // 不在 enabledModels 中
+  // Not in enabledModels
   return null
 }
 
@@ -270,7 +270,7 @@ function loadModels(): { models: RuntimeModelConfig[]; defaultModel: string } {
   const dataDir = getDataDir()
   const modelsJsonPath = join(dataDir, 'models.json')
 
-  // 加载 models.json
+  // Load models.json
   let userConfig: ModelsJson | null = null
   if (existsSync(modelsJsonPath)) {
     try {
@@ -280,7 +280,7 @@ function loadModels(): { models: RuntimeModelConfig[]; defaultModel: string } {
     }
   }
 
-  // 合并 provider 数据源：内置 + 用户配置
+  // Merge provider data sources: built-in + user config
   const providerMap = new Map<string, {
     baseUrl: string
     api: string
@@ -288,7 +288,7 @@ function loadModels(): { models: RuntimeModelConfig[]; defaultModel: string } {
     models: typeof BUILTIN_PROVIDERS[string]['models']
   }>()
 
-  // 内置厂商
+  // Built-in providers
   for (const [id, p] of Object.entries(BUILTIN_PROVIDERS)) {
     providerMap.set(id, {
       baseUrl: p.baseUrl,
@@ -298,14 +298,14 @@ function loadModels(): { models: RuntimeModelConfig[]; defaultModel: string } {
     })
   }
 
-  // 用户配置覆盖
+  // User config overrides
   if (userConfig?.providers) {
     for (const [id, p] of Object.entries(userConfig.providers)) {
       if (providerMap.has(id)) {
         const existing = providerMap.get(id)!
         if (p.baseUrl) existing.baseUrl = p.baseUrl
         if (p.apiKey) existing.apiKey = p.apiKey
-        // 模型列表：用户配置完全替换
+        // Model list: user config fully replaces
         if (p.models?.length) {
           existing.models = p.models.map(m => ({
             id: m.id,
@@ -317,7 +317,7 @@ function loadModels(): { models: RuntimeModelConfig[]; defaultModel: string } {
           }))
         }
       } else {
-        // 自定义厂商
+        // Custom provider
         providerMap.set(id, {
           baseUrl: p.baseUrl,
           api: p.api ?? 'openai-completions',
@@ -335,13 +335,13 @@ function loadModels(): { models: RuntimeModelConfig[]; defaultModel: string } {
     }
   }
 
-  // 环境变量 provider
+  // Environment variable provider
   const envKey = process.env.WEVRA_LLM_API_KEY
   if (envKey) {
     const envModelId = process.env.WEVRA_LLM_MODEL ?? ''
     const envBaseUrl = process.env.WEVRA_LLM_BASE_URL ?? 'https://api.openai.com/v1'
 
-    // 从内置库匹配模型元数据
+    // Match model metadata from built-in library
     let envModel = findModelInProviders(envModelId)
 
     providerMap.set('env', {
@@ -359,10 +359,10 @@ function loadModels(): { models: RuntimeModelConfig[]; defaultModel: string } {
     })
   }
 
-  // 构建 enabledModels 列表
+  // Build enabledModels list
   const enabledSet: string[] = userConfig?.enabledModels ?? []
 
-  // 如果 enabledModels 为空，默认启用内置所有模型 + env
+  // If enabledModels is empty, enable all built-in models + env by default
   if (enabledSet.length === 0) {
     for (const [providerId, p] of providerMap) {
       for (const m of p.models) {
@@ -371,8 +371,8 @@ function loadModels(): { models: RuntimeModelConfig[]; defaultModel: string } {
     }
   }
 
-  // 声明 providerMap 在循环外部，所以需要在外部处理
-  // 构建运行时模型列表
+  // providerMap is declared outside the loop, so handle it outside
+  // Build runtime model list
   const runtimeModels: RuntimeModelConfig[] = []
   for (const key of enabledSet) {
     const slashIdx = key.indexOf('/')
@@ -399,7 +399,7 @@ function loadModels(): { models: RuntimeModelConfig[]; defaultModel: string } {
     })
   }
 
-  // 默认模型
+  // Default model
   const defaultKey = userConfig?.default
     ? `${userConfig.default.provider}/${userConfig.default.model}`
     : envKey

@@ -14,6 +14,7 @@ export interface ConvMeta {
   title: string;
   scope?: string;
   archived: boolean;
+  mode?: "plan" | "normal" | "auto";
   messageCount?: number;
   createdAt?: number;
   lastActiveAt?: number;
@@ -30,6 +31,12 @@ export function restoreMessages(msgs: RawMessage[]): WevraChatMessage[] {
     const id = `hist-${i}`;
 
     switch (m.role) {
+      case 'system': {
+        // Skip mode marker messages — they are expanded at LLM request time, not shown in UI
+        if (/^\[mode:\w+\]$/.test(m.content)) break;
+        mapped.push(toChatMsg(id, 'system', m.content));
+        break;
+      }
       case 'assistant': {
         const toolName = m.toolCalls?.[0]?.name;
         if (m.reasoningContent) {

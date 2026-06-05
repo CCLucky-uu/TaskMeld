@@ -1,6 +1,6 @@
-/** Wevra Agent 共享类型定义 */
+/** Wevra Agent shared type definitions */
 
-// ── Tool 相关 ──
+// ── Tool ──
 
 export interface ToolAnnotations {
   readOnly: boolean
@@ -91,7 +91,7 @@ export interface Logger {
   debug(msg: string, meta?: unknown): void
 }
 
-// ── LLM / Brain 相关 ──
+// ── LLM / Brain ──
 
 export type MessageRole = 'system' | 'user' | 'assistant' | 'tool'
 
@@ -101,7 +101,7 @@ export interface Message {
   toolCalls?: ToolCall[]
   toolCallId?: string
   isError?: boolean
-  /** DeepSeek: 有 tool call 的轮次必须在后续所有请求中回传 reasoning_content */
+  /** DeepSeek: turns with tool calls must pass back reasoning_content in all subsequent requests */
   reasoningContent?: string
 }
 
@@ -158,7 +158,7 @@ export interface ThinkingConfig {
   budgetTokens?: number
 }
 
-// ── 模型与厂商配置 ──
+// ── Model & Provider Config ──
 
 export interface ModelCompat {
   supportsReasoningEffort: boolean
@@ -212,7 +212,7 @@ export interface ModelsJson {
   }>
 }
 
-// ── Memory 相关 ──
+// ── Memory ──
 
 export type MemoryType = 'fact' | 'preference' | 'event' | 'summary'
 export type MemoryScope = 'global' | 'pipeline'
@@ -236,18 +236,7 @@ export interface RecallOptions {
   minImportance?: number
 }
 
-// ── Session 相关 ──
-
-export type SessionType = 'global' | 'pipeline'
-
-export interface SessionConfig {
-  type: SessionType
-  pipelineId?: string
-  pipelineName?: string
-  pipelineDescription?: string
-}
-
-// ── Skill 相关 ──
+// ── Skill ──
 
 export type SkillInvocation = 'always' | 'auto' | 'user' | 'model'
 
@@ -258,7 +247,7 @@ export interface SkillDef {
   content: string
 }
 
-// ── Agent Loop 相关 ──
+// ── Agent Loop ──
 
 export type LoopResultType = 'text' | 'confirm' | 'error' | 'max_iterations'
 
@@ -291,7 +280,7 @@ export interface JsonSchemaProperty {
   required?: string[]
 }
 
-// ── LLM Provider 原始响应类型（用于解析）──
+// ── LLM Provider raw response types (for parsing) ──
 
 export interface OpenAIChatResponse {
   id: string
