@@ -1,4 +1,4 @@
-import type { StreamEvent, LoopResult, RuntimeModelConfig, ToolPreferences } from './types'
+import type { StreamEvent, LoopResult, RuntimeModelConfig, ToolPreferences, ThinkingConfig } from './types'
 import { DEFAULT_TOOL_PREFERENCES } from './types'
 import { loadConfig, getAvailableModels, getDefaultModelId, resolveModel, type WevraConfig } from './config'
 import { Brain, type DebugCallback } from './brain'
@@ -32,7 +32,9 @@ export class WevraAgent {
   readonly config: WevraConfig
   private currentModelId: string
   private currentModel: RuntimeModelConfig
+  private currentThinkingLevel: ThinkingConfig['level']
   private userGlobalPrefs: ToolPreferences = { ...DEFAULT_TOOL_PREFERENCES }
+  private activeChats = new Map<string, AbortController>()
 
   constructor(configOverrides?: Partial<WevraConfig> & { model?: RuntimeModelConfig }) {
     this.config = loadConfig(configOverrides)
@@ -48,10 +50,12 @@ export class WevraAgent {
     if (!defaultModel || !defaultModel.apiKey) {
       this.currentModel = null as unknown as RuntimeModelConfig
       this.currentModelId = ''
+      this.currentThinkingLevel = this.config.llm.thinking?.level ?? 'high'
       this.brain = null as unknown as Brain
     } else {
       this.currentModel = defaultModel
       this.currentModelId = `${defaultModel.providerId}/${defaultModel.modelId}`
+      this.currentThinkingLevel = defaultModel.thinking?.level ?? this.config.llm.thinking?.level ?? 'high'
       this.brain = new Brain(defaultModel, this.config.llmTimeoutMs)
     }
 
@@ -77,6 +81,12 @@ export class WevraAgent {
   async chat(message: string, conversationId: string, callbacks?: LoopCallbacks & { providerId?: string; modelId?: string }): Promise<LoopResult & { conversationId: string }> {
     if (!this.brain) return { type: 'error', content: 'No LLM model configured', iterations: 0, conversationId }
 
+    const conv = this.conversations.getConversation(conversationId)
+    if (!conv) return { type: 'error', content: 'Conversation not found', iterations: 0, conversationId }
+
+    // Resolve thinking level: per-conversation → global fallback
+    const thinkingLevel = conv.thinkingLevel ?? this.currentThinkingLevel
+
     let brain = this.brain
     let loop = this.loop
 
@@ -85,13 +95,14 @@ export class WevraAgent {
       if (!newModel) return { type: 'error', content: `Model "${callbacks.providerId}/${callbacks.modelId}" disabled`, iterations: 0, conversationId }
       const newModelId = `${newModel.providerId}/${newModel.modelId}`
       if (newModelId !== this.currentModelId) {
+        if (newModel.reasoning) newModel.thinking = { level: thinkingLevel }
         brain = new Brain(newModel, this.config.llmTimeoutMs)
         loop = new WevraLoop(brain, this.toolExecutor, this.toolRegistry, this.skills, this.memory, this.config)
       }
     }
 
-    const conv = this.conversations.getConversation(conversationId)
-    if (!conv) return { type: 'error', content: 'Conversation not found', iterations: 0, conversationId }
+    // Apply conversation thinking level to active brain
+    brain.setThinkingLevel(thinkingLevel)
 
     const userMsg = { role: 'user' as const, content: message }
     await this.conversations.appendMessage(conversationId, userMsg)
@@ -100,11 +111,20 @@ export class WevraAgent {
     brain.setDebugCallback(callbacks?.onDebug ? (dbg) => callbacks.onDebug!(dbg) : null)
 
     const prefs = resolvePreferences(conv.toolPreferences, this.userGlobalPrefs)
-    console.log(`[wevra:prefs] conversationId=${conversationId} convMode=${conv.toolPreferences?.mode ?? 'undefined'} globalMode=${this.userGlobalPrefs.mode} resolvedMode=${prefs.mode}`)
+    console.log(`[wevra:prefs] conversationId=${conversationId} convMode=${conv.toolPreferences?.mode ?? 'undefined'} globalMode=${this.userGlobalPrefs.mode} resolvedMode=${prefs.mode} thinkingLevel=${thinkingLevel}`)
 
     const session: SessionData = { id: `sess-${conv.id}`, conversationId: conv.id, frozenPrompt: conv.frozenPrompt, frozenTools: this.toolRegistry.toToolDefinitions() }
-    const result = await loop.run(fullHistory, session, callbacks, prefs)
-    return { ...result, conversationId: conv.id }
+
+    // Register as active
+    const abortController = new AbortController()
+    this.activeChats.set(conversationId, abortController)
+
+    try {
+      const result = await loop.run(fullHistory, session, callbacks, prefs, abortController)
+      return { ...result, conversationId: conv.id }
+    } finally {
+      this.activeChats.delete(conversationId)
+    }
   }
 
   async newConversation() { return this.conversations.createConversation('global') }
@@ -116,8 +136,30 @@ export class WevraAgent {
   getAvailableModels() { return getAvailableModels() }
   getDefaultModelId() { return getDefaultModelId() }
 
+  getThinkingLevel(): ThinkingConfig['level'] { return this.currentThinkingLevel }
+
+  setThinkingLevel(level: ThinkingConfig['level']): void {
+    this.currentThinkingLevel = level
+    if (this.brain) this.brain.setThinkingLevel(level)
+    // Update current model config so new Brain instances pick it up
+    if (this.currentModel?.reasoning) {
+      this.currentModel.thinking = { level }
+    }
+  }
+
   getStatus() {
-    return { conversations: this.conversations.listConversations().length, tools: this.toolRegistry.size, skills: this.skills.size, model: this.currentModelId, modelsAvailable: this.brain ? getAvailableModels().length : 0 }
+    return { conversations: this.conversations.listConversations().length, tools: this.toolRegistry.size, skills: this.skills.size, model: this.currentModelId, modelsAvailable: this.brain ? getAvailableModels().length : 0, thinkingLevel: this.currentThinkingLevel, activeConversations: Array.from(this.activeChats.keys()) }
+  }
+
+  isConversationBusy(conversationId: string): boolean {
+    return this.activeChats.has(conversationId)
+  }
+
+  abortChat(conversationId: string): boolean {
+    const controller = this.activeChats.get(conversationId)
+    if (!controller) return false
+    controller.abort()
+    return true
   }
 
   getConversationPreferences(conversationId: string) {

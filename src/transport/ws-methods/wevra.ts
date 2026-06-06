@@ -3,7 +3,7 @@ import type { WsBroker } from "../ws-broker";
 import type { WevraAgent } from "../../wevra";
 import type { StreamEvent } from "../../wevra/types";
 import { formatError } from "./utils";
-import { invalidateModelsCache, getAvailableModelsPublic } from "../../wevra/config";
+import { invalidateModelsCache, getAvailableModelsPublic, THINKING_LEVELS } from "../../wevra/config";
 import { saveUserPreferences } from "../../wevra/preferences";
 
 let wevraInstance: WevraAgent | null = null;
@@ -43,7 +43,7 @@ export const registerWevraWsMethods = (registry: WsMethodRegistry): void => {
     try {
       const models = getAvailableModelsPublic();
       const defaultId = wevraInstance.getDefaultModelId();
-      return { ok: true, payload: { models: models.map(m => ({ providerId: m.providerId, modelId: m.modelId, label: m.label ?? m.modelId, readonly: m.readonly ?? false, contextWindow: m.contextWindow })), default: defaultId } };
+      return { ok: true, payload: { models: models.map(m => ({ providerId: m.providerId, modelId: m.modelId, label: m.label ?? m.modelId, readonly: m.readonly ?? false, contextWindow: m.contextWindow })), default: defaultId, thinkingLevels: THINKING_LEVELS, thinkingLevel: wevraInstance.getThinkingLevel() } };
     } catch (error) {
       return { ok: false, error: formatError(error) };
     }
@@ -55,7 +55,29 @@ export const registerWevraWsMethods = (registry: WsMethodRegistry): void => {
       invalidateModelsCache();
       const models = getAvailableModelsPublic();
       const defaultId = wevraInstance.getDefaultModelId();
-      return { ok: true, payload: { models: models.map(m => ({ providerId: m.providerId, modelId: m.modelId, label: m.label ?? m.modelId, readonly: m.readonly ?? false, contextWindow: m.contextWindow })), default: defaultId } };
+      return { ok: true, payload: { models: models.map(m => ({ providerId: m.providerId, modelId: m.modelId, label: m.label ?? m.modelId, readonly: m.readonly ?? false, contextWindow: m.contextWindow })), default: defaultId, thinkingLevels: THINKING_LEVELS, thinkingLevel: wevraInstance.getThinkingLevel() } };
+    } catch (error) {
+      return { ok: false, error: formatError(error) };
+    }
+  });
+
+  registry.register("wevra.models.set-thinking-level", async (params) => {
+    if (!wevraInstance) return { ok: false, error: "wevra_not_initialized" };
+    try {
+      const level = typeof params.level === "string" ? params.level.trim() : "";
+      if (!level || !(THINKING_LEVELS as readonly string[]).includes(level)) return { ok: false, error: "invalid_level", message: `Level must be one of: ${THINKING_LEVELS.join(", ")}` };
+      const validLevel = level as typeof THINKING_LEVELS[number];
+      const conversationId = typeof params.conversationId === "string" ? params.conversationId.trim() : "";
+
+      // Persist to conversation if conversationId provided
+      if (conversationId) {
+        await wevraInstance.conversations.setThinkingLevel(conversationId, validLevel);
+      }
+
+      // Apply to agent (sets on current brain + model config)
+      wevraInstance.setThinkingLevel(validLevel);
+      invalidateModelsCache();
+      return { ok: true, payload: { level: validLevel } };
     } catch (error) {
       return { ok: false, error: formatError(error) };
     }
@@ -83,6 +105,8 @@ export const registerWevraWsMethods = (registry: WsMethodRegistry): void => {
           messages: await wevraInstance.viewConversation(id),
           lastPromptTokens: conv?.lastPromptTokens ?? 0,
           lastCompletionTokens: conv?.lastCompletionTokens ?? 0,
+          thinkingLevel: conv?.thinkingLevel ?? wevraInstance.getThinkingLevel(),
+          mode: conv?.mode ?? "normal",
         },
       };
     } catch (error) { return { ok: false, error: formatError(error) }; }
@@ -172,8 +196,33 @@ export const registerWevraWsMethods = (registry: WsMethodRegistry): void => {
       };
       const onConfirm = createConfirmCallback(conversationId);
 
-      const result = await wevraInstance.chat(message, conversationId, { onStream, onDebug, onMessage, onConfirm, providerId, modelId });
+      // Broadcast busy status
+      if (brokerInstance) {
+        brokerInstance.broadcast({ type: "event", method: "wevra.stream", payload: { sessionId: conversationId, stream: "status", phase: "busy" } });
+      }
+
+      let result;
+      try {
+        result = await wevraInstance.chat(message, conversationId, { onStream, onDebug, onMessage, onConfirm, providerId, modelId });
+      } finally {
+        // Broadcast idle status (always, even on error/abort)
+        if (brokerInstance) {
+          brokerInstance.broadcast({ type: "event", method: "wevra.stream", payload: { sessionId: conversationId, stream: "status", phase: "idle" } });
+        }
+      }
       return { ok: true, payload: { conversationId, content: result.content, type: result.type, iterations: result.iterations, usage: result.usage } };
+    } catch (error) { return { ok: false, error: formatError(error) }; }
+  });
+
+  // ── 聊天中止 ──
+
+  registry.register("wevra.chat.abort", async (params) => {
+    if (!wevraInstance) return { ok: false, error: "wevra_not_initialized" };
+    try {
+      const conversationId = typeof params.conversationId === "string" ? params.conversationId.trim() : "";
+      if (!conversationId) return { ok: false, error: "conversation_id_required" };
+      const aborted = wevraInstance.abortChat(conversationId);
+      return { ok: true, payload: { aborted } };
     } catch (error) { return { ok: false, error: formatError(error) }; }
   });
 

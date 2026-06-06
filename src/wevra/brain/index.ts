@@ -1,4 +1,4 @@
-import type { Message, ToolDefinition, LLMResponse, StreamEvent, RuntimeModelConfig } from '../types'
+import type { Message, ToolDefinition, LLMResponse, StreamEvent, RuntimeModelConfig, ThinkingConfig } from '../types'
 import { createLLMClient, type LLMClient, type DebugCallback } from './llm-client'
 
 export { type DebugCallback } from './llm-client'
@@ -14,6 +14,10 @@ export class Brain {
     this.client.updateModel(model)
   }
 
+  setThinkingLevel(level: ThinkingConfig['level']): void {
+    this.client.setThinkingLevel(level)
+  }
+
   setDebugCallback(cb: DebugCallback | null): void {
     this.client.setDebugCallback(cb)
   }
@@ -22,8 +26,8 @@ export class Brain {
     return this.client.chat(messages, tools)
   }
 
-  async *streamChat(messages: Message[], tools?: ToolDefinition[]): AsyncIterable<StreamEvent> {
-    yield* this.client.streamChat(messages, tools)
+  async *streamChat(messages: Message[], tools?: ToolDefinition[], signal?: AbortSignal): AsyncIterable<StreamEvent> {
+    yield* this.client.streamChat(messages, tools, signal)
   }
 
   async summarize(messages: Message[]): Promise<string> {

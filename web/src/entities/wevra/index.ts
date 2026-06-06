@@ -1,8 +1,8 @@
-export type WevraStreamPhase = "start" | "delta" | "end" | "confirm_request";
+export type WevraStreamPhase = "start" | "delta" | "end" | "confirm_request" | "busy" | "idle";
 
 export type WevraStreamPayload = {
   sessionId: string;
-  stream: "thinking" | "assistant" | "tool" | "meta" | "confirm";
+  stream: "thinking" | "assistant" | "tool" | "meta" | "confirm" | "status";
   phase: WevraStreamPhase;
   content?: string;
   toolCall?: { id: string; name: string; arguments: Record<string, unknown> };

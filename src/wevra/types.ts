@@ -196,6 +196,7 @@ export interface RuntimeModelConfig {
   maxTokens: number
   reasoning: boolean
   compat: ModelCompat
+  thinking?: ThinkingConfig
   label?: string
   readonly?: boolean
 }

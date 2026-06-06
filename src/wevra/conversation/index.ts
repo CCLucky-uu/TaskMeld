@@ -3,7 +3,7 @@ import { existsSync, createReadStream } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { createHash } from 'node:crypto'
 import { createInterface } from 'node:readline'
-import type { Message, ToolDefinition, ToolPreferences } from '../types'
+import type { Message, ToolDefinition, ToolPreferences, ThinkingConfig } from '../types'
 import type { ToolRegistry } from '../tools/registry'
 
 // ── Types ──
@@ -22,6 +22,7 @@ export interface ConversationMeta {
   frozenPrompt: string
   frozenTools: string[]
   mode: 'plan' | 'normal' | 'auto'
+  thinkingLevel?: ThinkingConfig['level']
   toolPreferences?: ToolPreferences
   lastPromptTokens?: number
   lastCompletionTokens?: number
@@ -300,6 +301,15 @@ export class ConversationManager {
         if (idx >= 0) list.splice(idx, 1)
       }
     }
+    this.saveIndex()
+    await this.flushIndex()
+  }
+
+  async setThinkingLevel(id: string, level: ThinkingConfig['level']): Promise<void> {
+    const index = await this.loadIndex()
+    const conv = index.conversations.find(c => c.id === id)
+    if (!conv) return
+    conv.thinkingLevel = level
     this.saveIndex()
     await this.flushIndex()
   }

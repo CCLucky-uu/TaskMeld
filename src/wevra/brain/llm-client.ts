@@ -1,16 +1,17 @@
 import type {
   Message, ToolDefinition, LLMResponse, StreamEvent,
   OpenAIChatResponse, OpenAIStreamChunk, ToolCall, TokenUsage,
-  RuntimeModelConfig,
+  RuntimeModelConfig, ThinkingConfig,
 } from '../types'
 
 export type DebugCallback = (event: { type: 'request' | 'stream_chunk' | 'response' | 'error'; data: unknown }) => void
 
 export interface LLMClient {
   chat(messages: Message[], tools?: ToolDefinition[]): Promise<LLMResponse>
-  streamChat(messages: Message[], tools?: ToolDefinition[]): AsyncIterable<StreamEvent>
+  streamChat(messages: Message[], tools?: ToolDefinition[], signal?: AbortSignal): AsyncIterable<StreamEvent>
   setDebugCallback(cb: DebugCallback | null): void
   updateModel(model: RuntimeModelConfig): void
+  setThinkingLevel(level: ThinkingConfig['level']): void
 }
 
 export function createLLMClient(modelConfig: RuntimeModelConfig, timeoutMs: number): LLMClient {
@@ -33,6 +34,10 @@ class OpenAICompatClient implements LLMClient {
     this.modelConfig = model
   }
 
+  setThinkingLevel(level: ThinkingConfig['level']): void {
+    this.modelConfig = { ...this.modelConfig, thinking: { level } }
+  }
+
   async chat(messages: Message[], tools?: ToolDefinition[]): Promise<LLMResponse> {
     const body = this.buildRequest(messages, tools, false)
     this.debug?.({ type: 'request', data: { raw: body } })
@@ -42,10 +47,10 @@ class OpenAICompatClient implements LLMClient {
     return this.parseResponse(data)
   }
 
-  async *streamChat(messages: Message[], tools?: ToolDefinition[]): AsyncIterable<StreamEvent> {
+  async *streamChat(messages: Message[], tools?: ToolDefinition[], signal?: AbortSignal): AsyncIterable<StreamEvent> {
     const body = this.buildRequest(messages, tools, true)
     this.debug?.({ type: 'request', data: { raw: body } })
-    const response = await this.fetch(body)
+    const response = await this.fetch(body, signal)
 
     if (!response.body) {
       yield { type: 'error', error: 'Empty response body' }
@@ -197,7 +202,9 @@ class OpenAICompatClient implements LLMClient {
 
   private buildRequest(messages: Message[], tools: ToolDefinition[] | undefined, stream: boolean): Record<string, unknown> {
     const compat = this.modelConfig.compat
-    const thinking = this.modelConfig.reasoning
+    const thinkingLevel = this.modelConfig.thinking?.level ?? 'off'
+    const thinkingEnabled = thinkingLevel !== 'off'
+
     const req: Record<string, unknown> = {
       model: this.modelConfig.modelId,
       messages: this.toOpenAIMessages(messages),
@@ -210,7 +217,7 @@ class OpenAICompatClient implements LLMClient {
     }
 
     // temperature — skip if ignored in thinking mode
-    if (!(compat.temperatureIgnoredInThinking && thinking)) {
+    if (!(compat.temperatureIgnoredInThinking && thinkingEnabled)) {
       req.temperature = 1
     }
 
@@ -223,14 +230,14 @@ class OpenAICompatClient implements LLMClient {
       req.tool_choice = 'auto'
     }
 
-    // reasoning_effort
-    if (compat.supportsReasoningEffort && thinking) {
-      req.reasoning_effort = 'high'
+    // reasoning_effort — only when model supports it and thinking is enabled
+    if (compat.supportsReasoningEffort && thinkingEnabled) {
+      req.reasoning_effort = mapThinkingLevelToEffort(thinkingLevel)
     }
 
     // DeepSeek-specific: extra_body thinking toggle
-    if (compat.extraBodyThinkingToggle && thinking) {
-      req.extra_body = { thinking: { type: 'enabled' } }
+    if (compat.extraBodyThinkingToggle && thinkingEnabled) {
+      req.extra_body = { thinking: { type: 'enabled', level: thinkingLevel } }
     }
 
     return req
@@ -274,9 +281,11 @@ class OpenAICompatClient implements LLMClient {
     })
   }
 
-  private async fetch(body: unknown): Promise<Response> {
+  private async fetch(body: unknown, externalSignal?: AbortSignal): Promise<Response> {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), this.timeoutMs)
+    // Chain external signal → internal abort
+    externalSignal?.addEventListener('abort', () => controller.abort(), { once: true })
 
     try {
       const resp = await fetch(this.buildUrl('/chat/completions'), {
@@ -341,4 +350,15 @@ function safeParseJSON(raw: string): Record<string, unknown> {
   }
 
   return {}
+}
+
+function mapThinkingLevelToEffort(level: string): string {
+  switch (level) {
+    case 'low': return 'low'
+    case 'medium': return 'medium'
+    case 'high':
+    case 'max':
+    default:
+      return 'high'
+  }
 }

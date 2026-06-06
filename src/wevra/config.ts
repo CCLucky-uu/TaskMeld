@@ -233,6 +233,8 @@ export function loadConfig(overrides?: Partial<WevraConfig>): WevraConfig {
 
 // ── Model management ──
 
+export const THINKING_LEVELS = ['off', 'low', 'medium', 'high', 'max'] as const
+
 let _modelsCache: { models: RuntimeModelConfig[]; defaultModel: string } | null = null
 
 export function getAvailableModels(): RuntimeModelConfig[] {
@@ -269,6 +271,8 @@ function loadModels(): { models: RuntimeModelConfig[]; defaultModel: string } {
 
   const dataDir = getDataDir()
   const modelsJsonPath = join(dataDir, 'models.json')
+  const configThinkingLevel: ThinkingConfig['level'] =
+    (process.env.WEVRA_THINKING_LEVEL as ThinkingConfig['level']) ?? 'high'
 
   // Load models.json
   let userConfig: ModelsJson | null = null
@@ -394,6 +398,7 @@ function loadModels(): { models: RuntimeModelConfig[]; defaultModel: string } {
       maxTokens: model.maxTokens,
       reasoning: model.reasoning,
       compat: model.compat,
+      thinking: model.reasoning ? { level: configThinkingLevel } : undefined,
       label: `${BUILTIN_PROVIDERS[pId]?.name ?? pId} · ${model.name}`,
       readonly: pId === 'env',
     })

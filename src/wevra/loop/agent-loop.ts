@@ -38,6 +38,7 @@ export class WevraLoop {
     session: SessionData,
     callbacks?: LoopCallbacks,
     preferences?: ToolPreferences,
+    externalAbort?: AbortController,
   ): Promise<LoopResult> {
     if (!this.brain) return { type: 'error', content: 'No LLM model configured', iterations: 0 }
 
@@ -46,6 +47,11 @@ export class WevraLoop {
 
     while (iterations < this.config.maxIterations) {
       iterations++
+
+      // Check external abort
+      if (externalAbort?.signal.aborted) {
+        return { type: 'error', content: 'Chat aborted by user.', iterations }
+      }
 
       // Build request messages: frozen prompt (cacheable) + history with mode markers expanded
       const expandedHistory = fullHistory.map(msg => {
@@ -69,7 +75,7 @@ export class WevraLoop {
       const toolCalls: ToolCall[] = []
       let reasoningContent = ''  // DeepSeek reasoning_content must be passed back
 
-      for await (const event of this.brain.streamChat(requestMessages, allTools)) {
+      for await (const event of this.brain.streamChat(requestMessages, allTools, externalAbort?.signal)) {
         callbacks?.onStream?.(event)
 
         switch (event.type) {
@@ -105,7 +111,7 @@ export class WevraLoop {
       }
 
       // Execute tool calls
-      const toolCtx = this.buildToolContext(session.id, preferences ?? DEFAULT_TOOL_PREFERENCES)
+      const toolCtx = this.buildToolContext(session.id, preferences ?? DEFAULT_TOOL_PREFERENCES, externalAbort)
       const results = await this.executor.executeAll(toolCalls, toolCtx)
 
       // Handle tool calls that need user confirmation
@@ -177,12 +183,18 @@ export class WevraLoop {
     }
   }
 
-  private buildToolContext(sessionId: string, preferences: ToolPreferences): ToolContext {
+  private buildToolContext(sessionId: string, preferences: ToolPreferences, externalAbort?: AbortController): ToolContext {
+    // Merge external abort with tool timeout
+    const merged = new AbortController()
+    const timeoutSignal = AbortSignal.timeout(this.config.toolTimeoutMs)
+    timeoutSignal.addEventListener('abort', () => merged.abort(), { once: true })
+    externalAbort?.signal.addEventListener('abort', () => merged.abort(), { once: true })
+
     return {
       sessionId,
       preferences,
       messageId: generateMessageId(),
-      abortSignal: AbortSignal.timeout(this.config.toolTimeoutMs),
+      abortSignal: merged.signal,
       requestPermission: async () => true,
       services: null as unknown,
       memory: this.memory,
