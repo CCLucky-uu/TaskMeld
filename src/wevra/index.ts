@@ -10,13 +10,14 @@ import { SkillRegistry, createSkillRegistry } from './skills'
 import { WevraLoop, type LoopCallbacks } from './loop/agent-loop'
 import { buildGlobalPrompt } from './loop/prompt-builder'
 import { loadUserPreferences, resolvePreferences, saveUserPreferences } from './preferences'
+import type { ReadonlyServices } from '../services/read-services'
 
 // Builtin tools
-import { pipelineTools } from './tools/builtin/pipeline'
-import { agentTools } from './tools/builtin/agent'
-import { artifactTools } from './tools/builtin/artifact'
-import { sessionTools } from './tools/builtin/session'
-import { systemTools } from './tools/builtin/system'
+import { createPipelineTools } from './tools/builtin/pipeline'
+import { createAgentTools } from './tools/builtin/agent'
+import { createArtifactTools } from './tools/builtin/artifact'
+import { createSessionTools } from './tools/builtin/session'
+import { createSystemTools } from './tools/builtin/system'
 import { webTools } from './tools/builtin/web'
 import { createMemoryTools } from './tools/builtin/memory'
 import { createSkillTools } from './tools/builtin/skill'
@@ -35,9 +36,11 @@ export class WevraAgent {
   private currentThinkingLevel: ThinkingConfig['level']
   private userGlobalPrefs: ToolPreferences = { ...DEFAULT_TOOL_PREFERENCES }
   private activeChats = new Map<string, AbortController>()
+  private services: ReadonlyServices | null
 
-  constructor(configOverrides?: Partial<WevraConfig> & { model?: RuntimeModelConfig }) {
+  constructor(configOverrides?: Partial<WevraConfig> & { model?: RuntimeModelConfig }, services?: ReadonlyServices) {
     this.config = loadConfig(configOverrides)
+    this.services = services ?? null
     this.toolRegistry = new ToolRegistry()
     this.memory = new WevraMemory()
     this.skills = createSkillRegistry()
@@ -173,7 +176,15 @@ export class WevraAgent {
   }
 
   private registerTools() {
-    for (const tool of [...pipelineTools, ...agentTools, ...artifactTools, ...sessionTools, ...systemTools, ...webTools]) this.toolRegistry.register(tool)
+    const s = this.services
+    for (const tool of [
+      ...createPipelineTools(s?.pipeline),
+      ...createAgentTools(s?.agent),
+      ...createArtifactTools(s?.artifact),
+      ...createSessionTools(s?.session),
+      ...createSystemTools(s),
+      ...webTools,
+    ]) this.toolRegistry.register(tool)
     for (const tool of createMemoryTools(this.memory)) this.toolRegistry.register(tool)
     for (const tool of createSkillTools(this.skills)) this.toolRegistry.register(tool)
   }

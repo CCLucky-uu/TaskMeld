@@ -16,6 +16,7 @@ import { getAvailableModels } from "./wevra/config";
 import { resolveTaskMeldDataPath } from "./app/data-dir";
 import { createPipelineService } from "./services/pipeline-service";
 import { createSchedulerService } from "./services/scheduler-service";
+import { createReadonlyServices } from "./services/read-services";
 import { createRunLogService } from "./logs/run-log-service";
 
 export { createGatewayClient };
@@ -113,7 +114,8 @@ if (require.main === module) {
   app.runtime.setBroadcast(wsBroker.broadcast);
 
   // Initialize Wevra Agent
-  const wevraAgent = new WevraAgent();
+  const wevraServices = createReadonlyServices(app);
+  const wevraAgent = new WevraAgent(undefined, wevraServices);
   initWevraWs(wevraAgent, wsBroker);
   await wevraAgent.init();  // 恢复对话
   console.log(`wevra-ready  model=${wevraAgent.getStatus().model}  tools=${wevraAgent.toolRegistry.size}  conversations=${wevraAgent.getStatus().conversations}`);
