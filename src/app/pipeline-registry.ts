@@ -1,6 +1,7 @@
 import type { GatewayClient, GatewayConnectionInfo, GatewayFrame } from "../gateway";
 import { existsSync, mkdirSync, renameSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { pickArray } from "../utils/array";
 import { loadWorkflowDefinitionWithStorage, saveWorkflowDefinitionWithStorage } from "../pipeline/template";
 import type { TimelineItem } from "../pipeline/runtime-model";
 import {
@@ -264,19 +265,17 @@ export const createPipelineRegistry = (options: CreatePipelineRegistryOptions) =
 
   const getPipelineRuntime = (pipelineId: string): PipelineRuntime | null => runtimeById.get(pipelineId) ?? null;
 
-  const getPrimaryRuntime = () => {
+  const getPrimaryRuntime = (): PipelineRuntime | null => {
     const preferredRuntime = runtimeById.get(defaultPipelineId);
     if (preferredRuntime) return preferredRuntime;
     const fallbackRuntime = runtimeById.values().next().value;
-    if (fallbackRuntime) return fallbackRuntime;
-    throw new Error("pipeline_registry_empty");
+    return fallbackRuntime ?? null;
   };
 
-  const getPrimaryPipelineId = () => {
+  const getPrimaryPipelineId = (): string => {
     if (runtimeById.has(defaultPipelineId)) return defaultPipelineId;
     const fallbackDefinition = pipelineDefinitions[0];
-    if (fallbackDefinition) return fallbackDefinition.id;
-    throw new Error("pipeline_registry_empty");
+    return fallbackDefinition?.id ?? "";
   };
 
   const getCombinedTimeline = () =>
@@ -316,14 +315,15 @@ export const createPipelineRegistry = (options: CreatePipelineRegistryOptions) =
     }
     const primaryPipelineId = getPrimaryPipelineId();
     const primary = pipelines[primaryPipelineId];
+    const primaryRuntime = getPrimaryRuntime();
     const MAX_BOOTSTRAP_TIMELINE = 50;
     const combined = getCombinedTimeline();
     return {
       pipelines,
       timeline: combined.slice(0, MAX_BOOTSTRAP_TIMELINE),
       timelineHasMore: combined.length > MAX_BOOTSTRAP_TIMELINE,
-      status: getPrimaryRuntime().gateway.getLatestStatus() ?? options.client.getStatus(),
-      hello: getPrimaryRuntime().gateway.getLatestHello(),
+      status: primaryRuntime?.gateway.getLatestStatus() ?? options.client.getStatus(),
+      hello: primaryRuntime?.gateway.getLatestHello() ?? null,
       // Keep the old top-level fields as a fallback to avoid breaking frontends during phased migration.
       run: primary?.run,
       pipeline: primary?.pipeline,
@@ -419,12 +419,12 @@ export const createPipelineRegistry = (options: CreatePipelineRegistryOptions) =
     },
     gateway: {
       client: options.client,
-      getLatestStatus: () => getPrimaryRuntime().gateway.getLatestStatus(),
-      getLatestHello: () => getPrimaryRuntime().gateway.getLatestHello(),
-      getLastFrame: () => getPrimaryRuntime().gateway.getLastFrame(),
-      refreshSessionsFromGateway: () => getPrimaryRuntime().gateway.refreshSessionsFromGateway(),
-      getSessionCache: () => getPrimaryRuntime().gateway.getSessionCache(),
-      pickArray: getPrimaryRuntime().gateway.pickArray,
+      getLatestStatus: () => getPrimaryRuntime()?.gateway.getLatestStatus() ?? null,
+      getLatestHello: () => getPrimaryRuntime()?.gateway.getLatestHello() ?? null,
+      getLastFrame: () => getPrimaryRuntime()?.gateway.getLastFrame() ?? null,
+      refreshSessionsFromGateway: async () => getPrimaryRuntime()?.gateway.refreshSessionsFromGateway() ?? { payload: null, items: [] },
+      getSessionCache: () => getPrimaryRuntime()?.gateway.getSessionCache() ?? [],
+      pickArray,
     },
     getBootstrapPayload,
     listPipelines: () => [...pipelineDefinitions],

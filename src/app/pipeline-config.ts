@@ -30,8 +30,8 @@ export const DEFAULT_REMOTE_BATCH_URL = String(
 const PIPELINE_ROOT_DIR = resolveTaskMeldDataPath("pipelines");
 const PIPELINE_DEFINITIONS_FILE = join(PIPELINE_ROOT_DIR, "index.json");
 const PIPELINE_DELETED_ROOT_DIR = join(PIPELINE_ROOT_DIR, "_deleted");
-const DEFAULT_PIPELINE_IDS = ["A", "B"] as const;
-const DEFAULT_PIPELINE_ID_FALLBACK = "A";
+const DEFAULT_PIPELINE_IDS = [] as const;
+const DEFAULT_PIPELINE_ID_FALLBACK = "";
 const PIPELINE_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
 
 export const createPipelineDefinition = (id: PipelineId, title?: string): PipelineDefinition => {
