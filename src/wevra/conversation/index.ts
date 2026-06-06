@@ -22,6 +22,7 @@ export interface ConversationMeta {
   frozenPrompt: string
   frozenTools: string[]
   mode: 'plan' | 'normal' | 'auto'
+  modeVersion: number
   thinkingLevel?: ThinkingConfig['level']
   toolPreferences?: ToolPreferences
   lastPromptTokens?: number
@@ -87,6 +88,7 @@ export class ConversationManager {
           frozenPrompt: this.promptBuilder.buildGlobalPrompt('global'),
           frozenTools: this.registry.toToolDefinitions().map(t => t.name),
           mode: 'normal',
+          modeVersion: 0,
         }],
       }
       await writeFile(this.getConvPath(id), '')
@@ -247,6 +249,7 @@ export class ConversationManager {
       frozenPrompt: this.promptBuilder.buildGlobalPrompt(scope),
       frozenTools: this.registry.toToolDefinitions().map(t => t.name),
       mode: 'normal',
+      modeVersion: 0,
     }
     index.conversations.push(conv)
     await writeFile(this.getConvPath(conv.id), '')
@@ -292,6 +295,7 @@ export class ConversationManager {
     if (key === 'mode') {
       conv.toolPreferences.mode = value as ToolPreferences['mode']
       conv.mode = value as 'plan' | 'normal' | 'auto'
+      conv.modeVersion = (conv.modeVersion ?? 0) + 1
     } else {
       const list = conv.toolPreferences[key]
       if (action === 'add' && !list.includes(value)) {

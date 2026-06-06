@@ -166,17 +166,18 @@ export const registerWevraWsMethods = (registry: WsMethodRegistry): void => {
       // Insert mode marker if mode changed since last saved marker
       const convMeta = wevraInstance.getConversations().find(c => c.id === conversationId);
       const currentMode = convMeta?.mode ?? "normal";
+      const modeVersion = convMeta?.modeVersion ?? 0;
       const messages = await wevraInstance.viewConversation(conversationId);
       let lastSavedMode = "";
       for (let i = messages.length - 1; i >= 0; i--) {
         const m = messages[i];
         if (m.role === "system") {
-          const match = m.content.match(/^\[mode:(\w+)\]$/);
+          const match = m.content.match(/^\[mode:(\w+):v(\d+)\]$/);
           if (match) { lastSavedMode = match[1]; break; }
         }
       }
       if (currentMode !== lastSavedMode) {
-        await wevraInstance.conversations.appendMessage(conversationId, { role: "system", content: `[mode:${currentMode}]` });
+        await wevraInstance.conversations.appendMessage(conversationId, { role: "system", content: `[mode:${currentMode}:v${modeVersion}]` });
       }
 
       const onStream = (event: StreamEvent) => {

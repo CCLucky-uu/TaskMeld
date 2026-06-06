@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useReducer, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { wsRequest, onWsEvent } from "../../../shared/ws-client";
 import type {
   WevraStreamPayload,
@@ -44,6 +44,15 @@ const inactiveBg =
   "bg-transparent text-(--muted) hover:bg-[rgba(142,163,179,0.08)] hover:text-(--text)";
 const sectionTitle =
   "px-1.5 py-1 text-[10px] font-semibold text-(--muted) uppercase tracking-wider";
+
+// Inject busy animation keyframes once at module level
+if (typeof document !== "undefined" && !document.getElementById("wevra-busy-anim")) {
+  const style = document.createElement("style");
+  style.id = "wevra-busy-anim";
+  style.textContent =
+    "@keyframes wevra-dot-pulse{0%,100%{background:rgba(142,163,179,0.25);transform:scale(1)}15%{background:rgba(50,215,186,0.7);transform:scale(1.4)}35%{background:rgba(50,215,186,0.7);transform:scale(1.4)}}@keyframes wevra-line-pulse{0%,100%{background:rgba(142,163,179,0.15)}15%{background:rgba(50,215,186,0.5)}35%{background:rgba(50,215,186,0.5)}}";
+  document.head.appendChild(style);
+}
 
 function ConvBtn({
   c,
@@ -145,7 +154,6 @@ export function WevraChatPanel({
   const [msgs, dispatch] = useReducer(msgReducer, []);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
-  const [convId, setConvId] = useState<string>("");
   const [showDebug, setShowDebug] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [execMode, setExecMode] = useState<"plan" | "normal" | "auto">(
@@ -247,7 +255,6 @@ export function WevraChatPanel({
         const pick = fresh[0] ?? all[0];
         if (pick) {
           setActiveId(pick.id);
-          await loadConv(pick.id);
         }
       } catch {
         /* */
@@ -288,19 +295,24 @@ export function WevraChatPanel({
     try {
       const r = (await wsRequest("wevra.conversations.view", {
         conversationId: id,
-      })) as { messages?: RawMessage[]; lastPromptTokens?: number; thinkingLevel?: string };
+      })) as { messages?: RawMessage[]; lastPromptTokens?: number; thinkingLevel?: string; mode?: string };
       dispatch({ type: "reset", msgs: restoreMessages(r?.messages ?? []) });
-      setConvId(id);
       setContextUsed(r?.lastPromptTokens ?? 0);
-      // Restore mode and thinking level from conversation metadata
-      const meta = convs.find((c) => c.id === id);
-      setExecMode(meta?.mode ?? "normal");
+      if (r?.mode) setExecMode(r.mode as "plan" | "normal" | "auto");
       if (r?.thinkingLevel) setThinkingLevel(r.thinkingLevel);
     } catch {
       dispatch({ type: "reset", msgs: [] });
       setContextUsed(0);
     }
-  }, [convs]);
+  }, []);
+
+  // Clear messages immediately for instant feedback, then load async
+  useEffect(() => {
+    if (!open || !activeId) return;
+    dispatch({ type: "reset", msgs: [] });
+    setContextUsed(0);
+    loadConv(activeId);
+  }, [activeId, open]);
 
   // WS
   useEffect(() => {
@@ -423,7 +435,7 @@ export function WevraChatPanel({
     } else if (p.stream === "meta" && p.usage) {
       setContextUsed(p.usage.promptTokens);
     }
-  }, [setContextUsed]);
+  }, []);
 
   const handleConfirmDecision = useCallback(
     (decision: "allow" | "deny" | "always-allow") => {
@@ -442,7 +454,26 @@ export function WevraChatPanel({
     wsRequest("wevra.chat.abort", { conversationId: activeId }).catch(() => {});
   }, [activeId]);
 
+  const toggleThink = useCallback((id: string) => {
+    setThinkCollapsed((prev) => ({ ...prev, [id]: !(prev[id] ?? true) }));
+  }, []);
+
+  const toggleTool = useCallback((id: string) => {
+    setToolCollapsed((prev) => ({ ...prev, [id]: !(prev[id] ?? true) }));
+  }, []);
+
   const isBusy = !!busyConvs[activeId];
+
+  const ctxRing = useMemo(() => {
+    if (contextMax <= 0) return null;
+    const pct = Math.min(contextUsed / contextMax, 1);
+    const pctDisplay = Math.round(pct * 100);
+    const r = 7;
+    const circumference = 2 * Math.PI * r;
+    const offset = circumference * (1 - pct);
+    const strokeColor = pct > 0.95 ? "#ff6b6b" : pct > 0.8 ? "#f5a623" : "#6b8499";
+    return { pctDisplay, r, circumference, offset, strokeColor, contextUsed, contextMax };
+  }, [contextUsed, contextMax]);
 
   const send = useCallback(
     (e?: React.FormEvent) => {
@@ -495,7 +526,6 @@ export function WevraChatPanel({
         setConvs((prev) => [r.conversation!, ...prev]);
         setActiveId(r.conversation.id);
         dispatch({ type: "reset", msgs: [] });
-        setConvId(r.conversation.id);
         setContextUsed(0);
       }
     } catch {
@@ -503,13 +533,9 @@ export function WevraChatPanel({
     }
   }, []);
 
-  const selectConv = useCallback(
-    async (id: string) => {
-      setActiveId(id);
-      await loadConv(id);
-    },
-    [loadConv],
-  );
+  const selectConv = useCallback((id: string) => {
+    setActiveId(id);
+  }, []);
   const dblClick = useCallback((id: string, t: string) => {
     setEditingId(id);
     setEditTitle(t);
@@ -541,9 +567,9 @@ export function WevraChatPanel({
     if (activeId === id) {
       const fresh = convs.filter((c) => !c.archived && c.id !== id);
       const next = fresh.sort((a, b) => (b.lastActiveAt ?? 0) - (a.lastActiveAt ?? 0))[0];
-      if (next) { setActiveId(next.id); await loadConv(next.id); }
+      if (next) setActiveId(next.id);
     }
-  }, [activeId, convs, refreshConvs, loadConv]);
+  }, [activeId, convs, refreshConvs]);
 
   const deleteConv = useCallback(async (id: string) => {
     await wsRequest("wevra.conversations.delete", { conversationId: id }).catch(() => {});
@@ -551,9 +577,9 @@ export function WevraChatPanel({
     if (activeId === id) {
       const remaining = convs.filter((c) => c.id !== id);
       const next = remaining.sort((a, b) => (b.lastActiveAt ?? 0) - (a.lastActiveAt ?? 0))[0];
-      if (next) { setActiveId(next.id); await loadConv(next.id); }
+      if (next) setActiveId(next.id);
     }
-  }, [activeId, convs, refreshConvs, loadConv]);
+  }, [activeId, convs, refreshConvs]);
 
   // Group by scope
   const globalConvs = convs.filter((c) => (c.scope ?? "global") === "global");
@@ -735,34 +761,25 @@ export function WevraChatPanel({
                   ref={scrollRef}
                   className="absolute inset-0 overflow-auto overflow-x-hidden px-3 pb-8 pt-2.5"
                 >
+                  {msgs.length === 0 && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-(--muted) pointer-events-none">
+                      <p className="text-lg font-medium">Wevra</p>
+                      <p className="text-sm mt-1">TaskMeld Built-in AI Assistant</p>
+                    </div>
+                  )}
                   <div className="grid gap-2.5">
-                    {msgs.length === 0 && (
-                      <div className="text-center text-(--muted) py-12">
-                        <p className="text-lg font-medium">Wevra</p>
-                        <p className="text-sm mt-1">TaskMeld Built-in AI Assistant</p>
-                      </div>
-                    )}
                     {msgs.map((m) => (
                       <Bubble
                         key={m.id}
                         message={m}
+                        id={m.id}
                         isThinking={
                           !!(streaming && m.isStreaming && m.role === "thinking")
                         }
                         thinkCollapsed={thinkCollapsed[m.id] ?? true}
                         toolCollapsed={toolCollapsed[m.id] ?? true}
-                        onToggleThink={() =>
-                          setThinkCollapsed((prev) => ({
-                            ...prev,
-                            [m.id]: !(prev[m.id] ?? true),
-                          }))
-                        }
-                        onToggleTool={() =>
-                          setToolCollapsed((prev) => ({
-                            ...prev,
-                            [m.id]: !(prev[m.id] ?? true),
-                          }))
-                        }
+                        onToggleThink={toggleThink}
+                        onToggleTool={toggleTool}
                       />
                     ))}
                   </div>
@@ -779,7 +796,6 @@ export function WevraChatPanel({
                 </button>
                 {isBusy && (
                 <div className="absolute -bottom-2 left-3 z-10 h-6 w-24 flex items-center gap-0 pointer-events-none">
-                  <style>{`@keyframes wevra-dot-pulse{0%,100%{background:rgba(142,163,179,0.25);transform:scale(1)}15%{background:rgba(50,215,186,0.7);transform:scale(1.4)}35%{background:rgba(50,215,186,0.7);transform:scale(1.4)}}@keyframes wevra-line-pulse{0%,100%{background:rgba(142,163,179,0.15)}15%{background:rgba(50,215,186,0.5)}35%{background:rgba(50,215,186,0.5)}}`}</style>
                   {[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14].map((i) => {
                     const isDot = i % 2 === 0;
                     const delay = i * 0.107;
@@ -902,29 +918,22 @@ export function WevraChatPanel({
                     )}
                     </div>
                     <div className="flex items-center gap-1.5">
-                    {contextMax > 0 && (() => {
-                      const pct = Math.min(contextUsed / contextMax, 1);
-                      const pctDisplay = Math.round(pct * 100);
-                      const r = 7;
-                      const circumference = 2 * Math.PI * r;
-                      const offset = circumference * (1 - pct);
-                      const strokeColor = pct > 0.95 ? "#ff6b6b" : pct > 0.8 ? "#f5a623" : "#6b8499";
-                      return (
+                    {ctxRing && (
                         <div ref={contextRef} className="relative">
                           <button
                             type="button"
                             className="relative border-none bg-transparent cursor-pointer p-0 flex items-center justify-center"
                             onClick={() => setShowContextDetail((v) => !v)}
-                            title={`${contextUsed.toLocaleString()} / ${contextMax.toLocaleString()} tokens (${pctDisplay}%)`}
+                            title={`${ctxRing.contextUsed.toLocaleString()} / ${ctxRing.contextMax.toLocaleString()} tokens (${ctxRing.pctDisplay}%)`}
                           >
                             <svg width="22" height="22" viewBox="0 0 22 22" className="block">
-                              <circle cx="11" cy="11" r={r} fill="none" stroke="rgba(142,163,179,0.15)" strokeWidth="2" />
+                              <circle cx="11" cy="11" r={ctxRing.r} fill="none" stroke="rgba(142,163,179,0.15)" strokeWidth="2" />
                               <circle
-                                cx="11" cy="11" r={r} fill="none"
-                                stroke={strokeColor}
+                                cx="11" cy="11" r={ctxRing.r} fill="none"
+                                stroke={ctxRing.strokeColor}
                                 strokeWidth="2"
-                                strokeDasharray={circumference}
-                                strokeDashoffset={offset}
+                                strokeDasharray={ctxRing.circumference}
+                                strokeDashoffset={ctxRing.offset}
                                 strokeLinecap="round"
                                 transform="rotate(-90 11 11)"
                                 className="transition-[stroke-dashoffset,stroke] duration-300"
@@ -933,13 +942,12 @@ export function WevraChatPanel({
                           </button>
                           {showContextDetail && (
                             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max rounded border border-(--line) bg-[#141c24] px-2.5 py-1.5 shadow-lg z-50">
-                              <div className="text-[11px] text-(--text) font-medium text-center"><span className="text-(--muted) font-normal">Already used: </span>{pctDisplay}%</div>
-                              <div className="text-[10px] text-(--muted) text-center mt-0.5 whitespace-nowrap">{contextUsed >= 1000000 ? `${(contextUsed / 1000000).toFixed(0)}m` : `${(contextUsed / 1000).toFixed(0)}k`} / {contextMax >= 1000000 ? `${(contextMax / 1000000).toFixed(0)}m` : `${(contextMax / 1000).toFixed(0)}k`}</div>
+                              <div className="text-[11px] text-(--text) font-medium text-center"><span className="text-(--muted) font-normal">Already used: </span>{ctxRing.pctDisplay}%</div>
+                              <div className="text-[10px] text-(--muted) text-center mt-0.5 whitespace-nowrap">{ctxRing.contextUsed >= 1000000 ? `${(ctxRing.contextUsed / 1000000).toFixed(0)}m` : `${(ctxRing.contextUsed / 1000).toFixed(0)}k`} / {ctxRing.contextMax >= 1000000 ? `${(ctxRing.contextMax / 1000000).toFixed(0)}m` : `${(ctxRing.contextMax / 1000).toFixed(0)}k`}</div>
                             </div>
                           )}
                         </div>
-                      );
-                    })()}
+                    )}
                     {isBusy ? (
                       <button
                         className="h-6 inline-flex items-center justify-center gap-1 border-none px-2 text-sm rounded cursor-pointer transition-colors text-white bg-[#e05555] hover:bg-[#ff6b6b]"
@@ -983,10 +991,11 @@ export function WevraChatPanel({
   );
 }
 
-// ── 气泡组件 ──
+// ── Bubble Components ──
 
-function Bubble({
+const Bubble = memo(function Bubble({
   message: m,
+  id,
   isThinking,
   thinkCollapsed,
   toolCollapsed,
@@ -994,11 +1003,12 @@ function Bubble({
   onToggleTool,
 }: {
   message: WevraChatMessage;
+  id: string;
   isThinking: boolean;
   thinkCollapsed: boolean;
   toolCollapsed: boolean;
-  onToggleThink: () => void;
-  onToggleTool: () => void;
+  onToggleThink: (id: string) => void;
+  onToggleTool: (id: string) => void;
 }) {
   if (m.role === "user") return <UserBubble message={m} />;
   if (m.role === "thinking")
@@ -1007,7 +1017,7 @@ function Bubble({
         message={m}
         isThinking={isThinking}
         collapsed={thinkCollapsed}
-        onToggle={onToggleThink}
+        onToggle={() => onToggleThink(id)}
       />
     );
   if (m.role === "tool")
@@ -1015,11 +1025,11 @@ function Bubble({
       <ToolBubble
         message={m}
         collapsed={toolCollapsed}
-        onToggle={onToggleTool}
+        onToggle={() => onToggleTool(id)}
       />
     );
   return <AsstBubble message={m} />;
-}
+});
 
 function UserBubble({ message: m }: { message: WevraChatMessage }) {
   return (
@@ -1153,7 +1163,7 @@ function ts(t: number) {
   return new Date(t).toLocaleString(undefined, { hour12: false });
 }
 
-// ── 消息列表 reducer（避免每次 delta 都展开整个数组）──
+// ── Message list reducer (avoids spreading the entire array on every delta) ──
 
 type MsgAction =
   | { type: "append"; msg: WevraChatMessage }

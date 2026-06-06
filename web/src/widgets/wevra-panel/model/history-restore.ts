@@ -23,7 +23,7 @@ export interface ConvMeta {
 /** 从后端 JSONL 消息还原为前端 WevraChatMessage 列表 */
 export function restoreMessages(msgs: RawMessage[]): WevraChatMessage[] {
   const mapped: WevraChatMessage[] = [];
-  // 收集所有 assistant 的 toolCalls，建立 toolCallId → { name, args } 索引
+  // Collect all assistant toolCalls to build a toolCallId → { name, args } index
   const toolCallIndex = buildToolCallIndex(msgs);
 
   for (let i = 0; i < msgs.length; i++) {
@@ -32,9 +32,7 @@ export function restoreMessages(msgs: RawMessage[]): WevraChatMessage[] {
 
     switch (m.role) {
       case 'system': {
-        // Skip mode marker messages — they are expanded at LLM request time, not shown in UI
-        if (/^\[mode:\w+\]$/.test(m.content)) break;
-        mapped.push(toChatMsg(id, 'system', m.content));
+        // System messages are internal markers, not displayed in UI
         break;
       }
       case 'assistant': {
@@ -42,9 +40,12 @@ export function restoreMessages(msgs: RawMessage[]): WevraChatMessage[] {
         if (m.reasoningContent) {
           mapped.push(toChatMsg(`${id}-thinking`, 'thinking', m.reasoningContent));
         }
-        mapped.push(toolName
-          ? { ...toChatMsg(`${id}-assistant`, 'assistant', m.content), toolName }
-          : toChatMsg(`${id}-assistant`, 'assistant', m.content));
+        // Skip empty-content assistant messages that only have toolCalls (tool results rendered separately)
+        if (m.content || !toolName) {
+          mapped.push(toolName
+            ? { ...toChatMsg(`${id}-assistant`, 'assistant', m.content), toolName }
+            : toChatMsg(`${id}-assistant`, 'assistant', m.content));
+        }
         break;
       }
       case 'tool': {
