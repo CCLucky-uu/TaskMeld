@@ -10,9 +10,9 @@ import type { WevraConfig } from '../config'
 import { generateMessageId } from '../util'
 
 const MODE_PROMPTS: Record<string, string> = {
-  normal: 'Normal mode v{ver} is active. Read-only tools execute freely. Write and destructive tools require user confirmation before execution.',
-  plan: 'Plan mode v{ver} is active. You have read-only access — write and destructive tools are unavailable until the user switches mode.',
-  auto: 'Auto mode v{ver} is active. All tools are available without confirmation.',
+  normal: 'Normal mode is active. Read-only tools execute freely. Write and destructive tools require user confirmation before execution.',
+  plan: 'Plan mode is active. You have read-only access — write and destructive tools are unavailable until the user switches mode.',
+  auto: 'Auto mode is active. All tools are available without confirmation.',
 }
 
 export interface LoopCallbacks {
@@ -59,7 +59,7 @@ export class WevraLoop {
           const match = msg.content.match(/^\[mode:(\w+):v(\d+)\]$/)
           if (match) {
             const template = MODE_PROMPTS[match[1]] ?? ''
-            const prompt = template.replace('{ver}', match[2])
+            const prompt = template ? `${template} [mode-version: ${match[2]}]` : ''
             return prompt ? { ...msg, content: prompt } : null
           }
         }
