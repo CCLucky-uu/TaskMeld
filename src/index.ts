@@ -115,7 +115,7 @@ if (require.main === module) {
 
   // Initialize Wevra Agent
   const wevraServices = createReadonlyServices(app);
-  const wevraAgent = new WevraAgent(undefined, wevraServices);
+  const wevraAgent = new WevraAgent(undefined, wevraServices, app);
   initWevraWs(wevraAgent, wsBroker);
   await wevraAgent.init();  // 恢复对话
   console.log(`wevra-ready  model=${wevraAgent.getStatus().model}  tools=${wevraAgent.toolRegistry.size}  conversations=${wevraAgent.getStatus().conversations}`);

@@ -1,7 +1,8 @@
 import type { Tool } from '../../types'
 import type { PipelineService } from '../../../services/pipeline-service'
+import type { PipelineRegistry } from '../../../app/pipeline-registry'
 
-export function createPipelineTools(pipeline?: PipelineService): Tool[] {
+export function createPipelineTools(pipeline?: PipelineService, app?: PipelineRegistry | null): Tool[] {
   return [
     {
       name: 'pipeline_list',
@@ -64,80 +65,124 @@ export function createPipelineTools(pipeline?: PipelineService): Tool[] {
       },
     },
     {
-      name: 'pipeline_status',
-      description: 'Check the current run status of a pipeline (idle, running, completed, failed).',
+      name: 'pipeline_create',
+      description: 'Create a new pipeline. Provide an ID and optional title. The ID must be alphanumeric with hyphens/underscores.',
       parameters: {
         type: 'object',
         properties: {
-          pipelineId: { type: 'string', description: 'The pipeline ID' },
+          id: { type: 'string', description: 'Pipeline ID (alphanumeric, hyphens, underscores)' },
+          title: { type: 'string', description: 'Pipeline title (optional, defaults to ID)' },
         },
-        required: ['pipelineId'],
+        required: ['id'],
       },
-      annotations: { readOnly: true, destructive: false, requiresConfirmation: false, idempotent: true },
-      permission: 'auto',
+      annotations: { readOnly: false, destructive: false, requiresConfirmation: true, idempotent: false },
+      permission: 'confirm',
       async execute(args) {
-        if (!pipeline) return { output: 'Pipeline service not available.', isError: true }
-        const { pipelineId } = args as { pipelineId: string }
-        const result = pipeline.getPipelineExecutionStatus(pipelineId)
-        if (!result.ok) return { output: `Pipeline "${pipelineId}" not found.`, isError: true }
-        return { output: JSON.stringify(result, null, 2), isError: false }
+        if (!app) return { output: 'Pipeline registry not available.', isError: true }
+        const { id, title } = args as { id: string; title?: string }
+        try {
+          const def = await app.createPipeline({ id, title })
+          return { output: JSON.stringify({ id: def.id, title: def.title, message: 'Pipeline created successfully.' }, null, 2), isError: false }
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err)
+          return { output: `Failed to create pipeline: ${msg}`, isError: true }
+        }
       },
     },
     {
-      name: 'pipeline_diagnose',
-      description: 'Analyze why a pipeline run failed. Examines run logs, error messages, and artifacts to identify the root cause.',
+      name: 'pipeline_update',
+      description: 'Rename an existing pipeline.',
       parameters: {
         type: 'object',
         properties: {
-          pipelineId: { type: 'string', description: 'The pipeline ID' },
-          runId: { type: 'string', description: 'Optional specific run ID' },
+          pipelineId: { type: 'string', description: 'The pipeline ID to rename' },
+          title: { type: 'string', description: 'New title' },
+        },
+        required: ['pipelineId', 'title'],
+      },
+      annotations: { readOnly: false, destructive: false, requiresConfirmation: true, idempotent: false },
+      permission: 'confirm',
+      async execute(args) {
+        if (!app) return { output: 'Pipeline registry not available.', isError: true }
+        const { pipelineId, title } = args as { pipelineId: string; title: string }
+        try {
+          app.renamePipeline(pipelineId, title)
+          return { output: `Pipeline "${pipelineId}" renamed to "${title}".`, isError: false }
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err)
+          return { output: `Failed to rename pipeline: ${msg}`, isError: true }
+        }
+      },
+    },
+    {
+      name: 'pipeline_delete',
+      description: 'Delete a pipeline permanently. Cannot delete the last remaining pipeline or a running pipeline.',
+      parameters: {
+        type: 'object',
+        properties: {
+          pipelineId: { type: 'string', description: 'The pipeline ID to delete' },
         },
         required: ['pipelineId'],
       },
-      annotations: { readOnly: true, destructive: false, requiresConfirmation: false, idempotent: true },
-      permission: 'auto',
+      annotations: { readOnly: false, destructive: true, requiresConfirmation: true, idempotent: false },
+      permission: 'confirm',
+      async execute(args) {
+        if (!app) return { output: 'Pipeline registry not available.', isError: true }
+        const { pipelineId } = args as { pipelineId: string }
+        try {
+          app.deletePipeline(pipelineId)
+          return { output: `Pipeline "${pipelineId}" deleted.`, isError: false }
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err)
+          return { output: `Failed to delete pipeline: ${msg}`, isError: true }
+        }
+      },
+    },
+    {
+      name: 'pipeline_run',
+      description: 'Start running a pipeline. The pipeline must have at least one node.',
+      parameters: {
+        type: 'object',
+        properties: {
+          pipelineId: { type: 'string', description: 'The pipeline ID to run' },
+        },
+        required: ['pipelineId'],
+      },
+      annotations: { readOnly: false, destructive: false, requiresConfirmation: true, idempotent: false },
+      permission: 'confirm',
       async execute(args) {
         if (!pipeline) return { output: 'Pipeline service not available.', isError: true }
         const { pipelineId } = args as { pipelineId: string }
-        const detail = pipeline.getPipeline(pipelineId)
-        if (!detail) return { output: `Pipeline "${pipelineId}" not found.`, isError: true }
-
-        const run = detail.run
-        const nodes = run?.nodes ?? []
-        const failedNodes = nodes.filter((n: any) => n.status === 'failed')
-        const stoppedNodes = nodes.filter((n: any) => n.status === 'stopped')
-
-        if (failedNodes.length === 0 && stoppedNodes.length === 0) {
-          return {
-            output: JSON.stringify({
-              pipelineId,
-              diagnosis: `Pipeline is "${run?.status ?? 'unknown'}". No failed or stopped nodes found.`,
-              runStatus: run?.status,
-            }, null, 2),
-            isError: false,
-          }
+        try {
+          const result = await pipeline.runPipeline(pipelineId)
+          return { output: JSON.stringify(result, null, 2), isError: false }
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err)
+          return { output: `Failed to run pipeline: ${msg}`, isError: true }
         }
-
-        const issues = [...failedNodes, ...stoppedNodes].map((n: any) => ({
-          nodeId: n.id,
-          title: n.title,
-          status: n.status,
-          lastError: n.lastError ?? null,
-          attempt: n.attempt,
-          rejectCount: n.rejectCount,
-          startedAt: n.startedAt,
-          finishedAt: n.finishedAt,
-        }))
-
-        return {
-          output: JSON.stringify({
-            pipelineId,
-            runStatus: run?.status,
-            runId: run?.id,
-            failedNodes: issues.length,
-            issues,
-          }, null, 2),
-          isError: false,
+      },
+    },
+    {
+      name: 'pipeline_stop',
+      description: 'Stop a running pipeline.',
+      parameters: {
+        type: 'object',
+        properties: {
+          pipelineId: { type: 'string', description: 'The pipeline ID to stop' },
+        },
+        required: ['pipelineId'],
+      },
+      annotations: { readOnly: false, destructive: false, requiresConfirmation: true, idempotent: false },
+      permission: 'confirm',
+      async execute(args) {
+        if (!pipeline) return { output: 'Pipeline service not available.', isError: true }
+        const { pipelineId } = args as { pipelineId: string }
+        try {
+          const result = pipeline.stopPipeline(pipelineId)
+          return { output: JSON.stringify(result, null, 2), isError: false }
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err)
+          return { output: `Failed to stop pipeline: ${msg}`, isError: true }
         }
       },
     },

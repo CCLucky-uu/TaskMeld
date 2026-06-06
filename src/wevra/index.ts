@@ -11,6 +11,7 @@ import { WevraLoop, type LoopCallbacks } from './loop/agent-loop'
 import { buildGlobalPrompt } from './loop/prompt-builder'
 import { loadUserPreferences, resolvePreferences, saveUserPreferences } from './preferences'
 import type { ReadonlyServices } from '../services/read-services'
+import type { PipelineRegistry } from '../app/pipeline-registry'
 
 // Builtin tools
 import { createPipelineTools } from './tools/builtin/pipeline'
@@ -37,10 +38,12 @@ export class WevraAgent {
   private userGlobalPrefs: ToolPreferences = { ...DEFAULT_TOOL_PREFERENCES }
   private activeChats = new Map<string, AbortController>()
   private services: ReadonlyServices | null
+  private app: PipelineRegistry | null
 
-  constructor(configOverrides?: Partial<WevraConfig> & { model?: RuntimeModelConfig }, services?: ReadonlyServices) {
+  constructor(configOverrides?: Partial<WevraConfig> & { model?: RuntimeModelConfig }, services?: ReadonlyServices, app?: PipelineRegistry) {
     this.config = loadConfig(configOverrides)
     this.services = services ?? null
+    this.app = app ?? null
     this.toolRegistry = new ToolRegistry()
     this.memory = new WevraMemory()
     this.skills = createSkillRegistry()
@@ -178,7 +181,7 @@ export class WevraAgent {
   private registerTools() {
     const s = this.services
     for (const tool of [
-      ...createPipelineTools(s?.pipeline),
+      ...createPipelineTools(s?.pipeline, this.app),
       ...createAgentTools(s?.agent),
       ...createArtifactTools(s?.artifact),
       ...createSessionTools(s?.session),
