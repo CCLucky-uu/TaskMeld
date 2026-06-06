@@ -86,10 +86,26 @@ const DEFAULT_REMOTE_BATCH_PLUGIN: WorkflowRemoteBatchPlugin = {
   batchSize: 5,
   sourceField: "list30",
 };
-const DEFAULT_WORKFLOW_PLUGINS: WorkflowPlugins = {
-  remoteBatch: DEFAULT_REMOTE_BATCH_PLUGIN,
-  // Scheduler was historically enabled by default; after plugin-ification, keep it enabled by default so upgraded legacy pipelines don't silently lose the feature.
-  scheduler: { enabled: true },
+const DEFAULT_REMOTE_BATCH_CONFIG = {
+  enabled: false,
+  url: "",
+  startBatch: 1,
+  batchSize: 5,
+  sourceField: "list30",
+};
+
+// Helper: find a plugin instance from the plugins array by pluginId
+const findPlugin = (plugins: WorkflowPlugins | undefined, pluginId: string) =>
+  Array.isArray(plugins) ? plugins.find(p => p.pluginId === pluginId) : undefined;
+
+const getRemoteBatchConfig = (plugins: WorkflowPlugins | undefined) => {
+  const inst = findPlugin(plugins, 'remote-batch');
+  return inst?.enabled ? { ...DEFAULT_REMOTE_BATCH_CONFIG, enabled: true, ...inst.config } : DEFAULT_REMOTE_BATCH_CONFIG;
+};
+
+const isSchedulerEnabled = (plugins: WorkflowPlugins | undefined) => {
+  const inst = findPlugin(plugins, 'scheduler');
+  return inst ? inst.enabled : false;
 };
 const MAINLINE_ROUTE_VALUE = "yes";
 const DEFAULT_BRANCH_ROUTE_VALUE = "no";
@@ -250,7 +266,7 @@ export function useControlPlanePage() {
   const isRunning = currentPipelineState.isRunning;
   const isPipelineEditing = editingPipelineId === activePipelineId;
   const batchStartBatch =
-    batchStartBatchById[activePipelineId] || String(currentPipelineState.workflow?.plugins.remoteBatch.startBatch || 1);
+    batchStartBatchById[activePipelineId] || String(getRemoteBatchConfig(currentPipelineState.workflow?.plugins).startBatch);
 
   const inferredGroups = useMemo(() => (workflow ? getInferredParallelGroups(workflow) : []), [workflow]);
   const parallelGroups = useMemo(
@@ -513,18 +529,21 @@ export function useControlPlanePage() {
 
   const getPipelineRemoteBatchPlugin = useCallback(
     (pipelineId: PipelineId): WorkflowRemoteBatchPlugin =>
-      getPipelineStateSnapshot(pipelineId, pipelineStateById).workflow?.plugins.remoteBatch ?? DEFAULT_WORKFLOW_PLUGINS.remoteBatch,
+      getRemoteBatchConfig(getPipelineStateSnapshot(pipelineId, pipelineStateById).workflow?.plugins),
     [getPipelineStateSnapshot, pipelineStateById],
   );
 
   const getPipelinePlugins = useCallback(
     (pipelineId: PipelineId): WorkflowPlugins =>
-      getPipelineStateSnapshot(pipelineId, pipelineStateById).workflow?.plugins ?? DEFAULT_WORKFLOW_PLUGINS,
+      getPipelineStateSnapshot(pipelineId, pipelineStateById).workflow?.plugins ?? [],
     [getPipelineStateSnapshot, pipelineStateById],
   );
 
   const getPipelineSchedulerPlugin = useCallback(
-    (pipelineId: PipelineId) => getPipelinePlugins(pipelineId).scheduler,
+    (pipelineId: PipelineId) => {
+      const inst = findPlugin(getPipelinePlugins(pipelineId), 'scheduler');
+      return { enabled: inst ? inst.enabled : false };
+    },
     [getPipelinePlugins],
   );
 
@@ -579,7 +598,7 @@ export function useControlPlanePage() {
         next[pipelineId] =
           current ||
           (workflowEntry?.status === "fulfilled" && workflowEntry.value
-            ? String(workflowEntry.value.plugins.remoteBatch.startBatch || 1)
+            ? String(getRemoteBatchConfig(workflowEntry.value.plugins).startBatch)
             : "");
       }
       return next;
@@ -858,7 +877,7 @@ export function useControlPlanePage() {
         ...currentWorkflow,
         plugins,
         // When the scheduler plugin is disabled, also disable scheduler.enabled to prevent background auto-scheduling after the UI is turned off.
-        scheduler: plugins.scheduler.enabled
+        scheduler: isSchedulerEnabled(plugins)
           ? currentWorkflow.scheduler
           : {
             ...currentWorkflow.scheduler,
@@ -870,7 +889,7 @@ export function useControlPlanePage() {
         updatePipelineState(pipelineId, (prev) => ({ ...prev, workflow: nextWorkflow }));
         setBatchStartBatchById((prev) => ({
           ...prev,
-          [pipelineId]: prev[pipelineId]?.trim() ? prev[pipelineId] : String(plugins.remoteBatch.startBatch || 1),
+          [pipelineId]: prev[pipelineId]?.trim() ? prev[pipelineId] : String(getRemoteBatchConfig(plugins).startBatch),
         }));
       } catch (error) {
         const message = getApiErrorMessage(error);

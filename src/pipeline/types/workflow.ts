@@ -1,6 +1,11 @@
 import type { WorkflowOutputConfig } from "./pipeline-output";
+import type { PluginInstance } from "../plugins/types";
 
 export type { WorkflowOutputConfig };
+export type { PluginInstance, PluginType } from "../plugins/types";
+
+// WorkflowPlugins is an array of PluginInstance (from the new plugin system)
+export type WorkflowPlugins = PluginInstance[];
 
 export type ExecutorRole = "planner" | "coder" | "tester" | "reviewer" | "operator";
 
@@ -41,23 +46,6 @@ export type WorkflowScheduler = {
     maxGlobalIterations: number;
     maxPerItemLoop: number;
   };
-};
-
-export type WorkflowRemoteBatchPlugin = {
-  enabled: boolean;
-  url: string;
-  startBatch: number;
-  batchSize: number;
-  sourceField: string;
-};
-
-export type WorkflowSchedulerPlugin = {
-  enabled: boolean;
-};
-
-export type WorkflowPlugins = {
-  remoteBatch: WorkflowRemoteBatchPlugin;
-  scheduler: WorkflowSchedulerPlugin;
 };
 
 export type WorkflowRoutePolicy = {

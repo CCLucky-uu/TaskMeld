@@ -24,18 +24,10 @@ const makeWorkflowWithParallelGroup = (): WorkflowDefinitionRuntime => ({
       maxPerItemLoop: 5,
     },
   },
-  plugins: {
-    remoteBatch: {
-      enabled: false,
-      url: "",
-      startBatch: 1,
-      batchSize: 5,
-      sourceField: "list30",
-    },
-    scheduler: {
-      enabled: true,
-    },
-  },
+  plugins: [
+    { pluginId: 'remote-batch', enabled: false, config: { url: "", startBatch: 1, batchSize: 5, sourceField: "list30" } },
+    { pluginId: 'scheduler', enabled: true, config: {} },
+  ],
   nodes: [
     {
       id: "n1",
@@ -136,18 +128,10 @@ const makeLinearWorkflow = (): WorkflowDefinitionRuntime => ({
       maxPerItemLoop: 5,
     },
   },
-  plugins: {
-    remoteBatch: {
-      enabled: false,
-      url: "",
-      startBatch: 1,
-      batchSize: 5,
-      sourceField: "list30",
-    },
-    scheduler: {
-      enabled: true,
-    },
-  },
+  plugins: [
+    { pluginId: 'remote-batch', enabled: false, config: { url: "", startBatch: 1, batchSize: 5, sourceField: "list30" } },
+    { pluginId: 'scheduler', enabled: true, config: {} },
+  ],
   nodes: [
     {
       id: "n1",
@@ -192,34 +176,18 @@ const makeLinearWorkflow = (): WorkflowDefinitionRuntime => ({
 
 const makeLinearWorkflowWithSchedulerPluginDisabled = (): WorkflowDefinitionRuntime => ({
   ...makeLinearWorkflow(),
-  plugins: {
-    remoteBatch: {
-      enabled: false,
-      url: "",
-      startBatch: 1,
-      batchSize: 5,
-      sourceField: "list30",
-    },
-    scheduler: {
-      enabled: false,
-    },
-  },
+  plugins: [
+    { pluginId: 'remote-batch', enabled: false, config: { url: "", startBatch: 1, batchSize: 5, sourceField: "list30" } },
+    { pluginId: 'scheduler', enabled: false, config: {} },
+  ],
 });
 
 const makeLinearWorkflowWithRemoteBatch = (): WorkflowDefinitionRuntime => ({
   ...makeLinearWorkflow(),
-  plugins: {
-    remoteBatch: {
-      enabled: true,
-      url: "https://example.test/keywords",
-      startBatch: 2,
-      batchSize: 3,
-      sourceField: "list30",
-    },
-    scheduler: {
-      enabled: true,
-    },
-  },
+  plugins: [
+    { pluginId: 'remote-batch', enabled: true, config: { url: "https://example.test/keywords", startBatch: 2, batchSize: 3, sourceField: "list30" } },
+    { pluginId: 'scheduler', enabled: true, config: {} },
+  ],
 });
 
 const makeAnyDependencyWorkflow = (): WorkflowDefinitionRuntime => ({

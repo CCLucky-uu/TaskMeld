@@ -24,7 +24,10 @@ type SchedulerServiceDeps = {
  * Not responsible for: the specific execution logic of nodes.
  */
 export const createSchedulerService = (deps: SchedulerServiceDeps) => {
-  const isSchedulerPluginEnabled = () => deps.graph.getWorkflow().plugins.scheduler.enabled;
+  const isSchedulerPluginEnabled = () => {
+    const plugins = deps.graph.getWorkflow().plugins;
+    return plugins.some(p => p.pluginId === 'scheduler' && p.enabled);
+  };
   const schedulerState = {
     enabled: deps.graph.getWorkflow().scheduler.enabled,
     mode: deps.graph.getWorkflow().scheduler.mode,

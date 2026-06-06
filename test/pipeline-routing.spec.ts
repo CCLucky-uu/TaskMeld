@@ -30,10 +30,10 @@ const makeNode = (overrides: Partial<WorkflowNode> & { id: string; name: string 
 const makeRouteWorkflow = (): WorkflowDefinitionRuntime => ({
   version: "3.0",
   scheduler: { enabled: true, mode: "auto", dispatchBy: "item", maxConcurrency: 1, loopGuard: { maxGlobalIterations: 20, maxPerItemLoop: 5 } },
-  plugins: {
-    remoteBatch: { enabled: false, url: "", startBatch: 1, batchSize: 5, sourceField: "list30" },
-    scheduler: { enabled: true },
-  },
+  plugins: [
+    { pluginId: 'remote-batch', enabled: false, config: { url: "", startBatch: 1, batchSize: 5, sourceField: "list30" } },
+    { pluginId: 'scheduler', enabled: true, config: {} },
+  ],
   nodes: [
     makeNode({ id: "router", name: "Router", routePolicy: { allowed: ["yes", "no"] } }),
     makeNode({ id: "main-downstream", name: "MainAfterRouter" }),

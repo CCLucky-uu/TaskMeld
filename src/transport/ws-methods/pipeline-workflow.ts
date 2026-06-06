@@ -5,10 +5,9 @@ import {
   saveWorkflowDefinitionWithStorage,
   validateWorkflowDefinition,
   workflowToTemplateNodes,
-  type WorkflowPlugins,
   type WorkflowDefinitionRuntime,
 } from "../../pipeline/template";
-import { DEFAULT_REMOTE_BATCH_URL } from "../../app/pipeline-config";
+import type { PluginInstance } from "../../pipeline/plugins/types";
 import { asRecord, formatError } from "./utils";
 
 export const registerPipelineWorkflowWsMethods = (registry: WsMethodRegistry): void => {
@@ -22,7 +21,7 @@ export const registerPipelineWorkflowWsMethods = (registry: WsMethodRegistry): v
     return { ok: true, payload: { ok: true, state: workflow.plugins, pipelineId } };
   });
 
-  // pipeline.plugins.save
+  // pipeline.plugins.save — accepts { plugins: PluginInstance[] } or { pluginId, enabled, config } for single plugin update
   registry.register("pipeline.plugins.save", async (params, ctx) => {
     const pipelineId = typeof params.pipelineId === "string" ? params.pipelineId : "";
     const runtime = ctx.app.getPipelineRuntime(pipelineId);
@@ -31,45 +30,61 @@ export const registerPipelineWorkflowWsMethods = (registry: WsMethodRegistry): v
 
     const currentWorkflow = runtime.workflow.getWorkflow();
     if (!currentWorkflow) return { ok: false, error: "workflow_api_not_enabled" };
-    const currentPlugin = currentWorkflow.plugins;
-    const remoteBatchBody = asRecord(params.remoteBatch) ?? params;
-    const schedulerBody = asRecord(params.scheduler);
 
-    const nextPlugin: WorkflowPlugins = {
-      remoteBatch: {
-        enabled: remoteBatchBody.enabled === true,
-        url: typeof remoteBatchBody.url === "string" && remoteBatchBody.url.trim()
-          ? remoteBatchBody.url.trim()
-          : currentPlugin.remoteBatch.url || DEFAULT_REMOTE_BATCH_URL,
-        startBatch: typeof remoteBatchBody.startBatch === "number" && Number.isFinite(remoteBatchBody.startBatch)
-          ? Math.max(1, Math.trunc(remoteBatchBody.startBatch))
-          : currentPlugin.remoteBatch.startBatch,
-        batchSize: typeof remoteBatchBody.batchSize === "number" && Number.isFinite(remoteBatchBody.batchSize)
-          ? Math.max(1, Math.trunc(remoteBatchBody.batchSize))
-          : currentPlugin.remoteBatch.batchSize,
-        sourceField: typeof remoteBatchBody.sourceField === "string" && remoteBatchBody.sourceField.trim()
-          ? remoteBatchBody.sourceField.trim()
-          : currentPlugin.remoteBatch.sourceField,
-      },
-      scheduler: {
-        enabled: schedulerBody?.enabled === undefined ? currentPlugin.scheduler.enabled : schedulerBody.enabled === true,
-      },
-    };
+    let nextPlugins: PluginInstance[];
+
+    if (Array.isArray(params.plugins)) {
+      // Full replace: { plugins: [...] }
+      nextPlugins = (params.plugins as unknown[]).map((item: unknown) => {
+        const r = asRecord(item);
+        if (!r || typeof r.pluginId !== "string") return null;
+        return {
+          pluginId: r.pluginId.trim(),
+          enabled: r.enabled !== false,
+          config: asRecord(r.config) ?? {},
+        };
+      }).filter((x): x is PluginInstance => x !== null);
+    } else if (typeof params.pluginId === "string" && params.pluginId.trim()) {
+      // Single plugin update: { pluginId, enabled?, config? }
+      const pluginId = params.pluginId.trim();
+      const existing = [...currentWorkflow.plugins];
+      const idx = existing.findIndex(p => p.pluginId === pluginId);
+      const updated: PluginInstance = {
+        pluginId,
+        enabled: params.enabled !== false,
+        config: asRecord(params.config) ?? (idx >= 0 ? existing[idx].config : {}),
+      };
+      if (idx >= 0) {
+        existing[idx] = updated;
+      } else {
+        existing.push(updated);
+      }
+      nextPlugins = existing;
+    } else {
+      return { ok: false, error: "invalid_params" };
+    }
+
+    // If remote-batch is being disabled, cancel any active batch run
+    const remoteBatchInst = nextPlugins.find(p => p.pluginId === 'remote-batch');
+    if (remoteBatchInst && !remoteBatchInst.enabled && runtime.pipeline.getBatchRunState().status === "running") {
+      runtime.pipeline.cancelBatchRun();
+    }
+
+    // If scheduler is being disabled, also disable scheduler in workflow config
+    const schedulerInst = nextPlugins.find(p => p.pluginId === 'scheduler');
+    const nextScheduler = schedulerInst && !schedulerInst.enabled
+      ? { ...currentWorkflow.scheduler, enabled: false }
+      : currentWorkflow.scheduler;
 
     const nextWorkflow: WorkflowDefinitionRuntime = {
       ...currentWorkflow,
-      plugins: { ...currentWorkflow.plugins, ...nextPlugin },
-      scheduler: nextPlugin.scheduler.enabled
-        ? currentWorkflow.scheduler
-        : { ...currentWorkflow.scheduler, enabled: false },
+      plugins: nextPlugins,
+      scheduler: nextScheduler,
     };
 
-    if (!nextPlugin.remoteBatch.enabled && runtime.pipeline.getBatchRunState().status === "running") {
-      runtime.pipeline.cancelBatchRun();
-    }
     runtime.workflow.setWorkflow(nextWorkflow);
     saveWorkflowDefinitionWithStorage(nextWorkflow, { workflowFilePath: definition.workflowFilePath });
-    return { ok: true, payload: { ok: true, state: nextPlugin, pipelineId } };
+    return { ok: true, payload: { ok: true, state: nextPlugins, pipelineId } };
   });
 
   // pipeline.template

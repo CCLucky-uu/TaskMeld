@@ -32,7 +32,8 @@ const ensureSchedulerPluginEnabled = (
   pipelineId: string,
 ): { ok: true } | { ok: false; pipelineId: string; error: "pipeline_plugin_disabled"; plugin: "scheduler" } => {
   const workflow = runtime.workflow.getWorkflow();
-  if (workflow.plugins.scheduler.enabled) return { ok: true };
+  const schedulerPlugin = workflow.plugins.find(p => p.pluginId === 'scheduler');
+  if (schedulerPlugin?.enabled) return { ok: true };
   return { ok: false, pipelineId, error: "pipeline_plugin_disabled", plugin: "scheduler" };
 };
 

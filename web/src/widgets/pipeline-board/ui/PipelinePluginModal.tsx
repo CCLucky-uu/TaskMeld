@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { WorkflowPlugins } from "../../../entities/pipeline";
+import type { WorkflowPlugins, WorkflowPluginInstance } from "../../../entities/pipeline";
 import { CloseIcon } from "../../../shared/ui";
 import { actionRowClassName, panelHeaderClassName } from "../../../shared/ui/panelClasses";
 import {
@@ -23,6 +23,30 @@ const fieldLabelClassName = "mb-1.5 block text-xs text-(--muted)";
 const actionButtonClassName =
   "mt-0 cursor-pointer border border-(--live-25) bg-transparent px-2 py-2 font-semibold text-(--live) hover:bg-[rgba(50,215,186,0.1)]";
 
+// Helper: get or create a plugin instance from the array
+function getPlugin(plugins: WorkflowPlugins, pluginId: string): WorkflowPluginInstance {
+  return plugins.find(p => p.pluginId === pluginId) ?? { pluginId, enabled: false, config: {} };
+}
+
+// Helper: update a plugin instance in the array
+function updatePlugin(plugins: WorkflowPlugins, pluginId: string, updates: Partial<WorkflowPluginInstance>): WorkflowPlugins {
+  const idx = plugins.findIndex(p => p.pluginId === pluginId);
+  const existing = idx >= 0 ? plugins[idx]! : { pluginId, enabled: false, config: {} };
+  const updated = { ...existing, ...updates };
+  if (idx >= 0) {
+    const next = [...plugins];
+    next[idx] = updated;
+    return next;
+  }
+  return [...plugins, updated];
+}
+
+// Helper: update plugin config
+function updatePluginConfig(plugins: WorkflowPlugins, pluginId: string, configUpdates: Record<string, unknown>): WorkflowPlugins {
+  const existing = getPlugin(plugins, pluginId);
+  return updatePlugin(plugins, pluginId, { config: { ...existing.config, ...configUpdates } });
+}
+
 export function PipelinePluginModal({
   pipelineId,
   pluginState,
@@ -31,6 +55,9 @@ export function PipelinePluginModal({
 }: PipelinePluginModalProps) {
   const { t } = useTranslation(["pipeline", "modal"]);
   const [draft, setDraft] = useState<WorkflowPlugins>(pluginState);
+
+  const remoteBatch = getPlugin(draft, 'remote-batch');
+  const scheduler = getPlugin(draft, 'scheduler');
 
   return (
     <div>
@@ -56,32 +83,20 @@ export function PipelinePluginModal({
         <input
           className={toggleClassName}
           type="checkbox"
-          checked={draft.remoteBatch.enabled}
+          checked={remoteBatch.enabled}
           onChange={(event) =>
-            setDraft((current) => ({
-              ...current,
-              remoteBatch: {
-                ...current.remoteBatch,
-                enabled: event.target.checked,
-              },
-            }))}
+            setDraft((current) => updatePlugin(current, 'remote-batch', { enabled: event.target.checked }))}
         />
       </label>
-      {draft.remoteBatch.enabled ? (
+      {remoteBatch.enabled ? (
         <div className="grid gap-3 border-b border-(--line) bg-transparent p-3">
           <div className={fieldClassName}>
             <label className={fieldLabelClassName}>{t("remoteUrl")}</label>
             <input
               className={controlInputElevatedMonoClassName}
-              value={draft.remoteBatch.url}
+              value={String(remoteBatch.config.url ?? '')}
               onChange={(event) =>
-                setDraft((current) => ({
-                  ...current,
-                  remoteBatch: {
-                    ...current.remoteBatch,
-                    url: event.target.value,
-                  },
-                }))}
+                setDraft((current) => updatePluginConfig(current, 'remote-batch', { url: event.target.value }))}
               placeholder="http://host/path"
               spellCheck={false}
             />
@@ -91,15 +106,9 @@ export function PipelinePluginModal({
               <label className={fieldLabelClassName}>{t("batchSize")}</label>
               <input
                 className={controlInputElevatedMonoClassName}
-                value={String(draft.remoteBatch.batchSize)}
+                value={String(remoteBatch.config.batchSize ?? 5)}
                 onChange={(event) =>
-                  setDraft((current) => ({
-                    ...current,
-                    remoteBatch: {
-                      ...current.remoteBatch,
-                      batchSize: Math.max(1, Math.trunc(Number(event.target.value) || 1)),
-                    },
-                  }))}
+                  setDraft((current) => updatePluginConfig(current, 'remote-batch', { batchSize: Math.max(1, Math.trunc(Number(event.target.value) || 1)) }))}
                 placeholder="5"
                 inputMode="numeric"
               />
@@ -108,15 +117,9 @@ export function PipelinePluginModal({
               <label className={fieldLabelClassName}>{t("startBatch")}</label>
               <input
                 className={controlInputElevatedMonoClassName}
-                value={String(draft.remoteBatch.startBatch)}
+                value={String(remoteBatch.config.startBatch ?? 1)}
                 onChange={(event) =>
-                  setDraft((current) => ({
-                    ...current,
-                    remoteBatch: {
-                      ...current.remoteBatch,
-                      startBatch: Math.max(1, Math.trunc(Number(event.target.value) || 1)),
-                    },
-                  }))}
+                  setDraft((current) => updatePluginConfig(current, 'remote-batch', { startBatch: Math.max(1, Math.trunc(Number(event.target.value) || 1)) }))}
                 placeholder="1"
                 inputMode="numeric"
               />
@@ -126,15 +129,9 @@ export function PipelinePluginModal({
             <label className={fieldLabelClassName}>{t("sourceField")}</label>
             <input
               className={controlInputElevatedMonoClassName}
-              value={draft.remoteBatch.sourceField}
+              value={String(remoteBatch.config.sourceField ?? 'list30')}
               onChange={(event) =>
-                setDraft((current) => ({
-                  ...current,
-                  remoteBatch: {
-                    ...current.remoteBatch,
-                    sourceField: event.target.value,
-                  },
-                }))}
+                setDraft((current) => updatePluginConfig(current, 'remote-batch', { sourceField: event.target.value }))}
               placeholder={t("sourceFieldPlaceholder")}
               spellCheck={false}
             />
@@ -152,23 +149,21 @@ export function PipelinePluginModal({
         <input
           className={toggleClassName}
           type="checkbox"
-          checked={draft.scheduler.enabled}
+          checked={scheduler.enabled}
           onChange={(event) =>
-            setDraft((current) => ({
-              ...current,
-              scheduler: {
-                enabled: event.target.checked,
-              },
-            }))}
+            setDraft((current) => updatePlugin(current, 'scheduler', { enabled: event.target.checked }))}
         />
       </label>
-      <div className={`${actionRowClassName} mt-3`}>
+      <div className={actionRowClassName}>
+        <button className={actionButtonClassName} type="button" onClick={onClose}>
+          {t("modal:cancel")}
+        </button>
         <button
           className={actionButtonClassName}
           type="button"
           onClick={() => onSave(draft)}
         >
-          {t("savePluginConfig")}
+          {t("modal:save")}
         </button>
       </div>
     </div>

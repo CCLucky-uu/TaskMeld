@@ -6,10 +6,10 @@ import { buildWorkflowAfterNodeDelete } from "../web/src/pages/control-plane/mod
 const makeBaseWorkflow = (): WorkflowDefinition => ({
   version: "3.0",
   scheduler: { enabled: true, mode: "auto", dispatchBy: "item", maxConcurrency: 2 },
-  plugins: {
-    remoteBatch: { enabled: false, url: "", startBatch: 1, batchSize: 5, sourceField: "list30" },
-    scheduler: { enabled: true },
-  },
+  plugins: [
+    { pluginId: 'remote-batch', enabled: false, config: { url: "", startBatch: 1, batchSize: 5, sourceField: "list30" } },
+    { pluginId: 'scheduler', enabled: true, config: {} },
+  ],
   nodes: [
     { id: "n1", name: "n1", lane: "main", isMainline: true, parallelGroupId: null, routePolicy: null },
     { id: "n2", name: "n2", lane: "main", isMainline: true, parallelGroupId: null, routePolicy: null },

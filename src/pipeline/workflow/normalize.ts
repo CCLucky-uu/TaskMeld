@@ -13,12 +13,11 @@ import type {
   WorkflowOutputConfig,
   WorkflowPlugins,
   WorkflowReadResult,
-  WorkflowRemoteBatchPlugin,
   WorkflowRetryPolicy,
   WorkflowRoutePolicy,
   WorkflowScheduler,
-  WorkflowSchedulerPlugin,
 } from "../types/workflow";
+import type { PluginInstance } from "../plugins/types";
 
 // ====== Internal constants / helpers ======
 
@@ -73,33 +72,60 @@ export const normalizeWorkflowScheduler = (value: unknown): WorkflowScheduler =>
   };
 };
 
-const normalizeRemoteBatchPlugin = (value: unknown): WorkflowRemoteBatchPlugin => {
+const normalizeRemoteBatchPluginConfig = (value: unknown): Record<string, unknown> => {
   const record = isRecord(value) ? value : {};
   return {
-    enabled: record.enabled === true,
     url: normalizeNonEmptyString(record.url) ?? DEFAULT_REMOTE_BATCH_URL,
     startBatch: normalizeIntegerInRange(record.startBatch, 1, 1, 1_000_000),
-    // Batch size and data source are low-frequency configuration; consolidate into plugin config to avoid too many params piling up on the main panel.
     batchSize: normalizeIntegerInRange(record.batchSize, 5, 1, 1_000),
     sourceField: normalizeNonEmptyString(record.sourceField) ?? "list30",
   };
 };
 
-const normalizeSchedulerPlugin = (value: unknown): WorkflowSchedulerPlugin => {
-  const record = isRecord(value) ? value : {};
+const normalizePluginInstance = (value: unknown): PluginInstance | null => {
+  if (!isRecord(value)) return null;
+  if (typeof value.pluginId !== "string" || !value.pluginId.trim()) return null;
   return {
-    // The scheduler was historically enabled for all pipelines by default; after plugin-ification, keep it enabled by default so the UI and behavior don't suddenly disappear after upgrade.
-    enabled: record.enabled !== false,
+    pluginId: value.pluginId.trim(),
+    enabled: value.enabled !== false,
+    config: isRecord(value.config) ? value.config : {},
   };
 };
 
 export const normalizeWorkflowPlugins = (value: unknown): WorkflowPlugins => {
-  const record = isRecord(value) ? value : {};
-  return {
-    // Plugin capabilities are consistent across all pipelines; only record each pipeline's own enabled + parameter configuration here.
-    remoteBatch: normalizeRemoteBatchPlugin(record.remoteBatch),
-    scheduler: normalizeSchedulerPlugin(record.scheduler),
-  };
+  // New format: array of PluginInstance
+  if (Array.isArray(value)) {
+    return value
+      .map(item => normalizePluginInstance(item))
+      .filter((x): x is PluginInstance => x !== null);
+  }
+
+  // Legacy format migration: { remoteBatch: {...}, scheduler: {...} } → PluginInstance[]
+  if (isRecord(value)) {
+    const instances: PluginInstance[] = [];
+    if (value.remoteBatch) {
+      const rb = isRecord(value.remoteBatch) ? value.remoteBatch : {};
+      instances.push({
+        pluginId: 'remote-batch',
+        enabled: rb.enabled === true,
+        config: normalizeRemoteBatchPluginConfig(rb),
+      });
+    }
+    if (value.scheduler) {
+      const sc = isRecord(value.scheduler) ? value.scheduler : {};
+      instances.push({
+        pluginId: 'scheduler',
+        enabled: sc.enabled !== false,
+        config: {},
+      });
+    }
+    return instances;
+  }
+
+  // Default: scheduler disabled
+  return [
+    { pluginId: 'scheduler', enabled: false, config: {} },
+  ];
 };
 
 const normalizeRoutePolicy = (value: unknown): WorkflowRoutePolicy | null => {

@@ -436,9 +436,10 @@ export const createPipelineService = (app: PipelineRegistry): PipelineService =>
     }
 
     const workflow = runtime.workflow.getWorkflow();
-    const remoteBatchPlugin = workflow.plugins.remoteBatch;
-    if (remoteBatchPlugin.enabled) {
-      const remoteUrl = remoteBatchPlugin.url.trim() || DEFAULT_REMOTE_BATCH_URL;
+    const remoteBatchInst = workflow.plugins.find(p => p.pluginId === 'remote-batch');
+    const remoteBatchConfig = remoteBatchInst?.enabled ? remoteBatchInst.config : null;
+    if (remoteBatchConfig) {
+      const remoteUrl = (typeof remoteBatchConfig.url === 'string' ? remoteBatchConfig.url.trim() : '') || DEFAULT_REMOTE_BATCH_URL;
       if (!remoteUrl) {
         return { ok: false, pipelineId, error: "remote_pool_url_empty" };
       }
@@ -472,16 +473,18 @@ export const createPipelineService = (app: PipelineRegistry): PipelineService =>
         };
       }
 
-      const preferredPayload = remoteBatchPlugin.sourceField
-        ? readNestedValueByPath(remotePayload, remoteBatchPlugin.sourceField)
+      const sourceField = typeof remoteBatchConfig.sourceField === 'string' ? remoteBatchConfig.sourceField : '';
+      const preferredPayload = sourceField
+        ? readNestedValueByPath(remotePayload, sourceField)
         : null;
       const items = extractKeywordPoolFromUnknown(preferredPayload ?? remotePayload);
       if (items.length === 0) {
         return { ok: false, pipelineId, error: "remote_batch_items_empty", remoteUrl };
       }
 
-      const batchSize = Math.max(1, remoteBatchPlugin.batchSize || 1);
-      const startIndex = Math.max(0, (Math.max(1, remoteBatchPlugin.startBatch || 1) - 1) * batchSize);
+      const batchSize = Math.max(1, (typeof remoteBatchConfig.batchSize === 'number' ? remoteBatchConfig.batchSize : 1));
+      const startBatch = typeof remoteBatchConfig.startBatch === 'number' ? remoteBatchConfig.startBatch : 1;
+      const startIndex = Math.max(0, (Math.max(1, startBatch) - 1) * batchSize);
       const started = runtime.pipeline.startBatchRun(items, batchSize, { startIndex });
       if (!started.ok) {
         const normalizedError = started.error === "batch_run_in_progress" ? "batch_run_in_progress" : "batch_items_empty";
@@ -665,14 +668,15 @@ export const createPipelineService = (app: PipelineRegistry): PipelineService =>
   const startRemoteBatchRun = async (input: PipelineStartRemoteBatchInput): Promise<PipelineStartRemoteBatchResult> => {
     const runtime = getRuntimeByPipelineId(app, input.pipelineId);
     if (!runtime) return { ok: false, pipelineId: input.pipelineId, error: "pipeline_not_found" };
-    const remoteBatchPlugin = runtime.workflow.getWorkflow().plugins.remoteBatch;
-    if (!remoteBatchPlugin.enabled) {
+    const remoteBatchInst = runtime.workflow.getWorkflow().plugins.find(p => p.pluginId === 'remote-batch');
+    if (!remoteBatchInst?.enabled) {
       return { ok: false, pipelineId: input.pipelineId, error: "pipeline_plugin_disabled", plugin: "remoteBatch" };
     }
 
+    const remoteBatchConfig = remoteBatchInst.config;
     const remoteUrl = typeof input.url === "string" && input.url.trim()
       ? input.url.trim()
-      : remoteBatchPlugin.url.trim() || DEFAULT_REMOTE_BATCH_URL;
+      : (typeof remoteBatchConfig.url === 'string' ? remoteBatchConfig.url.trim() : '') || DEFAULT_REMOTE_BATCH_URL;
     if (!remoteUrl) {
       return { ok: false, pipelineId: input.pipelineId, error: "remote_pool_url_empty" };
     }
@@ -701,15 +705,16 @@ export const createPipelineService = (app: PipelineRegistry): PipelineService =>
     }
 
     // sourceField is treated as a "preferred path" not a strict dependency: fall back to full parsing when path is missing to maintain compatibility.
-    const preferredPayload = remoteBatchPlugin.sourceField
-      ? readNestedValueByPath(remotePayload, remoteBatchPlugin.sourceField)
+    const sourceField2 = typeof remoteBatchConfig.sourceField === 'string' ? remoteBatchConfig.sourceField : '';
+    const preferredPayload = sourceField2
+      ? readNestedValueByPath(remotePayload, sourceField2)
       : null;
     const items = extractKeywordPoolFromUnknown(preferredPayload ?? remotePayload);
     if (items.length === 0) {
       return { ok: false, pipelineId: input.pipelineId, error: "remote_batch_items_empty", remoteUrl };
     }
 
-    const batchSize = normalizeBatchSize(input.batchSize) ?? remoteBatchPlugin.batchSize ?? 5;
+    const batchSize = normalizeBatchSize(input.batchSize) ?? (typeof remoteBatchConfig.batchSize === 'number' ? remoteBatchConfig.batchSize : 5);
     const startIndex = normalizeStartIndex(input.startIndex, input.startBatch, batchSize);
     const started = runtime.pipeline.startBatchRun(items, batchSize, startIndex !== undefined ? { startIndex } : undefined);
     if (!started.ok) {

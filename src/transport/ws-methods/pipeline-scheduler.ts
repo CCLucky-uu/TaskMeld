@@ -35,7 +35,8 @@ export const registerPipelineSchedulerWsMethods = (registry: WsMethodRegistry): 
     const runtime = ctx.app.getPipelineRuntime(pipelineId);
     if (!runtime) return { ok: false, error: "pipeline_not_found" };
     const workflow = runtime.workflow.getWorkflow();
-    if (!workflow || !workflow.plugins.scheduler.enabled) {
+    const schedulerPlugin = workflow.plugins.find(p => p.pluginId === 'scheduler');
+    if (!workflow || !schedulerPlugin?.enabled) {
       return { ok: false, error: "pipeline_plugin_disabled" };
     }
     const drained = await runtime.pipeline.drainPipeline("manual_tick");

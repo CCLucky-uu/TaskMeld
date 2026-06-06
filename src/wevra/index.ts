@@ -12,9 +12,10 @@ import { buildGlobalPrompt } from './loop/prompt-builder'
 import { loadUserPreferences, resolvePreferences, saveUserPreferences } from './preferences'
 import type { ReadonlyServices } from '../services/read-services'
 import type { PipelineRegistry } from '../app/pipeline-registry'
+import type { PluginRegistry } from '../pipeline/plugins/registry'
 
 // Builtin tools
-import { createPipelineTools } from './tools/builtin/pipeline'
+import { createPipelineTools, createPipelinePluginTool } from './tools/builtin/pipeline'
 import { createAgentTools } from './tools/builtin/agent'
 import { createArtifactTools } from './tools/builtin/artifact'
 import { createSessionTools } from './tools/builtin/session'
@@ -39,11 +40,13 @@ export class WevraAgent {
   private activeChats = new Map<string, AbortController>()
   private services: ReadonlyServices | null
   private app: PipelineRegistry | null
+  private pluginRegistry: PluginRegistry | null
 
-  constructor(configOverrides?: Partial<WevraConfig> & { model?: RuntimeModelConfig }, services?: ReadonlyServices, app?: PipelineRegistry) {
+  constructor(configOverrides?: Partial<WevraConfig> & { model?: RuntimeModelConfig }, services?: ReadonlyServices, app?: PipelineRegistry, pluginRegistry?: PluginRegistry) {
     this.config = loadConfig(configOverrides)
     this.services = services ?? null
     this.app = app ?? null
+    this.pluginRegistry = pluginRegistry ?? null
     this.toolRegistry = new ToolRegistry()
     this.memory = new WevraMemory()
     this.skills = createSkillRegistry()
@@ -181,7 +184,8 @@ export class WevraAgent {
   private registerTools() {
     const s = this.services
     for (const tool of [
-      ...createPipelineTools(s?.pipeline, this.app),
+      ...createPipelineTools(s?.pipeline, this.app, this.pluginRegistry),
+      ...createPipelinePluginTool(this.app, this.pluginRegistry),
       ...createAgentTools(s?.agent),
       ...createArtifactTools(s?.artifact),
       ...createSessionTools(s?.session),

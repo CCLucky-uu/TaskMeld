@@ -25,10 +25,10 @@ const run = async () => {
   const toPersistedV3 = (workflowLike: { scheduler: unknown; plugins?: unknown; nodes: unknown[]; edges: Array<{ from: string; to: string; when: string | null }>; groups: unknown[] }) => ({
     version: "3.0" as const,
     scheduler: workflowLike.scheduler,
-    plugins: workflowLike.plugins ?? {
-      remoteBatch: { enabled: false, url: "", startBatch: 1, batchSize: 5, sourceField: "list30" },
-      scheduler: { enabled: true },
-    },
+    plugins: workflowLike.plugins ?? [
+      { pluginId: 'remote-batch', enabled: false, config: { url: "", startBatch: 1, batchSize: 5, sourceField: "list30" } },
+      { pluginId: 'scheduler', enabled: true, config: {} },
+    ],
     nodes: workflowLike.nodes,
     edges: workflowLike.edges.map((edge) =>
       edge.when === null
