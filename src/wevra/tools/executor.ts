@@ -11,7 +11,7 @@ export class ToolExecutor {
     private config: WevraConfig,
   ) {}
 
-  async execute(call: ToolCall, ctx: ToolContext): Promise<ToolResult> {
+  async execute(call: ToolCall, ctx: ToolContext, options?: { skipPermission?: boolean }): Promise<ToolResult> {
     const tool = this.registry.get(call.name)
 
     // Step 1: Lookup
@@ -42,21 +42,23 @@ export class ToolExecutor {
       }
     }
 
-    // Step 3: permission
-    const prefs = ctx.preferences ?? DEFAULT_TOOL_PREFERENCES
-    const result = resolvePermission(call.name, tool.annotations, prefs)
-    console.log(`[wevra:perm] tool=${call.name} mode=${prefs.mode} readOnly=${tool.annotations.readOnly} destructive=${tool.annotations.destructive} requiresConfirm=${tool.annotations.requiresConfirmation} → ${result.decision}`)
-    if (result.decision === 'deny') {
-      return {
-        output: result.reason!,
-        isError: true,
+    // Step 3: permission (skip if already confirmed by user)
+    if (!options?.skipPermission) {
+      const prefs = ctx.preferences ?? DEFAULT_TOOL_PREFERENCES
+      const result = resolvePermission(call.name, tool.annotations, prefs)
+      console.log(`[wevra:perm] tool=${call.name} mode=${prefs.mode} readOnly=${tool.annotations.readOnly} destructive=${tool.annotations.destructive} requiresConfirm=${tool.annotations.requiresConfirmation} → ${result.decision}`)
+      if (result.decision === 'deny') {
+        return {
+          output: result.reason!,
+          isError: true,
+        }
       }
-    }
-    if (result.decision === 'confirm') {
-      return {
-        output: `Confirmation required for "${call.name}".`,
-        isError: false,
-        needsConfirmation: true,
+      if (result.decision === 'confirm') {
+        return {
+          output: `Confirmation required for "${call.name}".`,
+          isError: false,
+          needsConfirmation: true,
+        }
       }
     }
 
@@ -85,8 +87,8 @@ export class ToolExecutor {
     }
   }
 
-  async executeAll(calls: ToolCall[], ctx: ToolContext): Promise<ToolResult[]> {
-    return Promise.all(calls.map(call => this.execute(call, ctx)))
+  async executeAll(calls: ToolCall[], ctx: ToolContext, options?: { skipPermission?: boolean }): Promise<ToolResult[]> {
+    return Promise.all(calls.map(call => this.execute(call, ctx, options)))
   }
 
   private withTimeout<T>(promise: Promise<T>, ms: number, controller: AbortController): Promise<T> {

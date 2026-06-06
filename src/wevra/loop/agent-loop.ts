@@ -142,7 +142,7 @@ export class WevraLoop {
             })
             continue
           }
-          const [singleResult] = await this.executor.executeAll([toolCalls[i]], toolCtx)
+          const [singleResult] = await this.executor.executeAll([toolCalls[i]], toolCtx, { skipPermission: true })
           finalResults.push(singleResult)
         } else if (results[i].needsConfirmation) {
           finalResults.push({
