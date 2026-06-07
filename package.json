@@ -24,7 +24,7 @@
     "lint": "eslint \"src/**/*.ts\" \"test/**/*.ts\"",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\"",
-    "verify": "npm run typecheck && npm run lint && npm test",
+    "verify": "npm run format:check && npm run typecheck && npm run lint && npm test",
     "test:watch": "npm run test",
     "start": "node dist/src/index.js",
     "cli": "node dist/src/cli/index.js",
