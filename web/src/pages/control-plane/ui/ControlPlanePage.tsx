@@ -35,6 +35,7 @@ import {
 import { controlPlaneNavItems } from "../model/controlPlaneNavItems";
 import { useControlPlanePage } from "../model/useControlPlanePage";
 import { useAgentCrudModal } from "../model/useAgentCrudModal";
+import { topologicalSortNodeIds } from "../model/controlPlaneUtils";
 import type { NavKey } from "../../../widgets/nav-panel/model/navItem";
 import PlusIcon from "@iconify-react/lucide/plus";
 const smallModalPanelClassName = `${modalPanelBaseClassName} w-[min(560px,94vw)]`;
@@ -355,6 +356,13 @@ export function ControlPlanePage({
     return () => window.clearTimeout(timer);
   }, [focusPipelineId, isPipelineRoute, vm.setActivePipelineId]);
 
+  // Auto-dismiss action message after 8 seconds
+  useEffect(() => {
+    if (!vm.actionMessage) return;
+    const timer = window.setTimeout(() => vm.setActionMessage(""), 8000);
+    return () => window.clearTimeout(timer);
+  }, [vm.actionMessage, vm.setActionMessage]);
+
   useEffect(() => {
     const handleKeydown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
@@ -547,8 +555,9 @@ export function ControlPlanePage({
                         title: pipelineItem.title,
                         canDelete: vm.pipelineList.length > 1,
                         pipeline: state.pipeline,
-                        workflowNodeOrder:
-                          state.workflow?.nodes.map((node) => node.id) ?? state.pipeline.map((node) => node.id),
+                        workflowNodeOrder: state.workflow
+                          ? topologicalSortNodeIds(state.workflow)
+                          : state.pipeline.map((node) => node.id),
                         parallelGroups: inferredGroups,
                         pluginState: vm.getPipelineRemoteBatchPlugin(pipelineId),
                         schedulerPluginEnabled: vm.getPipelineSchedulerPlugin(pipelineId).enabled,
@@ -1493,6 +1502,22 @@ export function ControlPlanePage({
           </button>
         </div>
         <PipelineDispatchBoard pipelines={vm.pipelineList.map((p) => ({ id: p.id, title: p.title }))} />
+      </ModalLayer>
+
+      {/* Action message dialog (run/save errors) */}
+      <ModalLayer
+        open={Boolean(vm.actionMessage)}
+        onClose={() => vm.setActionMessage("")}
+        panelClassName={smallModalPanelClassName}
+        ariaLabel="Action result"
+      >
+        <div className={panelHeaderClassName}>
+          <h2>{t("modal:error")}</h2>
+          <button className={drawerCloseClassName} type="button" onClick={() => vm.setActionMessage("")}>
+            <CloseIcon />
+          </button>
+        </div>
+        <div className="mx-3 mb-4 text-sm leading-relaxed">{vm.actionMessage}</div>
       </ModalLayer>
     </div>
   );

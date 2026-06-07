@@ -32,6 +32,7 @@ export type PipelineUpdatedPayload = {
   run?: Run;
   runId?: string;
   nodes?: PipelineNode[];
+  workflow?: import("../../entities/pipeline").WorkflowDefinition;
   scheduler?: WorkflowSchedulerState;
   batchRunState?: ItemBatchRunState | null;
 };

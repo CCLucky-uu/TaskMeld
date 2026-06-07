@@ -228,7 +228,7 @@ export const createPipelineRegistry = (options: CreatePipelineRegistryOptions) =
           payload: {
             ...(event.payload as Record<string, unknown> | undefined),
             pipelineId: definition.id,
-          } satisfies PipelineUpdatedBroadcastPayload,
+          },
         })
         return
       }

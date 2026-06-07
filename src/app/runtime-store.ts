@@ -112,6 +112,7 @@ export const createRuntimeStore = (options: RuntimeStoreOptions) => {
         run: { ...run, nodes: nodesWithWorkflowMeta },
         runId: run.id,
         nodes: nodesWithWorkflowMeta,
+        workflow: options.graph.getWorkflow(),
         scheduler: { ...options.getSchedulerState() },
         ...(options.getBatchRunState ? { batchRunState: options.getBatchRunState() } : {}),
       },

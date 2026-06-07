@@ -17,6 +17,18 @@ export class ApiError extends Error {
   }
 }
 
+const extractErrorMessage = (error: unknown): string => {
+  if (!error) return "request_failed";
+  if (typeof error === "string") return error;
+  if (typeof error === "object") {
+    const record = error as Record<string, unknown>;
+    const detail = typeof record.detail === "string" ? record.detail : "";
+    const err = typeof record.error === "string" ? record.error : "";
+    return detail || err || String(error);
+  }
+  return String(error);
+};
+
 // WS request client
 type PendingRequest = {
   resolve: (payload: unknown) => void;
@@ -70,7 +82,7 @@ const connect = (): Promise<void> => {
         const entry = pending.get(frame.id)!;
         pending.delete(frame.id);
         if (frame.ok) entry.resolve(frame.payload);
-        else entry.reject(new ApiError(String(frame.error ?? "request_failed"), 500, frame.error));
+        else entry.reject(new ApiError(extractErrorMessage(frame.error), 500, frame.error));
         return;
       }
       const event = parseGatewayWsEvent(raw.data as string);

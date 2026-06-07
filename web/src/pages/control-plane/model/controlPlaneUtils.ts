@@ -273,6 +273,40 @@ export const getDisallowedDependencyIdsForNode = (workflow: WorkflowDefinition, 
   return disallowed;
 };
 
+/**
+ * Topological sort of node IDs by dependency edges.
+ * Returns node IDs in execution order (upstream before downstream).
+ * Orphan nodes (no edges) are appended at the end in original order.
+ */
+export const topologicalSortNodeIds = (workflow: WorkflowDefinition): string[] => {
+  const incoming = new Map<string, number>();
+  for (const n of workflow.nodes) incoming.set(n.id, 0);
+  for (const e of workflow.edges) {
+    if (e.when === null) incoming.set(e.to, (incoming.get(e.to) ?? 0) + 1);
+  }
+  const outgoing = new Map<string, string[]>();
+  for (const n of workflow.nodes) outgoing.set(n.id, []);
+  for (const e of workflow.edges) {
+    if (e.when === null) outgoing.set(e.from, [...(outgoing.get(e.from) ?? []), e.to]);
+  }
+  const queue = workflow.nodes.filter((n) => (incoming.get(n.id) ?? 0) === 0).map((n) => n.id);
+  const sorted: string[] = [];
+  while (queue.length > 0) {
+    const id = queue.shift()!;
+    sorted.push(id);
+    for (const next of outgoing.get(id) ?? []) {
+      const deg = (incoming.get(next) ?? 1) - 1;
+      incoming.set(next, deg);
+      if (deg === 0) queue.push(next);
+    }
+  }
+  const sortedSet = new Set(sorted);
+  for (const n of workflow.nodes) {
+    if (!sortedSet.has(n.id)) sorted.push(n.id);
+  }
+  return sorted;
+};
+
 export const buildTemplateNodesFromWorkflow = (
   workflow: WorkflowDefinition | null,
   pipeline: PipelineNode[],
@@ -443,16 +477,17 @@ const isApiErrorLike = (value: unknown): value is ApiError => {
   return typeof candidate.status === "number";
 };
 
-export const getApiErrorMessage = (error: unknown) =>
-  isApiErrorLike(error)
-    ? String(
-        (() => {
-          const body = ((error as { body?: unknown }).body as { error?: string; detail?: string } | null) ?? null;
-          if (body?.error && body?.detail) return `${body.error}: ${body.detail}`;
-          return body?.error ?? `HTTP ${(error as { status: number }).status}`;
-        })(),
-      )
-    : error instanceof Error
-      ? error.message
-      : "unknown_error";
+export const getApiErrorMessage = (error: unknown) => {
+  if (isApiErrorLike(error)) {
+    const body = (error as { body?: unknown }).body;
+    if (typeof body === "string") return body;
+    if (body && typeof body === "object") {
+      const record = body as { error?: string; detail?: string };
+      return record.detail || record.error || error.message || `HTTP ${(error as { status: number }).status}`;
+    }
+    return error.message || `HTTP ${(error as { status: number }).status}`;
+  }
+  if (error instanceof Error) return error.message;
+  return "unknown_error";
+};
 

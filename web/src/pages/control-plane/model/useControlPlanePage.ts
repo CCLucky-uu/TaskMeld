@@ -400,19 +400,14 @@ export function useControlPlanePage() {
   const dependencyOptions = useMemo(() => {
     if (!selectedNode || !workflow) return [] as Array<{ id: string; title: string }>;
     const disallowedIds = getDisallowedDependencyIdsForNode(workflow, selectedNode.id);
-    const selectedIndex = templateNodes.findIndex((node) => node.id === selectedNode.id);
-    const nodeOptions =
-      selectedIndex <= 0
-        ? []
-        : templateNodes
-            .slice(0, selectedIndex)
-            .filter((node) => !disallowedIds.has(node.id))
-            .map((node) => ({ id: node.id, title: node.title }));
+    const nodeOptions = workflow.nodes
+      .filter((node) => !disallowedIds.has(node.id))
+      .map((node) => ({ id: node.id, title: node.name ?? node.id }));
     const groupOptions = inferredGroups
       .filter((group) => !disallowedIds.has(group.id))
       .map((group) => ({ id: group.id, title: `${t("modal:fieldLabel.group")} ${group.id}` }));
     return [...nodeOptions, ...groupOptions];
-  }, [selectedNode?.id, templateNodes, workflow, inferredGroups]);
+  }, [selectedNode?.id, workflow, inferredGroups]);
   const groupUpstreamOptions = useMemo(() => {
     const memberIds = new Set(selectedGroup?.members ?? []);
     return [
@@ -827,6 +822,7 @@ export function useControlPlanePage() {
                 ? payload.run.groupItemRuns
                 : prev.pipelineGroupItems,
               pipelineItems: Array.isArray(payload.run?.itemRuns) ? payload.run.itemRuns : prev.pipelineItems,
+              ...(payload.workflow ? { workflow: payload.workflow } : {}),
             }));
             return;
           }
@@ -1495,6 +1491,66 @@ export function useControlPlanePage() {
   const isSavingNodeAll = useRef(false);
   const [saveFailed, setSaveFailed] = useState(false);
 
+  /**
+   * Detect if a workflow has a dependency cycle.
+   * Uses DFS to find the actual cycle path and returns only the edges in the cycle.
+   */
+  const detectCycle = (
+    wf: WorkflowDefinition,
+  ): Array<{ from: string; to: string }> | null => {
+    const adj = new Map<string, string[]>();
+    const edgeMap = new Map<string, { from: string; to: string }>();
+    for (const n of wf.nodes) adj.set(n.id, []);
+    for (const e of wf.edges) {
+      if (e.when !== null) continue;
+      adj.set(e.from, [...(adj.get(e.from) ?? []), e.to]);
+      edgeMap.set(`${e.from}|${e.to}`, { from: e.from, to: e.to });
+    }
+    // DFS-based cycle detection: 0=unvisited, 1=visiting, 2=done
+    const color = new Map<string, number>();
+    const parent = new Map<string, string | null>();
+    for (const n of wf.nodes) color.set(n.id, 0);
+
+    for (const start of wf.nodes) {
+      if (color.get(start.id) !== 0) continue;
+      const stack: Array<{ node: string; edgeIdx: number }> = [{ node: start.id, edgeIdx: 0 }];
+      color.set(start.id, 1);
+      parent.set(start.id, null);
+      while (stack.length > 0) {
+        const top = stack[stack.length - 1];
+        const neighbors = adj.get(top.node) ?? [];
+        if (top.edgeIdx >= neighbors.length) {
+          color.set(top.node, 2);
+          stack.pop();
+          continue;
+        }
+        const next = neighbors[top.edgeIdx]!;
+        top.edgeIdx++;
+        if (color.get(next) === 1) {
+          // Found cycle: trace back from top.node to next via parent links
+          const cycleEdges: Array<{ from: string; to: string }> = [];
+          const edge = edgeMap.get(`${top.node}|${next}`);
+          if (edge) cycleEdges.push(edge);
+          let cur = top.node;
+          while (cur !== next) {
+            const p = parent.get(cur);
+            if (!p) break;
+            const e = edgeMap.get(`${p}|${cur}`);
+            if (e) cycleEdges.push(e);
+            cur = p;
+          }
+          return cycleEdges;
+        }
+        if (color.get(next) === 0) {
+          color.set(next, 1);
+          parent.set(next, top.node);
+          stack.push({ node: next, edgeIdx: 0 });
+        }
+      }
+    }
+    return null;
+  };
+
   const saveSelectedNodeAll = useCallback(
     async (opts?: { silentSuccess?: boolean }) => {
       if (!workflow || !selectedNode) return;
@@ -1510,6 +1566,33 @@ export function useControlPlanePage() {
         if (!built.ok) {
           setActionMessage(built.error);
           return;
+        }
+
+        // Detect dependency cycles before saving — auto-resolve by removing old edges
+        const cycleEdges = detectCycle(built.workflow);
+        if (cycleEdges) {
+          const oldDepKeys = new Set(
+            workflow.edges
+              .filter((e) => e.to === selectedNode.id && e.when === null)
+              .map((e) => `${e.from}|${e.to}`),
+          );
+          const newDepKeys = new Set(
+            draftDependsOn.map((dep) => `${dep.trim()}|${selectedNode.id}`),
+          );
+          const addedKeys = [...newDepKeys].filter((k) => !oldDepKeys.has(k));
+          const newEdgeKey = addedKeys.length === 1 ? addedKeys[0] : null;
+          const edgesToKeep = newEdgeKey
+            ? cycleEdges.filter((e) => `${e.from}|${e.to}` === newEdgeKey)
+            : [];
+          const keysToRemove = new Set(
+            cycleEdges
+              .filter((e) => !edgesToKeep.some((k) => `${k.from}|${k.to}` === `${e.from}|${e.to}`))
+              .map((e) => `${e.from}|${e.to}`),
+          );
+          built.workflow = {
+            ...built.workflow,
+            edges: built.workflow.edges.filter((e) => !keysToRemove.has(`${e.from}|${e.to}`)),
+          };
         }
 
         // L1 validation only — does not block save for incomplete graphs
@@ -1963,6 +2046,7 @@ export function useControlPlanePage() {
     openSessionModalForAgent,
     serverVersion,
     actionMessage,
+    setActionMessage,
     isCreatingPipeline,
     isDeletingPipeline,
     isRenamingPipeline,

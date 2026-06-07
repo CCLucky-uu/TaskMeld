@@ -2,6 +2,7 @@ import type { Tool } from "../../types"
 import type { PipelineService } from "../../../services/pipeline-service"
 import type { PipelineRegistry } from "../../../app/pipeline-registry"
 import type { PluginRegistry } from "../../../pipeline/plugins/registry"
+import { validateWorkflowGraph, validateWorkflowOutputConfig } from "../../../pipeline/workflow/validate"
 
 export function createPipelineTools(
   pipeline?: PipelineService,
@@ -249,6 +250,48 @@ export function createPipelineTools(
       },
     },
     {
+      name: "pipeline_validate",
+      description:
+        "Validate a pipeline's workflow without running it. Checks graph structure (cycles, edges), routing constraints, parallel group integrity, and output configuration. Returns all issues found so they can be fixed before attempting a run.",
+      parameters: {
+        type: "object",
+        properties: {
+          pipelineId: { type: "string", description: "The pipeline ID to validate" },
+        },
+        required: ["pipelineId"],
+      },
+      annotations: { readOnly: true, destructive: false, requiresConfirmation: false, idempotent: true },
+      permission: "auto",
+      async execute(args) {
+        if (!app) return { output: "Pipeline registry not available.", isError: true }
+        const { pipelineId } = args as { pipelineId: string }
+        const runtime = app.getPipelineRuntime(pipelineId)
+        if (!runtime) return { output: `Pipeline "${pipelineId}" not found.`, isError: true }
+        const workflow = runtime.workflow.getWorkflow()
+        if (!workflow) return { output: "Workflow not available.", isError: true }
+
+        const errors: string[] = []
+
+        const graphResult = validateWorkflowGraph(workflow)
+        if (!graphResult.ok) errors.push(graphResult.detail ?? graphResult.error)
+
+        const outputResult = validateWorkflowOutputConfig(workflow)
+        if (!outputResult.ok) errors.push(outputResult.detail ?? outputResult.error)
+
+        if (errors.length === 0) {
+          return {
+            output: JSON.stringify({ pipelineId, valid: true, nodeCount: workflow.nodes.length, edgeCount: workflow.edges.length }, null, 2),
+            isError: false,
+          }
+        }
+
+        return {
+          output: JSON.stringify({ pipelineId, valid: false, errors }, null, 2),
+          isError: false,
+        }
+      },
+    },
+    {
       name: "pipeline_run",
       description: "Start running a pipeline. The pipeline must have at least one node.",
       parameters: {
@@ -423,6 +466,7 @@ Available plugins and their config:
             }
             const nextWorkflow = { ...workflow, plugins: nextPlugins }
             await runtime.workflow.setWorkflow(nextWorkflow)
+            runtime.workflow.reconcileRunWithWorkflowChanges()
             runtime.runtime.emitPipeline()
             return { output: `Plugin "${pluginId}" enabled on pipeline "${pipelineId}".`, isError: false }
           }
@@ -444,6 +488,7 @@ Available plugins and their config:
 
             const nextWorkflow = { ...workflow, plugins: nextPlugins, scheduler: nextScheduler }
             await runtime.workflow.setWorkflow(nextWorkflow)
+            runtime.workflow.reconcileRunWithWorkflowChanges()
             runtime.runtime.emitPipeline()
             return { output: `Plugin "${pluginId}" disabled on pipeline "${pipelineId}".`, isError: false }
           }
@@ -466,6 +511,7 @@ Available plugins and their config:
             }
             const nextWorkflow = { ...workflow, plugins: nextPlugins }
             await runtime.workflow.setWorkflow(nextWorkflow)
+            runtime.workflow.reconcileRunWithWorkflowChanges()
             runtime.runtime.emitPipeline()
             const saved = nextPlugins.find((p) => p.pluginId === pluginId)
             return {
@@ -502,7 +548,7 @@ Executor roles: "planner", "coder", "tester", "reviewer", "operator"
 
 IMPORTANT: Before adding a node, call agent_list to discover available agents and use their ID for agentId.
 Normal connect creates a dependency edge. Only use the route parameter when connecting FROM a router node to a specific branch target.
-When connecting with kind="route", provide the route value that triggers this edge.`,
+When connecting a route edge, provide the route value (e.g. "no") that triggers this edge.`,
       parameters: {
         type: "object",
         properties: {
@@ -531,16 +577,26 @@ When connecting with kind="route", provide the route value that triggers this ed
           routePolicy: {
             type: "array",
             items: { type: "string" },
-            description: 'Route values for router nodes, e.g. ["yes", "no"]',
+            description: 'Route values for router nodes (for add: e.g. ["yes", "no"]; for update: set to null to remove routing)',
           },
           dependsOn: {
             type: "array",
             items: { type: "string" },
-            description: "Upstream node IDs (for add, creates dependency edges automatically)",
+            description: "Upstream node IDs. For add: creates dependency edges. For update: replaces all upstream dependencies (full rewrite, not incremental).",
           },
           enabled: { type: "boolean", description: "Enable/disable node (for update)" },
           allowReject: { type: "boolean", description: "Allow agent to reject (for update)" },
           maxRejectCount: { type: "number", description: "Max reject attempts (for update)" },
+          sessionId: { type: "string", description: "Session binding ID (for update, e.g. agent:codex:main). Omit to keep current." },
+          lane: { type: "string", enum: ["main", "branch"], description: "Node lane (for update): main = primary execution path, branch = conditional path." },
+          retryPolicy: {
+            type: "object",
+            properties: {
+              maxAttempts: { type: "number" },
+              backoffMs: { type: "number" },
+            },
+            description: "Retry policy (for update, partial merge: only provided fields are changed)",
+          },
           from: { type: "string", description: "Upstream node ID (for connect)" },
           to: { type: "string", description: "Downstream node ID (for connect)" },
           route: {
@@ -638,12 +694,13 @@ When connecting with kind="route", provide the route value that triggers this ed
                 if (!workflow.nodes.some((n) => n.id === depId)) {
                   return { output: `Dependency node "${depId}" not found.`, isError: true }
                 }
-                nextEdges.push({ from: depId, to: nodeId, kind: "dependency" } as any)
+                nextEdges.push({ from: depId, to: nodeId, when: null })
               }
             }
 
             const nextWorkflow = { ...workflow, nodes: nextNodes, edges: nextEdges }
             await runtime.workflow.setWorkflow(nextWorkflow)
+            runtime.workflow.reconcileRunWithWorkflowChanges()
             runtime.runtime.emitPipeline()
 
             return {
@@ -674,31 +731,73 @@ When connecting with kind="route", provide the route value that triggers this ed
 
             const existing = workflow.nodes[idx] as any
             const updated = { ...existing }
-            if (a.name !== undefined) updated.name = a.name
-            if (a.instruction !== undefined) updated.instruction = a.instruction
-            if (a.enabled !== undefined) updated.enabled = a.enabled
-            if (a.allowReject !== undefined) updated.allowReject = a.allowReject
-            if (a.maxRejectCount !== undefined) updated.maxRejectCount = a.maxRejectCount
-            if (a.role !== undefined) updated.executor = { ...updated.executor, role: a.role }
-            if (a.agentId !== undefined) updated.executor = { ...updated.executor, agentId: a.agentId }
+            const changes: string[] = []
+
+            if (a.name !== undefined) { updated.name = a.name; changes.push("name") }
+            if (a.instruction !== undefined) { updated.instruction = a.instruction; changes.push("instruction") }
+            if (a.enabled !== undefined) { updated.enabled = a.enabled; changes.push("enabled") }
+            if (a.allowReject !== undefined) { updated.allowReject = a.allowReject; changes.push("allowReject") }
+            if (a.maxRejectCount !== undefined) { updated.maxRejectCount = a.maxRejectCount; changes.push("maxRejectCount") }
+            if (a.role !== undefined) { updated.executor = { ...updated.executor, role: a.role }; changes.push("role") }
+            if (a.agentId !== undefined) { updated.executor = { ...updated.executor, agentId: a.agentId }; changes.push("agentId") }
+            if (a.sessionId !== undefined) { updated.executor = { ...updated.executor, sessionId: a.sessionId }; changes.push("sessionId") }
+            if (a.lane !== undefined) {
+              const lane = a.lane === "branch" ? "branch" : "main"
+              updated.lane = lane
+              updated.isMainline = lane !== "branch"
+              changes.push("lane")
+            }
+            if (a.routePolicy !== undefined) {
+              if (Array.isArray(a.routePolicy) && a.routePolicy.length >= 2) {
+                updated.routePolicy = { allowed: a.routePolicy }
+              } else if (a.routePolicy === null) {
+                updated.routePolicy = null
+              }
+              changes.push("routePolicy")
+            }
+            if (a.retryPolicy !== undefined && typeof a.retryPolicy === "object") {
+              updated.retryPolicy = { ...updated.retryPolicy, ...a.retryPolicy }
+              changes.push("retryPolicy")
+            }
 
             const nextNodes = [...workflow.nodes]
             nextNodes[idx] = updated
-            const nextWorkflow = { ...workflow, nodes: nextNodes }
+
+            // Rebuild edges if dependsOn changed
+            let nextEdges = workflow.edges
+            if (Array.isArray(a.dependsOn)) {
+              const newDeps = (a.dependsOn as string[]).map((d: string) => d.trim()).filter(Boolean)
+              const validIds = new Set(workflow.nodes.map((n) => n.id))
+              const invalidDep = newDeps.find((d: string) => !validIds.has(d) || d === nodeId)
+              if (invalidDep) return { output: `Dependency "${invalidDep}" not found or is self-referencing.`, isError: true }
+
+              // Remove old dependency edges for this node, add new ones
+              nextEdges = [
+                ...workflow.edges.filter((e) => !(e.to === nodeId && e.when === null)),
+                ...newDeps.map((dep: string) => ({ from: dep, to: nodeId, when: null })),
+              ]
+              changes.push("dependsOn")
+            }
+
+            const nextWorkflow = { ...workflow, nodes: nextNodes, edges: nextEdges }
             await runtime.workflow.setWorkflow(nextWorkflow)
+            runtime.workflow.reconcileRunWithWorkflowChanges()
             runtime.runtime.emitPipeline()
 
             return {
               output: JSON.stringify(
                 {
-                  message: `Node "${nodeId}" updated.`,
+                  message: `Node "${nodeId}" updated. Changed: ${changes.join(", ")}.`,
                   node: {
                     id: updated.id,
                     name: updated.name,
                     type: updated.type,
                     enabled: updated.enabled,
+                    lane: updated.lane,
                     role: updated.executor.role,
+                    agentId: updated.executor.agentId,
                     instruction: updated.instruction,
+                    dependsOn: nextEdges.filter((e) => e.to === nodeId && e.when === null).map((e) => e.from),
                   },
                 },
                 null,
@@ -727,6 +826,7 @@ When connecting with kind="route", provide the route value that triggers this ed
 
             const nextWorkflow = { ...workflow, nodes: nextNodes, edges: nextEdges, groups: nextGroups }
             await runtime.workflow.setWorkflow(nextWorkflow)
+            runtime.workflow.reconcileRunWithWorkflowChanges()
             runtime.runtime.emitPipeline()
 
             return {
@@ -752,32 +852,26 @@ When connecting with kind="route", provide the route value that triggers this ed
             if (!workflow.nodes.some((n) => n.id === to))
               return { output: `Target node "${to}" not found.`, isError: true }
 
-            const routeValue = a.route as string | undefined
-            const kind = routeValue?.trim() ? "route" : "dependency"
+            const routeValue = (a.route as string | undefined)?.trim()
 
             const exists = workflow.edges.some((e) => {
-              const edge = e as any
-              if (edge.from !== from || edge.to !== to) return false
-              const edgeKind = edge.kind ?? (edge.when != null ? "route" : "dependency")
-              return edgeKind === kind
+              if (e.from !== from || e.to !== to) return false
+              if (routeValue) return e.when === routeValue
+              return e.when === null
             })
-            if (exists) return { output: `Edge from "${from}" to "${to}" (${kind}) already exists.`, isError: true }
+            if (exists) return { output: `Edge from "${from}" to "${to}" already exists.`, isError: true }
 
-            let edge: any
-            if (kind === "route") {
-              edge = { from, to, kind: "route", route: routeValue!.trim() }
-            } else {
-              edge = { from, to, kind: "dependency" }
-            }
+            const edge = routeValue ? { from, to, when: routeValue } : { from, to, when: null }
 
             const nextWorkflow = { ...workflow, edges: [...workflow.edges, edge] }
             await runtime.workflow.setWorkflow(nextWorkflow)
+            runtime.workflow.reconcileRunWithWorkflowChanges()
             runtime.runtime.emitPipeline()
 
             return {
               output: JSON.stringify(
                 {
-                  message: `Edge added: ${from} → ${to} (${kind}${kind === "route" ? `, route="${a.route}"` : ""}).`,
+                  message: `Edge added: ${from} → ${to}${edge.when != null ? ` (route="${edge.when}")` : " (dependency)"}.`,
                   edge,
                 },
                 null,
