@@ -416,6 +416,3 @@ export const validateWorkflowOutputConfig = (workflow: WorkflowDefinitionRuntime
   }
   return { ok: true }
 }
-
-export const validateWorkflowDefinition = (workflow: WorkflowDefinitionRuntime): WorkflowValidationResult =>
-  validateWorkflowGraph(workflow)

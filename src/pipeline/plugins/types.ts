@@ -58,13 +58,9 @@ export interface PipelinePlugin<TConfig = Record<string, unknown>> {
 }
 
 // ── Plugin Instance (runtime binding = definition + per-pipeline config) ──
-
-export interface PluginInstance {
-  pluginId: string
-  enabled: boolean
-  config: Record<string, unknown>
-}
+// Re-exported from types/workflow.ts to keep PluginInstance canonical there
+export type { PluginInstance } from "../types/workflow"
 
 // ── Workflow plugins field ──
 
-export type WorkflowPlugins = PluginInstance[]
+export type { WorkflowPlugins } from "../types/workflow"

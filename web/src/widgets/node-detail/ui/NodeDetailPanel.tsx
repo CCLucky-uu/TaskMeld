@@ -84,8 +84,7 @@ type NodeDetailPanelProps = {
   draftWorkflowLane: "main" | "branch";
   draftWorkflowRouteAllowed: string;
   draftWorkflowRouteTargets: Record<string, string>;
-  isSavingWorkflowConfig: boolean;
-  savingConfig: boolean;
+  isSaving: boolean;
   hasPipelineExecution: boolean;
   onChangeDraftTitle: (v: string) => void;
   onChangeDraftAgentId: (v: string) => void;
@@ -98,7 +97,6 @@ type NodeDetailPanelProps = {
   onChangeDraftWorkflowLane: (v: "main" | "branch") => void;
   onChangeDraftWorkflowRouteAllowed: (v: string) => void;
   onChangeDraftWorkflowRouteTarget: (route: string, targetNodeId: string) => void;
-  onBlurSave: () => void;
   onRetry: () => void;
   statusTone: Record<string, string>;
   statusLabel: Record<string, string>;
@@ -120,8 +118,7 @@ export function NodeDetailPanel({
   draftWorkflowLane,
   draftWorkflowRouteAllowed,
   draftWorkflowRouteTargets,
-  isSavingWorkflowConfig,
-  savingConfig,
+  isSaving,
   hasPipelineExecution,
   onChangeDraftTitle,
   onChangeDraftAgentId,
@@ -134,7 +131,6 @@ export function NodeDetailPanel({
   onChangeDraftWorkflowLane,
   onChangeDraftWorkflowRouteAllowed,
   onChangeDraftWorkflowRouteTarget,
-  onBlurSave,
   onRetry,
   statusTone,
   statusLabel,
@@ -156,21 +152,19 @@ export function NodeDetailPanel({
       : [];
   const routeTargetOptionsForEdit = routeOptions.filter((route) => route !== MAINLINE_ROUTE_VALUE);
   const [routeDraft, setRouteDraft] = useState("");
-  const isSaving = savingConfig || isSavingWorkflowConfig;
 
   useEffect(() => {
     if (!depEditorOpen) return;
     const onPointerDown = (event: MouseEvent) => {
       if (depEditorRef.current && !depEditorRef.current.contains(event.target as Node)) {
         setDepEditorOpen(false);
-        onBlurSave();
       }
     };
     document.addEventListener("mousedown", onPointerDown);
     return () => {
       document.removeEventListener("mousedown", onPointerDown);
     };
-  }, [depEditorOpen, onBlurSave]);
+  }, [depEditorOpen]);
 
   useEffect(() => {
     setDepEditorOpen(false);
@@ -256,7 +250,6 @@ export function NodeDetailPanel({
           className={controlInputClassName}
           value={draftTitle}
           onChange={(e) => onChangeDraftTitle(e.target.value)}
-          onBlur={onBlurSave}
           disabled={!selectedNode}
         />
       </div>
@@ -268,11 +261,8 @@ export function NodeDetailPanel({
             value: agentId,
             label: agentId,
           }))}
-          onChange={(next) => {
-            onChangeDraftAgentId(next);
-            onBlurSave();
-          }}
-          onClose={onBlurSave}
+          onChange={onChangeDraftAgentId}
+          onClose={() => {}}
           triggerClassName={controlInputClassName}
           disabled={!selectedNode}
           ariaLabel="Agent"
@@ -289,11 +279,7 @@ export function NodeDetailPanel({
             value: session.id,
             label: session.id,
           }))}
-          onChange={(next) => {
-            onChangeDraftExecutorSessionId(next);
-            onBlurSave();
-          }}
-          onClose={onBlurSave}
+          onChange={onChangeDraftExecutorSessionId}
           triggerClassName={controlInputClassName}
           disabled={!selectedNode}
           ariaLabel={t("session")}
@@ -305,7 +291,6 @@ export function NodeDetailPanel({
           className={controlTextAreaMonoClassName}
           value={draftInstruction}
           onChange={(e) => onChangeDraftInstruction(e.target.value)}
-          onBlur={onBlurSave}
           disabled={!selectedNode}
           rows={5}
         />
@@ -434,21 +419,13 @@ export function NodeDetailPanel({
             tabIndex={selectedNode ? 0 : -1}
             onClick={() => {
               if (!selectedNode) return;
-              setDepEditorOpen((prev) => {
-                const next = !prev;
-                if (prev && !next) onBlurSave();
-                return next;
-              });
+              setDepEditorOpen((prev) => !prev);
             }}
             onKeyDown={(event) => {
               if (!selectedNode) return;
               if (event.key === "Enter" || event.key === " ") {
                 event.preventDefault();
-                setDepEditorOpen((prev) => {
-                  const next = !prev;
-                  if (prev && !next) onBlurSave();
-                  return next;
-                });
+                setDepEditorOpen((prev) => !prev);
               }
             }}
             aria-label={t("editDepends")}
@@ -492,11 +469,7 @@ export function NodeDetailPanel({
             { value: "no", label: t("rejectNo") },
             { value: "yes", label: t("rejectYes") },
           ]}
-          onChange={(next) => {
-            onChangeDraftAllowReject(next === "yes");
-            onBlurSave();
-          }}
-          onClose={onBlurSave}
+          onChange={(next) => onChangeDraftAllowReject(next === "yes")}
           triggerClassName={controlInputClassName}
           disabled={!selectedNode}
           ariaLabel={t("selectReject")}
@@ -513,7 +486,6 @@ export function NodeDetailPanel({
             step={1}
             value={Number.isFinite(draftMaxRejectCount) ? draftMaxRejectCount : 0}
             onChange={(e) => onChangeDraftMaxRejectCount(Number(e.target.value))}
-            onBlur={onBlurSave}
             disabled={!selectedNode}
           />
         </div>

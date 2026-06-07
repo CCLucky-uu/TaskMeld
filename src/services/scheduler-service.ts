@@ -48,6 +48,7 @@ export const createSchedulerService = (app: PipelineRegistry): SchedulerService 
     const workflow = runtime.workflow.getWorkflow()
     const nextWorkflow = { ...workflow, scheduler: { ...workflow.scheduler, enabled } }
     await runtime.workflow.setWorkflow(nextWorkflow)
+    runtime.runtime.emitPipeline()
     return { ok: true, pipelineId, scheduler: { enabled, mode: nextWorkflow.scheduler.mode } }
   }
 
@@ -61,6 +62,7 @@ export const createSchedulerService = (app: PipelineRegistry): SchedulerService 
     const workflow = runtime.workflow.getWorkflow()
     const nextWorkflow = { ...workflow, scheduler: { ...workflow.scheduler, mode } }
     await runtime.workflow.setWorkflow(nextWorkflow)
+    runtime.runtime.emitPipeline()
     return { ok: true, pipelineId, scheduler: { enabled: nextWorkflow.scheduler.enabled, mode } }
   }
 

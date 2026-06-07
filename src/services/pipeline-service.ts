@@ -2,6 +2,7 @@ import type { PipelineRegistry } from "../app/pipeline-registry"
 import { DEFAULT_REMOTE_BATCH_URL } from "../app/pipeline-config"
 import { buildPipelineExecutionStatus, type PipelineExecutionStatusPayload } from "../pipeline/execution-status"
 import { normalizePoolItems } from "../pipeline/item-batch-controller"
+import { validateWorkflowGraph, validateWorkflowOutputConfig } from "../pipeline/workflow/validate"
 import { buildPipelineStatusResult, type PipelineStatusResult as SharedPipelineStatusResult } from "./pipeline-status"
 import type { PipelineOutput } from "../pipeline/types/pipeline-output"
 import type { PipelineLink, PipelineInboundJob } from "../pipeline/types/pipeline-link"
@@ -101,6 +102,7 @@ export type PipelineStartResult =
         | "remote_pool_fetch_error"
         | "remote_batch_items_empty"
         | "batch_items_empty"
+        | "workflow_invalid"
       state?: ReturnType<PipelineRuntime["pipeline"]["getBatchRunState"]>
       remoteUrl?: string
       status?: number
@@ -535,6 +537,26 @@ export const createPipelineService = (app: PipelineRegistry): PipelineService =>
         templateNodes: runtime.workflow.getTemplateNodes(),
         edges: runtime.workflow.getWorkflow().edges,
         workflowNodes: runtime.workflow.getWorkflow().nodes,
+      }
+    }
+
+    // Full validation before run (L1 + L2 + L3)
+    const graphValidation = validateWorkflowGraph(workflow)
+    if (!graphValidation.ok) {
+      return {
+        ok: false,
+        pipelineId,
+        error: "workflow_invalid",
+        detail: `[graph] ${graphValidation.detail ?? graphValidation.error}`,
+      }
+    }
+    const outputValidation = validateWorkflowOutputConfig(workflow)
+    if (!outputValidation.ok) {
+      return {
+        ok: false,
+        pipelineId,
+        error: "workflow_invalid",
+        detail: `[output] ${outputValidation.detail ?? outputValidation.error}`,
       }
     }
 

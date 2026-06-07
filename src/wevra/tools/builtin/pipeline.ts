@@ -423,6 +423,7 @@ Available plugins and their config:
             }
             const nextWorkflow = { ...workflow, plugins: nextPlugins }
             await runtime.workflow.setWorkflow(nextWorkflow)
+            runtime.runtime.emitPipeline()
             return { output: `Plugin "${pluginId}" enabled on pipeline "${pipelineId}".`, isError: false }
           }
 
@@ -443,6 +444,7 @@ Available plugins and their config:
 
             const nextWorkflow = { ...workflow, plugins: nextPlugins, scheduler: nextScheduler }
             await runtime.workflow.setWorkflow(nextWorkflow)
+            runtime.runtime.emitPipeline()
             return { output: `Plugin "${pluginId}" disabled on pipeline "${pipelineId}".`, isError: false }
           }
 
@@ -464,6 +466,7 @@ Available plugins and their config:
             }
             const nextWorkflow = { ...workflow, plugins: nextPlugins }
             await runtime.workflow.setWorkflow(nextWorkflow)
+            runtime.runtime.emitPipeline()
             const saved = nextPlugins.find((p) => p.pluginId === pluginId)
             return {
               output: `Plugin "${pluginId}" config updated on pipeline "${pipelineId}". Config: ${JSON.stringify(saved?.config)}`,
@@ -641,6 +644,7 @@ When connecting with kind="route", provide the route value that triggers this ed
 
             const nextWorkflow = { ...workflow, nodes: nextNodes, edges: nextEdges }
             await runtime.workflow.setWorkflow(nextWorkflow)
+            runtime.runtime.emitPipeline()
 
             return {
               output: JSON.stringify(
@@ -682,6 +686,7 @@ When connecting with kind="route", provide the route value that triggers this ed
             nextNodes[idx] = updated
             const nextWorkflow = { ...workflow, nodes: nextNodes }
             await runtime.workflow.setWorkflow(nextWorkflow)
+            runtime.runtime.emitPipeline()
 
             return {
               output: JSON.stringify(
@@ -722,6 +727,7 @@ When connecting with kind="route", provide the route value that triggers this ed
 
             const nextWorkflow = { ...workflow, nodes: nextNodes, edges: nextEdges, groups: nextGroups }
             await runtime.workflow.setWorkflow(nextWorkflow)
+            runtime.runtime.emitPipeline()
 
             return {
               output: JSON.stringify(
@@ -766,6 +772,7 @@ When connecting with kind="route", provide the route value that triggers this ed
 
             const nextWorkflow = { ...workflow, edges: [...workflow.edges, edge] }
             await runtime.workflow.setWorkflow(nextWorkflow)
+            runtime.runtime.emitPipeline()
 
             return {
               output: JSON.stringify(

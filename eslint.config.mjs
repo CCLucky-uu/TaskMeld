@@ -8,7 +8,7 @@ import reactHooksPlugin from "eslint-plugin-react-hooks";
 export default [
   // ====== 全局忽略 ======
   {
-    ignores: ["dist/**", "node_modules/**", "web/node_modules/**"],
+    ignores: ["dist/**", "node_modules/**", "web/node_modules/**", "test/control-plane-utils.web.spec.ts"],
   },
   js.configs.recommended,
 

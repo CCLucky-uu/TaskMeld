@@ -4,8 +4,7 @@ import { resolveTaskMeldDataPath } from "../../app/data-dir"
 import { defaultTemplateNodes, defaultWorkflowDefinition } from "./defaults"
 import { mergeTemplateNodesIntoWorkflow, workflowToTemplateNodes } from "./template-mapper"
 import { readWorkflowDefinitionFromRawDetailed } from "./normalize"
-import { validateWorkflowDefinition, validateWorkflowOutputConfig } from "./validate"
-export { validateWorkflowDefinition, validateWorkflowOutputConfig } from "./validate"
+import { validateWorkflowDataIntegrity } from "./save-validate"
 import type { WorkflowDefinitionRuntime } from "../types/workflow"
 import type { PipelineTemplateNode, WorkflowPersistedV3, WorkflowStorageOptions } from "../types/workflow"
 
@@ -46,16 +45,10 @@ export const saveWorkflowDefinitionWithStorage = (
   workflow: WorkflowDefinitionRuntime,
   options: WorkflowStorageOptions,
 ) => {
-  const validation = validateWorkflowDefinition(workflow)
+  const validation = validateWorkflowDataIntegrity(workflow)
   if (!validation.ok) {
     const error = new Error(validation.error)
     ;(error as Error & { detail?: string }).detail = validation.detail
-    throw error
-  }
-  const outputValidation = validateWorkflowOutputConfig(workflow)
-  if (!outputValidation.ok) {
-    const error = new Error(outputValidation.error)
-    ;(error as Error & { detail?: string }).detail = outputValidation.detail
     throw error
   }
   const workflowFilePath = options.workflowFilePath ?? TEMPLATE_FILE

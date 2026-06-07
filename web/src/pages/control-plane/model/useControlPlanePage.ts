@@ -56,10 +56,10 @@ import {
   moveWorkflowNodeWithinLane,
   reorderWorkflowNodeWithinLane,
   updateParallelGroupInWorkflow,
-  validateWorkflowBeforeSave,
 } from "./controlPlaneUtils";
 import { buildWorkflowAfterNodeDelete } from "./workflowEditUtils";
 import { useControlPlaneDraftState } from "./useControlPlaneDraftState";
+import { validateWorkflowForSave, validateWorkflowForRun } from "./pipelineSaveValidation";
 
 type DerivedItemKeyMeta = {
   parentItemKey: string;
@@ -79,13 +79,6 @@ type PipelineViewState = {
   isRunning: boolean;
 };
 
-const DEFAULT_REMOTE_BATCH_PLUGIN: WorkflowRemoteBatchPlugin = {
-  enabled: false,
-  url: "",
-  startBatch: 1,
-  batchSize: 5,
-  sourceField: "list30",
-};
 const DEFAULT_REMOTE_BATCH_CONFIG = {
   enabled: false,
   url: "",
@@ -219,8 +212,6 @@ export function useControlPlanePage() {
   const [deleteTargetNodeId, setDeleteTargetNodeId] = useState("");
   const [deleteTargetGroupId, setDeleteTargetGroupId] = useState("");
   const [agentOutputModalAgentId, setAgentOutputModalAgentId] = useState("");
-  const [isSavingWorkflowConfig, setIsSavingWorkflowConfig] = useState(false);
-  const [workflowSaveFailed, setWorkflowSaveFailed] = useState(false);
   const [isSavingGroupConfig, setIsSavingGroupConfig] = useState(false);
   const [isSavingWorkflowJson, setIsSavingWorkflowJson] = useState(false);
   const [isSavingNodeConfig, setIsSavingNodeConfig] = useState(false);
@@ -230,7 +221,6 @@ export function useControlPlanePage() {
     Record<string, { runId: string; content: string; updatedAt: number }>
   >({});
   const assistantTextByRunAgentRef = useRef<Map<string, string>>(new Map());
-  const pendingNodeSaveRef = useRef<Promise<void> | null>(null);
   const getPipelineStateSnapshot = useCallback(
     (pipelineId: PipelineId, stateById: Record<string, PipelineViewState>) =>
       stateById[pipelineId] ?? createEmptyPipelineViewState(),
@@ -396,6 +386,7 @@ export function useControlPlanePage() {
     setDraftNewGroupJoinPolicy,
     hasNodeDraftChanges,
     hasWorkflowDraftChanges,
+    hasDraftChanges,
   } = useControlPlaneDraftState({
     selectedNode,
     selectedWorkflowNode,
@@ -1046,11 +1037,36 @@ export function useControlPlanePage() {
   }, [sessionModalOpen, selectedAgentId, filteredSessionsForSelectedAgent, selectedSessionId, setSelectedSessionId]);
 
   const startPipelineRun = async (pipelineId: PipelineId = activePipelineId) => {
-    if (pendingNodeSaveRef.current) {
-      await pendingNodeSaveRef.current;
-    } else if (pipelineId === activePipelineId && selectedNode && hasNodeDraftChanges) {
-      await saveSelectedNodeConfig({ silentSuccess: true });
+    // Wait for any in-progress save to finish
+    const waitForSave = () =>
+      new Promise<void>((resolve) => {
+        const check = () => {
+          if (!isSavingNodeAll.current) return resolve();
+          setTimeout(check, 50);
+        };
+        check();
+      });
+    await waitForSave();
+
+    // Save unsaved draft if needed
+    if (pipelineId === activePipelineId && selectedNode && hasDraftChanges) {
+      await saveSelectedNodeAll({ silentSuccess: true });
+      if (saveFailed) {
+        setActionMessage(t("actionMessage.cannotRunSaveFailed"));
+        return;
+      }
     }
+
+    // Full validation before run (L1 + L2 + L3)
+    const currentWorkflow = getPipelineStateSnapshot(pipelineId, pipelineStateById).workflow;
+    if (currentWorkflow) {
+      const validation = validateWorkflowForRun(currentWorkflow);
+      if (!validation.ok) {
+        setActionMessage(t("actionMessage.cannotRunValidationFailed", { errors: validation.errors.join("; ") }));
+        return;
+      }
+    }
+
     setActivePipelineId(pipelineId);
     updatePipelineState(pipelineId, (prev) => ({ ...prev, isRunning: true }));
     setActionMessage("");
@@ -1319,75 +1335,6 @@ export function useControlPlanePage() {
     };
   };
 
-  const saveSelectedWorkflowNodeConfig = useCallback(
-    async (opts?: { silentSuccess?: boolean }) => {
-      if (!workflow || !selectedNode) return;
-
-      setIsSavingWorkflowConfig(true);
-      if (!opts?.silentSuccess) setActionMessage("");
-      try {
-        const built = buildNextWorkflowForSelectedNode({ includeNodeConfig: false, includeWorkflowConfig: true });
-        if (!built.ok) {
-          setActionMessage(built.error);
-          return;
-        }
-        const validation = validateWorkflowBeforeSave(built.workflow);
-        if (!validation.ok) {
-          setActionMessage(t("validation.workflowConfigSaveFailed", { message: validation.message }));
-          return;
-        }
-        await saveWorkflowDefinitionReq(activePipelineId, built.workflow);
-        updatePipelineState(activePipelineId, (prev) => ({ ...prev, workflow: built.workflow }));
-        setWorkflowSaveFailed(false);
-        await refresh();
-        if (!opts?.silentSuccess) {
-          setActionMessage(t("actionMessage.nodeWorkflowSaved", { nodeId: selectedNode.id }));
-        }
-      } catch (error) {
-        const message = getApiErrorMessage(error);
-        setActionMessage(t("validation.workflowConfigSaveFailed", { message }));
-        setWorkflowSaveFailed(true);
-      } finally {
-        setIsSavingWorkflowConfig(false);
-      }
-    },
-    [
-      workflow,
-      selectedNode,
-      draftTitle,
-      draftAgentId,
-      draftExecutorSessionId,
-      draftDependsOn,
-      draftInstruction,
-      draftAllowReject,
-      draftMaxRejectCount,
-      draftWorkflowLane,
-      draftWorkflowRouteAllowed,
-      draftWorkflowRouteTargets,
-      isSessionForAgent,
-    ],
-  );
-
-  // Reset save failure when switching to a different node
-  useEffect(() => {
-    setWorkflowSaveFailed(false);
-  }, [selectedNode?.id]);
-
-  useEffect(() => {
-    if (!selectedNode || !hasWorkflowDraftChanges) return;
-    if (isSavingWorkflowConfig || workflowSaveFailed) return;
-    const timer = setTimeout(() => {
-      void saveSelectedWorkflowNodeConfig({ silentSuccess: true });
-    }, 250);
-    return () => clearTimeout(timer);
-  }, [
-    selectedNode?.id,
-    hasWorkflowDraftChanges,
-    isSavingWorkflowConfig,
-    workflowSaveFailed,
-    saveSelectedWorkflowNodeConfig,
-  ]);
-
   const saveSelectedGroupConfig = useCallback(async () => {
     if (!workflow || !selectedGroup) return;
     const nextGroupId = draftGroupId.trim();
@@ -1427,7 +1374,7 @@ export function useControlPlanePage() {
       upstreamIds,
       joinPolicy: draftGroupJoinPolicy,
     });
-    const groupValidation = validateWorkflowBeforeSave(nextWorkflow);
+    const groupValidation = validateWorkflowForSave(nextWorkflow);
     if (!groupValidation.ok) {
       setActionMessage(t("actionMessage.groupSaveFailed", { message: groupValidation.message }));
       return;
@@ -1526,7 +1473,7 @@ export function useControlPlanePage() {
     }
     setIsSavingWorkflowJson(true);
     try {
-      const validation = validateWorkflowBeforeSave(parsed);
+      const validation = validateWorkflowForSave(parsed);
       if (!validation.ok) {
         setActionMessage(t("actionMessage.workflowJsonSaveFailed", { message: validation.message }));
         return;
@@ -1543,57 +1490,73 @@ export function useControlPlanePage() {
     }
   }, [workflowJsonDraft]);
 
-  const saveSelectedNodeConfig = useCallback(
+  // ====== Unified save: replaces saveSelectedNodeConfig + saveSelectedWorkflowNodeConfig ======
+
+  const isSavingNodeAll = useRef(false);
+  const [saveFailed, setSaveFailed] = useState(false);
+
+  const saveSelectedNodeAll = useCallback(
     async (opts?: { silentSuccess?: boolean }) => {
-      if (!selectedNode || !workflow) return;
-      setIsSavingNodeConfig(true);
+      if (!workflow || !selectedNode) return;
+      if (isSavingNodeAll.current) return;
+
+      isSavingNodeAll.current = true;
       if (!opts?.silentSuccess) setActionMessage("");
       try {
-        const built = buildNextWorkflowForSelectedNode({ includeNodeConfig: true, includeWorkflowConfig: false });
+        const built = buildNextWorkflowForSelectedNode({
+          includeNodeConfig: hasNodeDraftChanges,
+          includeWorkflowConfig: hasWorkflowDraftChanges,
+        });
         if (!built.ok) {
           setActionMessage(built.error);
           return;
         }
-        const validation = validateWorkflowBeforeSave(built.workflow);
+
+        // L1 validation only — does not block save for incomplete graphs
+        const validation = validateWorkflowForSave(built.workflow);
         if (!validation.ok) {
-          setActionMessage(t("validation.nodeConfigSaveFailed", { message: validation.message }));
+          setActionMessage(validation.message);
           return;
         }
+
         await saveWorkflowDefinitionReq(activePipelineId, built.workflow);
         updatePipelineState(activePipelineId, (prev) => ({
           ...prev,
           workflow: built.workflow,
-          pipeline: prev.pipeline.map((node) =>
-            node.id === selectedNode.id
-              ? (() => {
-                  const title = draftTitle.trim();
-                  const agentId = draftAgentId.trim();
-                  const rawSessionId = draftExecutorSessionId.trim();
-                  const sessionId =
-                    rawSessionId && isSessionForAgent(rawSessionId, agentId)
-                      ? rawSessionId
-                      : mainSessionIdForAgent(agentId);
-                  const dependsOn = Array.from(new Set(draftDependsOn.map((item) => item.trim()).filter(Boolean)));
-                  const maxRejectCount = Math.max(0, Math.min(10, Math.trunc(Number(draftMaxRejectCount) || 0)));
-                  const agentChanged = (node.executor.agentId ?? "").trim() !== agentId;
-                  return {
-                    ...node,
-                    title,
-                    instruction: draftInstruction.trim(),
-                    dependsOn,
-                    allowReject: draftAllowReject,
-                    maxRejectCount,
-                    executor: {
-                      ...node.executor,
-                      agentId,
-                      sessionId,
-                      fallbackAgentId: agentChanged ? null : node.executor.fallbackAgentId,
-                    },
-                  };
-                })()
-              : node,
-          ),
+          pipeline: hasNodeDraftChanges
+            ? prev.pipeline.map((node) =>
+                node.id === selectedNode.id
+                  ? (() => {
+                      const title = draftTitle.trim();
+                      const agentId = draftAgentId.trim();
+                      const rawSessionId = draftExecutorSessionId.trim();
+                      const sessionId =
+                        rawSessionId && isSessionForAgent(rawSessionId, agentId)
+                          ? rawSessionId
+                          : mainSessionIdForAgent(agentId);
+                      const dependsOn = Array.from(new Set(draftDependsOn.map((item) => item.trim()).filter(Boolean)));
+                      const maxRejectCount = Math.max(0, Math.min(10, Math.trunc(Number(draftMaxRejectCount) || 0)));
+                      const agentChanged = (node.executor.agentId ?? "").trim() !== agentId;
+                      return {
+                        ...node,
+                        title,
+                        instruction: draftInstruction.trim(),
+                        dependsOn,
+                        allowReject: draftAllowReject,
+                        maxRejectCount,
+                        executor: {
+                          ...node.executor,
+                          agentId,
+                          sessionId,
+                          fallbackAgentId: agentChanged ? null : node.executor.fallbackAgentId,
+                        },
+                      };
+                    })()
+                : node,
+              )
+            : prev.pipeline,
         }));
+        setSaveFailed(false);
         if (!opts?.silentSuccess) {
           setActionMessage(t("actionMessage.nodeSaved", { nodeId: selectedNode.id }));
         }
@@ -1601,8 +1564,9 @@ export function useControlPlanePage() {
       } catch (error) {
         const message = getApiErrorMessage(error);
         setActionMessage(t("actionMessage.nodeSaveFailed", { message }));
+        setSaveFailed(true);
       } finally {
-        setIsSavingNodeConfig(false);
+        isSavingNodeAll.current = false;
       }
     },
     [
@@ -1615,22 +1579,30 @@ export function useControlPlanePage() {
       draftInstruction,
       draftAllowReject,
       draftMaxRejectCount,
+      draftWorkflowLane,
+      draftWorkflowRouteAllowed,
+      draftWorkflowRouteTargets,
+      hasNodeDraftChanges,
+      hasWorkflowDraftChanges,
       isSessionForAgent,
+      activePipelineId,
     ],
   );
 
-  const saveSelectedNodeConfigOnBlur = () => {
-    if (!selectedNode) return;
-    if (!hasNodeDraftChanges) return;
-    if (isSavingNodeConfig) return;
-    const task = saveSelectedNodeConfig({ silentSuccess: true });
-    pendingNodeSaveRef.current = task;
-    void task.finally(() => {
-      if (pendingNodeSaveRef.current === task) {
-        pendingNodeSaveRef.current = null;
-      }
-    });
-  };
+  // Unified auto-save: replaces blur handler + debounce useEffect
+  useEffect(() => {
+    if (!selectedNode || !hasDraftChanges) return;
+    if (isSavingNodeAll.current || saveFailed) return;
+    const timer = setTimeout(() => {
+      void saveSelectedNodeAll({ silentSuccess: true });
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [selectedNode?.id, hasDraftChanges, saveFailed, saveSelectedNodeAll]);
+
+  // Reset save failure when switching nodes
+  useEffect(() => {
+    setSaveFailed(false);
+  }, [selectedNode?.id]);
 
   const addTemplateNode = async () => {
     if (!workflow) {
@@ -1699,7 +1671,7 @@ export function useControlPlanePage() {
         ...dependsOn.map((dep) => ({ from: dep, to: nodeId, when: null as string | null })),
       ]),
     };
-    const nodeWorkflowValidation = validateWorkflowBeforeSave(nextWorkflow);
+    const nodeWorkflowValidation = validateWorkflowForSave(nextWorkflow);
     if (!nodeWorkflowValidation.ok) {
       setActionMessage(t("actionMessage.nodeAddFailed", { message: nodeWorkflowValidation.message }));
       return;
@@ -1800,7 +1772,7 @@ export function useControlPlanePage() {
         },
       ]),
     };
-    const groupWorkflowValidation = validateWorkflowBeforeSave(nextWorkflow);
+    const groupWorkflowValidation = validateWorkflowForSave(nextWorkflow);
     if (!groupWorkflowValidation.ok) {
       setActionMessage(t("actionMessage.groupAddFailed", { message: groupWorkflowValidation.message }));
       return;
@@ -1842,7 +1814,7 @@ export function useControlPlanePage() {
     }
 
     const nextWorkflow = buildWorkflowAfterNodeDelete(workflow, nodeId);
-    const deleteWorkflowValidation = validateWorkflowBeforeSave(nextWorkflow);
+    const deleteWorkflowValidation = validateWorkflowForSave(nextWorkflow);
     if (!deleteWorkflowValidation.ok) {
       setActionMessage(t("actionMessage.nodeDeleteFailed", { message: deleteWorkflowValidation.message }));
       return;
@@ -2050,8 +2022,6 @@ export function useControlPlanePage() {
     setDraftWorkflowRouteAllowed,
     draftWorkflowRouteTargets,
     setDraftWorkflowRouteTarget,
-    isSavingWorkflowConfig,
-    saveSelectedWorkflowNodeConfig,
     draftGroupId,
     setDraftGroupId,
     draftGroupMembers,
@@ -2063,8 +2033,8 @@ export function useControlPlanePage() {
     isSavingGroupConfig,
     saveSelectedGroupConfig,
     isSavingNodeConfig,
-    saveSelectedNodeConfig,
-    saveSelectedNodeConfigOnBlur,
+    saveSelectedNodeAll,
+    saveFailed,
     moveSelectedNodeUp: (nodeId = selectedNode?.id ?? "", pipelineId = activePipelineId) =>
       moveNode(pipelineId, nodeId, "up"),
     moveSelectedNodeDown: (nodeId = selectedNode?.id ?? "", pipelineId = activePipelineId) =>

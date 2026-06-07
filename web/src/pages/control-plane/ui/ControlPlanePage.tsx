@@ -691,8 +691,7 @@ export function ControlPlanePage({
                 draftWorkflowLane={vm.draftWorkflowLane}
                 draftWorkflowRouteAllowed={vm.draftWorkflowRouteAllowed}
                 draftWorkflowRouteTargets={vm.draftWorkflowRouteTargets}
-                isSavingWorkflowConfig={vm.isSavingWorkflowConfig}
-                savingConfig={vm.isSavingNodeConfig}
+                isSaving={false}
                 hasPipelineExecution={vm.hasPipelineExecution}
                 onChangeDraftTitle={vm.setDraftTitle}
                 onChangeDraftAgentId={vm.setDraftAgentId}
@@ -705,7 +704,6 @@ export function ControlPlanePage({
                 onChangeDraftWorkflowLane={vm.setDraftWorkflowLane}
                 onChangeDraftWorkflowRouteAllowed={vm.setDraftWorkflowRouteAllowed}
                 onChangeDraftWorkflowRouteTarget={vm.setDraftWorkflowRouteTarget}
-                onBlurSave={vm.saveSelectedNodeConfigOnBlur}
                 onRetry={vm.retryNode}
                 statusTone={statusTone}
                 statusLabel={translatedStatusLabel}

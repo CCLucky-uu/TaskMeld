@@ -8,8 +8,9 @@ import {
   loadWorkflowDefinitionWithStorage,
   readWorkflowDefinitionFromRawDetailed,
   readWorkflowDefinitionFromRaw,
-  validateWorkflowDefinition,
 } from "../src/pipeline/template"
+import { validateWorkflowGraph } from "../src/pipeline/workflow/validate"
+import { validateWorkflowDataIntegrity } from "../src/pipeline/workflow/save-validate"
 import { seedRunWithItems } from "../src/pipeline/runtime-model"
 import {
   collectEnvelopeCandidates,
@@ -115,7 +116,7 @@ const run = async () => {
     }
   }
 
-  const invalid = readWorkflowDefinitionFromRaw(
+  const invalidParsed = readWorkflowDefinitionFromRawDetailed(
     toPersistedV3({
       scheduler: workflow.scheduler,
       plugins: workflow.plugins,
@@ -124,9 +125,11 @@ const run = async () => {
       groups: [],
     }),
   )
-  assert.equal(invalid, null, "invalid edge should fail validation")
+  assert.ok(invalidParsed.ok, "parse should succeed (L1 validation is separate)")
+  const invalidL1 = validateWorkflowDataIntegrity(invalidParsed.workflow)
+  assert.equal(invalidL1.ok, false, "invalid edge should fail L1 data integrity validation")
 
-  const cyclic = readWorkflowDefinitionFromRaw(
+  const cyclicParsed = readWorkflowDefinitionFromRawDetailed(
     toPersistedV3({
       scheduler: workflow.scheduler,
       plugins: workflow.plugins,
@@ -138,7 +141,9 @@ const run = async () => {
       groups: [],
     }),
   )
-  assert.equal(cyclic, null, "cyclic workflow should fail validation")
+  assert.ok(cyclicParsed.ok, "parse should succeed (L2 validation is separate)")
+  const cyclicL2 = validateWorkflowGraph(cyclicParsed.workflow)
+  assert.equal(cyclicL2.ok, false, "cyclic workflow should fail L2 graph validation")
 
   const v2Rejected = readWorkflowDefinitionFromRawDetailed({
     ...workflow,
@@ -149,7 +154,7 @@ const run = async () => {
     assert.equal(v2Rejected.error, "workflow_migration_required")
   }
 
-  const mixedOutgoing = readWorkflowDefinitionFromRaw(
+  const mixedOutgoingParsed = readWorkflowDefinitionFromRawDetailed(
     toPersistedV3({
       ...workflow,
       edges: [
@@ -158,9 +163,11 @@ const run = async () => {
       ],
     }),
   )
-  assert.equal(mixedOutgoing, null, "legacy mixed outgoing edges should be rejected")
+  assert.ok(mixedOutgoingParsed.ok, "parse should succeed (L2 validation is separate)")
+  const mixedOutgoingL2 = validateWorkflowGraph(mixedOutgoingParsed.workflow)
+  assert.equal(mixedOutgoingL2.ok, false, "legacy mixed outgoing edges should be rejected by L2")
 
-  const validCheck = validateWorkflowDefinition(workflow)
+  const validCheck = validateWorkflowGraph(workflow)
   assert.equal(validCheck.ok, true, "default workflow should pass validation")
 
   const tempDir = mkdtempSync(join(tmpdir(), "openclaw-invalid-workflow-"))
@@ -180,14 +187,11 @@ const run = async () => {
     }),
     "utf8",
   )
-  assert.throws(
-    () => loadWorkflowDefinitionWithStorage({ workflowFilePath: invalidWorkflowFile }),
-    (error: unknown) => {
-      const err = error as Error & { detail?: string }
-      return err.message === "invalid_persisted_workflow_definition" && typeof err.detail === "string"
-    },
-    "invalid persisted workflow should be blocked instead of falling back to default template",
-  )
+  // After refactoring, loadWorkflowDefinitionWithStorage no longer validates graph structure (L2).
+  // It only normalizes. Graph validation is the caller's responsibility.
+  const loadedInvalid = loadWorkflowDefinitionWithStorage({ workflowFilePath: invalidWorkflowFile })
+  const invalidGraphCheck = validateWorkflowGraph(loadedInvalid)
+  assert.equal(invalidGraphCheck.ok, false, "invalid persisted workflow should fail L2 graph validation")
 
   const observed: ObservedEnvelope[] = []
   const requestId = "node-n2-17089918-3e3b-4efe-a77b-2946e1e346a9"

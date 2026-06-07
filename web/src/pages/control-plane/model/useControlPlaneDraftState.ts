@@ -195,6 +195,8 @@ export function useControlPlaneDraftState({
     draftWorkflowRouteTargets,
   ]);
 
+  const hasDraftChanges = hasNodeDraftChanges || hasWorkflowDraftChanges;
+
   const setDraftWorkflowRouteTarget = (route: string, targetNodeId: string) => {
     setDraftWorkflowRouteTargets((prev) => ({
       ...prev,
@@ -256,5 +258,6 @@ export function useControlPlaneDraftState({
     setDraftNewGroupJoinPolicy,
     hasNodeDraftChanges,
     hasWorkflowDraftChanges,
+    hasDraftChanges,
   };
 }

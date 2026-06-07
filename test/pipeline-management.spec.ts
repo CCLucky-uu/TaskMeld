@@ -58,8 +58,11 @@ const run = async () => {
   const pipelineService = createPipelineService(app)
   const schedulerService = createSchedulerService(app)
 
+  // No default pipelines — create one explicitly for testing
+  await app.createPipeline({ id: "A", title: "Pipeline A" })
+
   const sourceDefinition = app.getPipelineDefinition("A")
-  assert.ok(sourceDefinition, "默认流水线 A 应存在")
+  assert.ok(sourceDefinition, "显式创建的流水线 A 应存在")
   const sourceWorkflow = loadWorkflowDefinitionWithStorage({ workflowFilePath: sourceDefinition.workflowFilePath })
   sourceWorkflow.nodes = [
     {
@@ -139,15 +142,15 @@ const run = async () => {
     // roundtrip 保存
     const {
       readWorkflowDefinitionFromRawDetailed,
-      validateWorkflowDefinition,
       normalizeWorkflowFallbacksWithStorage,
     } = require("../src/pipeline/template")
+    const { validateWorkflowGraph } = require("../src/pipeline/workflow/validate")
     const parseResult = readWorkflowDefinitionFromRawDetailed(clonedWorkflowFromApi)
     assert.equal(parseResult.ok, true, "GET workflow 结果应可解析")
     const normalized = normalizeWorkflowFallbacksWithStorage(parseResult.workflow, {
       workflowFilePath: clonedDefinition.workflowFilePath,
     })
-    const validation = validateWorkflowDefinition(normalized)
+    const validation = validateWorkflowGraph(normalized)
     assert.equal(validation.ok, true, "GET workflow 结果验证应通过")
     clonedRuntime.workflow.setWorkflow(normalized)
     saveWorkflowDefinitionWithStorage(normalized, { workflowFilePath: clonedDefinition.workflowFilePath })
@@ -164,7 +167,7 @@ const run = async () => {
       "roundtrip 保存后磁盘仍应保持 v3 kind/route 形状",
     )
 
-    // 危险混合出边
+    // 危险混合出边 — parser no longer validates graph structure (L2), only L1 data integrity
     const mixedParseResult = readWorkflowDefinitionFromRawDetailed({
       ...currentSourceWorkflow,
       nodes: [
@@ -191,8 +194,10 @@ const run = async () => {
         { from: "n1", to: "n3", kind: "route", route: "yes" },
       ],
     })
-    assert.equal(mixedParseResult.ok, false, "危险混合出边解析应失败")
-    assert.equal(mixedParseResult.error, "mixed_outgoing_edge_kinds_forbidden")
+    assert.equal(mixedParseResult.ok, true, "混合出边数据应能正常解析 (L1 通过)")
+    const mixedValidation = validateWorkflowGraph(mixedParseResult.workflow)
+    assert.equal(mixedValidation.ok, false, "危险混合出边应被 L2 图校验拒绝")
+    assert.equal(mixedValidation.error, "mixed_outgoing_edge_kinds_forbidden")
 
     // v2 workflow 迁移
     const v2ParseResult = readWorkflowDefinitionFromRawDetailed({

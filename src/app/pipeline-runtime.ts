@@ -87,16 +87,63 @@ export const createPipelineRuntime = (options: CreatePipelineRuntimeOptions) => 
   }
 
   const setWorkflow = async (nextWorkflow: WorkflowDefinitionRuntime): Promise<void> => {
-    // 1. Validate + persist to disk (throws on validation failure, memory untouched)
     saveWorkflowDefinitionWithStorage(nextWorkflow, { workflowFilePath: options.workflowFilePath })
-
-    // 2. Update in-memory state
     graph.setWorkflow(nextWorkflow)
     schedulerService.syncSchedulerStateFromWorkflow()
-    graph.syncRunGroupsFromWorkflow(runtimeStore.getRun())
+  }
 
-    // 3. Broadcast to connected frontends
-    runtimeStore.emitPipeline()
+  const reconcileRunWithWorkflowChanges = () => {
+    const run = runtimeStore.getRun()
+    const templateNodes = graph.getTemplateNodes()
+    const currentNodeIds = new Set(run.nodes.map((n) => n.id))
+    const nextNodeIds = new Set(templateNodes.map((n) => n.id))
+
+    // Add NodeRun entries for newly added nodes
+    for (const tpl of templateNodes) {
+      if (!currentNodeIds.has(tpl.id)) {
+        run.nodes.push({
+          id: tpl.id,
+          title: tpl.title,
+          executor: tpl.executor,
+          instruction: tpl.instruction,
+          outputSpec: tpl.outputSpec,
+          allowReject: tpl.allowReject,
+          maxRejectCount: tpl.maxRejectCount,
+          status: tpl.dependsOn.length > 0 ? "blocked" : "queued",
+          dependsOn: tpl.dependsOn,
+          artifacts: [],
+          rejectFeedbacks: [],
+          attempt: 0,
+          rejectCount: 0,
+          startedAt: null,
+          finishedAt: null,
+          lastError: null,
+        })
+      }
+    }
+
+    // Remove NodeRun entries for deleted nodes
+    run.nodes = run.nodes.filter((n) => nextNodeIds.has(n.id))
+
+    // Clean up itemRuns referencing deleted nodes
+    run.itemRuns = (run.itemRuns ?? []).filter((ir) => nextNodeIds.has(ir.nodeId))
+
+    // Update metadata for existing nodes (preserve status/artifacts)
+    for (const tpl of templateNodes) {
+      const existing = run.nodes.find((n) => n.id === tpl.id)
+      if (existing) {
+        existing.title = tpl.title
+        existing.executor = tpl.executor
+        existing.instruction = tpl.instruction
+        existing.dependsOn = tpl.dependsOn
+        existing.allowReject = tpl.allowReject
+        existing.maxRejectCount = tpl.maxRejectCount
+        existing.outputSpec = tpl.outputSpec
+      }
+    }
+
+    // Sync group run state
+    graph.syncRunGroupsFromWorkflow(run)
   }
 
   const onGatewayStatus = (status: GatewayConnectionInfo) => {
@@ -213,6 +260,7 @@ export const createPipelineRuntime = (options: CreatePipelineRuntimeOptions) => 
       setTemplateNodes,
       getWorkflow: graph.getWorkflow,
       setWorkflow,
+      reconcileRunWithWorkflowChanges,
       mergeTemplateNodesIntoWorkflow,
       getWorkflowNodeById: graph.getWorkflowNodeById,
       getIncomingEdges: graph.getIncomingEdges,

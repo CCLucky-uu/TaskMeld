@@ -1,10 +1,15 @@
 import type { WorkflowOutputConfig } from "./pipeline-output"
-import type { PluginInstance } from "../plugins/types"
 
 export type { WorkflowOutputConfig }
-export type { PluginInstance, PluginType } from "../plugins/types"
 
-// WorkflowPlugins is an array of PluginInstance (from the new plugin system)
+// PluginInstance is defined here to keep types/ self-contained (no cross-module imports)
+export type PluginInstance = {
+  pluginId: string
+  enabled: boolean
+  config: Record<string, unknown>
+}
+
+// WorkflowPlugins is an array of PluginInstance
 export type WorkflowPlugins = PluginInstance[]
 
 export type ExecutorRole = "planner" | "coder" | "tester" | "reviewer" | "operator"

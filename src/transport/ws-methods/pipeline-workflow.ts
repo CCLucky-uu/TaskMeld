@@ -2,10 +2,10 @@ import type { WsMethodRegistry } from "./types"
 import {
   normalizeWorkflowFallbacksWithStorage,
   readWorkflowDefinitionFromRawDetailed,
-  validateWorkflowDefinition,
   workflowToTemplateNodes,
   type WorkflowDefinitionRuntime,
 } from "../../pipeline/template"
+import { validateWorkflowDataIntegrity } from "../../pipeline/workflow/save-validate"
 import type { PluginInstance } from "../../pipeline/plugins/types"
 import { asRecord, formatError } from "./utils"
 
@@ -85,6 +85,7 @@ export const registerPipelineWorkflowWsMethods = (registry: WsMethodRegistry): v
     }
 
     await runtime.workflow.setWorkflow(nextWorkflow)
+    runtime.runtime.emitPipeline()
     return { ok: true, payload: { ok: true, state: nextPlugins, pipelineId } }
   })
 
@@ -133,15 +134,14 @@ export const registerPipelineWorkflowWsMethods = (registry: WsMethodRegistry): v
         },
       }
     }
-    const validation = validateWorkflowDefinition(normalized)
+    const validation = validateWorkflowDataIntegrity(normalized)
     if (!validation.ok) {
       return { ok: false, error: { error: validation.error, detail: validation.detail } }
     }
     await runtime.workflow.setWorkflow(normalized)
-    const run = runtime.runtime.seedRun(runtime.workflow.getTemplateNodes())
-    runtime.runtime.setRun(run)
+    runtime.workflow.reconcileRunWithWorkflowChanges()
     runtime.runtime.pushTimeline(`[${pipelineId}] Workflow definition updated, node count: ${normalized.nodes.length}`)
     runtime.runtime.emitPipeline()
-    return { ok: true, payload: { ok: true, workflow: normalized, run, pipelineId } }
+    return { ok: true, payload: { ok: true, workflow: normalized, run: runtime.runtime.getRun(), pipelineId } }
   })
 }

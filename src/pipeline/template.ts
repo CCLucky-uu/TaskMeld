@@ -165,9 +165,6 @@ export {
   savePipelineTemplateWithStorage,
 } from "./workflow/io"
 
-// Validation re-exported from ./workflow/validate
-export { validateWorkflowDefinition, validateWorkflowOutputConfig } from "./workflow/validate"
-
 // Normalize/parse re-exported from ./workflow/normalize
 export { readWorkflowDefinitionFromRaw, readWorkflowDefinitionFromRawDetailed } from "./workflow/normalize"
 

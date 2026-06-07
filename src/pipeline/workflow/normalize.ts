@@ -1,4 +1,3 @@
-import { validateWorkflowGraph } from "./validate"
 import { normalizeRouteListWithDefaults } from "./routes"
 import type {
   ExecutorRole,
@@ -396,7 +395,5 @@ export const readWorkflowDefinitionFromRawDetailed = (value: unknown): WorkflowR
     groups,
   }
 
-  const validation = validateWorkflowGraph(workflow)
-  if (!validation.ok) return { ok: false, error: validation.error, detail: validation.detail }
   return { ok: true, workflow }
 }
