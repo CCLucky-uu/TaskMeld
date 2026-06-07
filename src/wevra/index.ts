@@ -15,7 +15,7 @@ import type { PipelineRegistry } from '../app/pipeline-registry'
 import type { PluginRegistry } from '../pipeline/plugins/registry'
 
 // Builtin tools
-import { createPipelineTools, createPipelinePluginTool } from './tools/builtin/pipeline'
+import { createPipelineTools, createPipelinePluginTool, createPipelineNodeTool } from './tools/builtin/pipeline'
 import { createAgentTools } from './tools/builtin/agent'
 import { createArtifactTools } from './tools/builtin/artifact'
 import { createSessionTools } from './tools/builtin/session'
@@ -186,6 +186,7 @@ export class WevraAgent {
     for (const tool of [
       ...createPipelineTools(s?.pipeline, this.app, this.pluginRegistry),
       ...createPipelinePluginTool(this.app, this.pluginRegistry),
+      ...createPipelineNodeTool(this.app),
       ...createAgentTools(s?.agent),
       ...createArtifactTools(s?.artifact),
       ...createSessionTools(s?.session),

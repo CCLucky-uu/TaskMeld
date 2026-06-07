@@ -215,6 +215,7 @@ export function useControlPlanePage() {
   const [deleteTargetGroupId, setDeleteTargetGroupId] = useState("");
   const [agentOutputModalAgentId, setAgentOutputModalAgentId] = useState("");
   const [isSavingWorkflowConfig, setIsSavingWorkflowConfig] = useState(false);
+  const [workflowSaveFailed, setWorkflowSaveFailed] = useState(false);
   const [isSavingGroupConfig, setIsSavingGroupConfig] = useState(false);
   const [isSavingWorkflowJson, setIsSavingWorkflowJson] = useState(false);
   const [isSavingNodeConfig, setIsSavingNodeConfig] = useState(false);
@@ -1269,6 +1270,7 @@ export function useControlPlanePage() {
       }
       await saveWorkflowDefinitionReq(activePipelineId, built.workflow);
       updatePipelineState(activePipelineId, (prev) => ({ ...prev, workflow: built.workflow }));
+      setWorkflowSaveFailed(false);
       await refresh();
       if (!opts?.silentSuccess) {
         setActionMessage(t("actionMessage.nodeWorkflowSaved", { nodeId: selectedNode.id }));
@@ -1276,6 +1278,7 @@ export function useControlPlanePage() {
     } catch (error) {
       const message = getApiErrorMessage(error);
       setActionMessage(t("validation.workflowConfigSaveFailed", { message }));
+      setWorkflowSaveFailed(true);
     } finally {
       setIsSavingWorkflowConfig(false);
     }
@@ -1295,14 +1298,19 @@ export function useControlPlanePage() {
     isSessionForAgent,
   ]);
 
+  // Reset save failure when switching to a different node
+  useEffect(() => {
+    setWorkflowSaveFailed(false);
+  }, [selectedNode?.id]);
+
   useEffect(() => {
     if (!selectedNode || !hasWorkflowDraftChanges) return;
-    if (isSavingWorkflowConfig) return;
+    if (isSavingWorkflowConfig || workflowSaveFailed) return;
     const timer = setTimeout(() => {
       void saveSelectedWorkflowNodeConfig({ silentSuccess: true });
     }, 250);
     return () => clearTimeout(timer);
-  }, [selectedNode?.id, hasWorkflowDraftChanges, isSavingWorkflowConfig, saveSelectedWorkflowNodeConfig]);
+  }, [selectedNode?.id, hasWorkflowDraftChanges, isSavingWorkflowConfig, workflowSaveFailed, saveSelectedWorkflowNodeConfig]);
 
   const saveSelectedGroupConfig = useCallback(async () => {
     if (!workflow || !selectedGroup) return;

@@ -6,6 +6,7 @@ import {
   type PipelineTemplateNode,
   type WorkflowDefinitionRuntime,
 } from "../pipeline/template";
+import { saveWorkflowDefinitionWithStorage } from "../pipeline/workflow/io";
 import { getPipelineNodeExecutionTimeoutMs } from "../pipeline/execution-timeout";
 import { seedRunWithItems, touchRun } from "../pipeline/runtime-model";
 import { pickArray } from "../utils/array";
@@ -82,10 +83,17 @@ export const createPipelineRuntime = (options: CreatePipelineRuntimeOptions) => 
     graph.setTemplateNodes(nextNodes);
   };
 
-  const setWorkflow = (nextWorkflow: WorkflowDefinitionRuntime) => {
+  const setWorkflow = async (nextWorkflow: WorkflowDefinitionRuntime): Promise<void> => {
+    // 1. Validate + persist to disk (throws on validation failure, memory untouched)
+    saveWorkflowDefinitionWithStorage(nextWorkflow, { workflowFilePath: options.workflowFilePath });
+
+    // 2. Update in-memory state
     graph.setWorkflow(nextWorkflow);
     schedulerService.syncSchedulerStateFromWorkflow();
     graph.syncRunGroupsFromWorkflow(runtimeStore.getRun());
+
+    // 3. Broadcast to connected frontends
+    runtimeStore.emitPipeline();
   };
 
   const onGatewayStatus = (status: GatewayConnectionInfo) => {
@@ -183,6 +191,7 @@ export const createPipelineRuntime = (options: CreatePipelineRuntimeOptions) => 
       getRun: runtimeStore.getRun,
       setRun,
       seedRun: runtimeStore.seedRun,
+      getEnrichedNodes: () => graph.getNodesWithWorkflowMeta(runtimeStore.getRun().nodes),
       getTimeline: runtimeStore.getTimeline,
       touchRun,
     },

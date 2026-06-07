@@ -303,11 +303,12 @@ export const createPipelineRegistry = (options: CreatePipelineRegistryOptions) =
       const runtime = runtimeById.get(definition.id);
       if (!runtime) continue;
       const run = runtime.runtime.getRun();
+      const enrichedNodes = runtime.runtime.getEnrichedNodes();
       pipelines[definition.id] = {
         pipelineId: definition.id,
         title: definition.title,
-        run: { ...run, nodes: run.nodes },
-        pipeline: run.nodes,
+        run: { ...run, nodes: enrichedNodes },
+        pipeline: enrichedNodes,
         runId: run.id,
         scheduler: runtime.pipeline.getSchedulerState(),
         batchRunState: runtime.pipeline.getBatchRunState(),
@@ -587,6 +588,7 @@ export const createPipelineRegistry = (options: CreatePipelineRegistryOptions) =
     onGatewayReady: (hello: unknown) => {
       for (const runtime of runtimeById.values()) runtime.onGatewayReady(hello);
     },
+    broadcastBootstrapPayload,
   };
 };
 

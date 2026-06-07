@@ -2,7 +2,6 @@ import type { WsMethodRegistry } from "./types";
 import {
   normalizeWorkflowFallbacksWithStorage,
   readWorkflowDefinitionFromRawDetailed,
-  saveWorkflowDefinitionWithStorage,
   validateWorkflowDefinition,
   workflowToTemplateNodes,
   type WorkflowDefinitionRuntime,
@@ -82,8 +81,7 @@ export const registerPipelineWorkflowWsMethods = (registry: WsMethodRegistry): v
       scheduler: nextScheduler,
     };
 
-    runtime.workflow.setWorkflow(nextWorkflow);
-    saveWorkflowDefinitionWithStorage(nextWorkflow, { workflowFilePath: definition.workflowFilePath });
+    await runtime.workflow.setWorkflow(nextWorkflow);
     return { ok: true, payload: { ok: true, state: nextPlugins, pipelineId } };
   });
 
@@ -136,19 +134,7 @@ export const registerPipelineWorkflowWsMethods = (registry: WsMethodRegistry): v
     if (!validation.ok) {
       return { ok: false, error: { error: validation.error, detail: validation.detail } };
     }
-    runtime.workflow.setWorkflow(normalized);
-    try {
-      saveWorkflowDefinitionWithStorage(normalized, { workflowFilePath: definition.workflowFilePath });
-    } catch (error) {
-      const err = error as Error & { detail?: string };
-      return {
-        ok: false,
-        error: {
-          error: err.message || "invalid_workflow_definition",
-          detail: err.detail,
-        },
-      };
-    }
+    await runtime.workflow.setWorkflow(normalized);
     const run = runtime.runtime.seedRun(runtime.workflow.getTemplateNodes());
     runtime.runtime.setRun(run);
     runtime.runtime.pushTimeline(`[${pipelineId}] Workflow definition updated, node count: ${normalized.nodes.length}`);

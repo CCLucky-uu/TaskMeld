@@ -5,6 +5,7 @@ import { defaultTemplateNodes, defaultWorkflowDefinition } from "./defaults";
 import { mergeTemplateNodesIntoWorkflow, workflowToTemplateNodes } from "./template-mapper";
 import { readWorkflowDefinitionFromRawDetailed } from "./normalize";
 import { validateWorkflowDefinition, validateWorkflowOutputConfig } from "./validate";
+export { validateWorkflowDefinition, validateWorkflowOutputConfig } from "./validate";
 import type { WorkflowDefinitionRuntime } from "../types/workflow";
 import type {
   PipelineTemplateNode,
