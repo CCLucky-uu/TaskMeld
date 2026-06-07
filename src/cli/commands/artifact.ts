@@ -1,36 +1,39 @@
-import { CliError, assertRequiredArg } from "../errors";
-import { t } from "../i18n";
-import type { CliCommandHandler, CliRouteDefinition } from "../types";
+import { CliError, assertRequiredArg } from "../errors"
+import { t } from "../i18n"
+import type { CliCommandHandler, CliRouteDefinition } from "../types"
 
 const pickOptionalString = (value: string | boolean | undefined): string | undefined => {
-  if (typeof value !== "string") return undefined;
-  const trimmed = value.trim();
-  return trimmed ? trimmed : undefined;
-};
+  if (typeof value !== "string") return undefined
+  const trimmed = value.trim()
+  return trimmed ? trimmed : undefined
+}
 
 const pickCsvStrings = (value: string | boolean | undefined): string[] | undefined => {
-  if (typeof value !== "string") return undefined;
-  const values = value.split(",").map((item) => item.trim()).filter(Boolean);
-  return values.length ? values : undefined;
-};
+  if (typeof value !== "string") return undefined
+  const values = value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean)
+  return values.length ? values : undefined
+}
 
 const pickPositiveInteger = (value: string | boolean | undefined, flagName: string): number | undefined => {
-  if (value === undefined) return undefined;
+  if (value === undefined) return undefined
   if (value === true) {
     throw new CliError(`Invalid flag: --${flagName} requires a positive integer`, {
       code: "INVALID_ARGUMENT",
       exitCode: 2,
-    });
+    })
   }
-  const parsed = Number(value);
+  const parsed = Number(value)
   if (!Number.isInteger(parsed) || parsed <= 0) {
     throw new CliError(`Invalid flag: --${flagName} must be a positive integer`, {
       code: "INVALID_ARGUMENT",
       exitCode: 2,
-    });
+    })
   }
-  return parsed;
-};
+  return parsed
+}
 
 export const artifactListCommand: CliCommandHandler = async (input, ctx) => {
   return ctx.app.artifactService.listArtifacts({
@@ -41,14 +44,14 @@ export const artifactListCommand: CliCommandHandler = async (input, ctx) => {
     batchRunId: pickOptionalString(input.flags.batch),
     runId: pickOptionalString(input.flags.run),
     cursor: pickOptionalString(input.flags.cursor),
-  });
-};
+  })
+}
 
 export const artifactShowCommand: CliCommandHandler = async (input, ctx) => {
-  const pipelineId = assertRequiredArg(input.args[0], "pipelineId");
-  const relativePath = assertRequiredArg(input.args[1], "relativePath");
-  return ctx.app.artifactService.getArtifactContent({ pipelineId, relativePath });
-};
+  const pipelineId = assertRequiredArg(input.args[0], "pipelineId")
+  const relativePath = assertRequiredArg(input.args[1], "relativePath")
+  return ctx.app.artifactService.getArtifactContent({ pipelineId, relativePath })
+}
 
 export const artifactExportCommand: CliCommandHandler = async (input, ctx) => {
   return ctx.app.artifactService.exportArtifacts({
@@ -60,34 +63,34 @@ export const artifactExportCommand: CliCommandHandler = async (input, ctx) => {
     dateFrom: pickOptionalString(input.flags.from),
     dateTo: pickOptionalString(input.flags.to),
     limit: pickPositiveInteger(input.flags.limit, "limit"),
-  });
-};
+  })
+}
 
 export const artifactCleanupCommand: CliCommandHandler = async (input, ctx) => {
-  const pipelineId = assertRequiredArg(input.args[0], "pipelineId");
+  const pipelineId = assertRequiredArg(input.args[0], "pipelineId")
   const plan = await ctx.app.artifactService.planCleanup(pipelineId, {
     olderThanDays: pickPositiveInteger(input.flags["older-than"], "older-than"),
     statuses: pickCsvStrings(input.flags.status),
-  });
-  const planObj = plan as Record<string, unknown>;
+  })
+  const planObj = plan as Record<string, unknown>
   if (input.flags.confirm !== true) {
-    return { ...planObj, dryRun: true, message: t("artifact.cleanup.dryRunMessage") };
+    return { ...planObj, dryRun: true, message: t("artifact.cleanup.dryRunMessage") }
   }
-  const result = await ctx.app.artifactService.executeCleanup(pipelineId, plan) as Record<string, unknown>;
-  return { ...planObj, dryRun: false, ...result };
-};
+  const result = (await ctx.app.artifactService.executeCleanup(pipelineId, plan)) as Record<string, unknown>
+  return { ...planObj, dryRun: false, ...result }
+}
 
 export const artifactIndexCommand: CliCommandHandler = async (input, ctx) => {
-  const action = assertRequiredArg(input.args[0], "action");
+  const action = assertRequiredArg(input.args[0], "action")
   if (action !== "rebuild") {
     throw new CliError(`Unknown artifact index action: ${action}`, {
       code: "UNKNOWN_COMMAND",
       exitCode: 2,
       details: { action },
-    });
+    })
   }
-  return ctx.app.artifactService.rebuildIndex(pickOptionalString(input.flags.pipeline));
-};
+  return ctx.app.artifactService.rebuildIndex(pickOptionalString(input.flags.pipeline))
+}
 
 export const artifactRoutes: CliRouteDefinition[] = [
   {
@@ -108,7 +111,8 @@ export const artifactRoutes: CliRouteDefinition[] = [
     description: t("artifact.list.description"),
     handler: artifactListCommand,
     help: {
-      usage: "taskmeld artifact list [--pipeline <id>] [--node <id>] [--status <status>] [--kind <kind>] [--batch <id>] [--run <id>] [--cursor <cursor>] [--format <json|md>]",
+      usage:
+        "taskmeld artifact list [--pipeline <id>] [--node <id>] [--status <status>] [--kind <kind>] [--batch <id>] [--run <id>] [--cursor <cursor>] [--format <json|md>]",
       options: [
         { flags: ["--pipeline"], valueName: "id", description: t("artifact.list.optPipeline") },
         { flags: ["--node"], valueName: "id", description: t("artifact.list.optNode") },
@@ -172,4 +176,4 @@ export const artifactRoutes: CliRouteDefinition[] = [
       summary: t("artifact.cleanup.summary"),
     },
   },
-];
+]

@@ -1,18 +1,9 @@
-import {
-  normalizeWorkflowScheduler,
-  normalizeWorkflowPlugins,
-  normalizeWorkflowNode,
-} from "./normalize";
-import type {
-  PipelineTemplateNode,
-  WorkflowDefinitionRuntime,
-  WorkflowEdge,
-  WorkflowNode,
-} from "../types/workflow";
+import { normalizeWorkflowScheduler, normalizeWorkflowPlugins, normalizeWorkflowNode } from "./normalize"
+import type { PipelineTemplateNode, WorkflowDefinitionRuntime, WorkflowEdge, WorkflowNode } from "../types/workflow"
 
 // ====== Default template nodes ======
 
-export const defaultTemplateNodes = (): PipelineTemplateNode[] => [];
+export const defaultTemplateNodes = (): PipelineTemplateNode[] => []
 
 const mapTemplateNodesToWorkflow = (nodes: PipelineTemplateNode[]): WorkflowDefinitionRuntime => {
   const workflowNodes: WorkflowNode[] = nodes.map((node) => ({
@@ -36,12 +27,12 @@ const mapTemplateNodesToWorkflow = (nodes: PipelineTemplateNode[]): WorkflowDefi
     instruction: node.instruction,
     allowReject: node.allowReject,
     maxRejectCount: node.maxRejectCount,
-  }));
+  }))
 
-  const edges: WorkflowEdge[] = [];
+  const edges: WorkflowEdge[] = []
   for (const node of nodes) {
     for (const dep of node.dependsOn) {
-      edges.push({ from: dep, to: node.id, when: null });
+      edges.push({ from: dep, to: node.id, when: null })
     }
   }
 
@@ -53,8 +44,8 @@ const mapTemplateNodesToWorkflow = (nodes: PipelineTemplateNode[]): WorkflowDefi
     nodes: workflowNodes,
     edges,
     groups: [],
-  };
-};
+  }
+}
 
 export const defaultWorkflowDefinition = (): WorkflowDefinitionRuntime =>
-  mapTemplateNodesToWorkflow(defaultTemplateNodes());
+  mapTemplateNodesToWorkflow(defaultTemplateNodes())

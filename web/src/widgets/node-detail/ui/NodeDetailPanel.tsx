@@ -16,8 +16,7 @@ import {
 
 const kvHeadClassName = "mb-1.5 flex items-center justify-between gap-2";
 const depPickerClassName = "relative min-w-0";
-const depInlineValueClassName =
-  `${controlInputMonoClassName} cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap transition-[border-color,background-color,color] hover:border-[#2a3c4b] hover:bg-[rgba(142,163,179,0.08)] focus-visible:outline focus-visible:outline-1 focus-visible:outline-[var(--live)] focus-visible:outline-offset-1`;
+const depInlineValueClassName = `${controlInputMonoClassName} cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap transition-[border-color,background-color,color] hover:border-[#2a3c4b] hover:bg-[rgba(142,163,179,0.08)] focus-visible:outline focus-visible:outline-1 focus-visible:outline-[var(--live)] focus-visible:outline-offset-1`;
 const depInlineValueOpenClassName = "border-[#3b5868] bg-[rgba(24,39,47,0.92)]";
 const depDropdownClassName =
   "absolute inset-x-0 top-[calc(100%+4px)] z-[4] grid max-h-[180px] overflow-y-auto overflow-x-hidden border border-[#29414f] bg-[rgba(18,31,38,0.98)] px-0 py-0 text-[var(--text)] shadow-none";
@@ -30,9 +29,12 @@ const depEmptyClassName = "mx-2 my-1.5 text-xs text-[var(--muted)]";
 const routeEditorClassName = "grid gap-2 overflow-hidden border border-[#29414f] bg-[rgba(18,31,38,0.9)] p-[10px]";
 const routeSwitchRowClassName = "mb-1.5 flex min-w-0 items-center justify-between gap-2";
 const routeChipListClassName = "flex min-h-8 flex-wrap content-start gap-2";
-const routeChipClassName = "inline-flex items-center gap-2 border border-[#29414f] bg-[rgba(24,39,47,0.92)] px-2 py-1 whitespace-nowrap";
-const routeChipRemoveClassName = "cursor-pointer border-0 bg-transparent p-0 leading-none text-[var(--muted)] hover:text-[var(--bad)]";
-const routeEditorRowClassName = "grid items-stretch gap-2 border-t border-[rgba(142,163,179,0.12)] pt-2 grid-cols-[minmax(0,1fr)_auto]";
+const routeChipClassName =
+  "inline-flex items-center gap-2 border border-[#29414f] bg-[rgba(24,39,47,0.92)] px-2 py-1 whitespace-nowrap";
+const routeChipRemoveClassName =
+  "cursor-pointer border-0 bg-transparent p-0 leading-none text-[var(--muted)] hover:text-[var(--bad)]";
+const routeEditorRowClassName =
+  "grid items-stretch gap-2 border-t border-[rgba(142,163,179,0.12)] pt-2 grid-cols-[minmax(0,1fr)_auto]";
 const routeTargetItemClassName = "grid gap-1.5 border border-[#29414f] bg-[rgba(24,39,47,0.72)] p-2";
 const routeSwitchClassName =
   "relative h-6 w-[54px] shrink-0 cursor-pointer border border-[#29414f] bg-[rgba(24,39,47,0.92)] p-0 transition-[background-color,border-color] disabled:cursor-not-allowed disabled:opacity-50";
@@ -40,10 +42,12 @@ const routeSwitchOnClassName = "border-[var(--live-25)] bg-[rgba(50,215,186,0.14
 const routeSwitchThumbClassName =
   "absolute top-1/2 flex h-5 w-[24px] -translate-y-1/2 items-center justify-center border border-[var(--line)] bg-[rgba(18,31,38,0.98)] text-center text-[10px] leading-[20px] font-semibold text-[var(--muted)] transition-[left,right,color,border-color,background-color]";
 const routeSwitchThumbOffClassName = "left-[2px] right-auto";
-const routeSwitchThumbOnClassName = "right-[2px] left-auto border-[var(--live-25)] bg-[rgba(50,215,186,0.22)] text-[var(--live)]";
+const routeSwitchThumbOnClassName =
+  "right-[2px] left-auto border-[var(--live-25)] bg-[rgba(50,215,186,0.22)] text-[var(--live)]";
 const MAINLINE_ROUTE_VALUE = "yes";
 const DEFAULT_BRANCH_ROUTE_VALUE = "no";
-const adapterGridFieldClassName = "grid min-w-0 items-center gap-x-2 gap-y-0 grid-cols-[40px_minmax(0,1fr)] max-[760px]:grid-cols-1 max-[760px]:gap-y-1.5";
+const adapterGridFieldClassName =
+  "grid min-w-0 items-center gap-x-2 gap-y-0 grid-cols-[40px_minmax(0,1fr)] max-[760px]:grid-cols-1 max-[760px]:gap-y-1.5";
 const adapterInstructionFieldClassName = "grid min-w-0 gap-1.5";
 const monoClassName = "font-[JetBrains_Mono,monospace]";
 const fieldClassName = "min-w-0";
@@ -138,10 +142,18 @@ export function NodeDetailPanel({
   const { t } = useTranslation("node-detail");
   const [depEditorOpen, setDepEditorOpen] = useState(false);
   const depEditorRef = useRef<HTMLDivElement | null>(null);
-  const rawRouteOptions = Array.from(new Set(draftWorkflowRouteAllowed.split(",").map((item) => item.trim()).filter(Boolean)));
-  const routeOptions = rawRouteOptions.length > 0
-    ? Array.from(new Set([MAINLINE_ROUTE_VALUE, DEFAULT_BRANCH_ROUTE_VALUE, ...rawRouteOptions])).slice(0, 5)
-    : [];
+  const rawRouteOptions = Array.from(
+    new Set(
+      draftWorkflowRouteAllowed
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean),
+    ),
+  );
+  const routeOptions =
+    rawRouteOptions.length > 0
+      ? Array.from(new Set([MAINLINE_ROUTE_VALUE, DEFAULT_BRANCH_ROUTE_VALUE, ...rawRouteOptions])).slice(0, 5)
+      : [];
   const routeTargetOptionsForEdit = routeOptions.filter((route) => route !== MAINLINE_ROUTE_VALUE);
   const [routeDraft, setRouteDraft] = useState("");
   const isSaving = savingConfig || isSavingWorkflowConfig;
@@ -185,15 +197,23 @@ export function NodeDetailPanel({
     const custom = routes
       .map((item) => item.trim())
       .filter((item) => item && item !== MAINLINE_ROUTE_VALUE && item !== DEFAULT_BRANCH_ROUTE_VALUE);
-    const normalized = custom.length > 0 || routes.includes(DEFAULT_BRANCH_ROUTE_VALUE)
-      ? Array.from(new Set([MAINLINE_ROUTE_VALUE, DEFAULT_BRANCH_ROUTE_VALUE, ...custom])).slice(0, 5)
-      : [];
+    const normalized =
+      custom.length > 0 || routes.includes(DEFAULT_BRANCH_ROUTE_VALUE)
+        ? Array.from(new Set([MAINLINE_ROUTE_VALUE, DEFAULT_BRANCH_ROUTE_VALUE, ...custom])).slice(0, 5)
+        : [];
     onChangeDraftWorkflowRouteAllowed(normalized.join(","));
   };
 
   const addRouteOption = () => {
     const nextRoute = routeDraft.trim();
-    if (!nextRoute || nextRoute === MAINLINE_ROUTE_VALUE || nextRoute === DEFAULT_BRANCH_ROUTE_VALUE || routeOptions.includes(nextRoute) || routeOptions.length >= 5) return;
+    if (
+      !nextRoute ||
+      nextRoute === MAINLINE_ROUTE_VALUE ||
+      nextRoute === DEFAULT_BRANCH_ROUTE_VALUE ||
+      routeOptions.includes(nextRoute) ||
+      routeOptions.length >= 5
+    )
+      return;
     commitRouteOptions([...routeOptions, nextRoute]);
     setRouteDraft("");
   };
@@ -220,8 +240,12 @@ export function NodeDetailPanel({
       <div className={detailPanelHeadClassName}>
         <h2 className={detailPanelTitleClassName}>{t("nodeDetail")}</h2>
         <div className={detailPanelStatusClassName}>
-          {isSaving ? <span className={`${statusTagBaseClassName} ${statusTagToneClassName.live}`}>{t("saving")}</span> : null}
-          <span className={`${statusTagBaseClassName} ${statusTagToneClassName[(statusTone[displayStatus] ?? "muted") as keyof typeof statusTagToneClassName]}`}>
+          {isSaving ? (
+            <span className={`${statusTagBaseClassName} ${statusTagToneClassName.live}`}>{t("saving")}</span>
+          ) : null}
+          <span
+            className={`${statusTagBaseClassName} ${statusTagToneClassName[(statusTone[displayStatus] ?? "muted") as keyof typeof statusTagToneClassName]}`}
+          >
             {selectedNode ? statusLabel[displayStatus] : "-"}
           </span>
         </div>
@@ -258,12 +282,13 @@ export function NodeDetailPanel({
         <label className="block text-xs text-(--muted)">{t("session")}</label>
         <InlineSelect
           value={draftExecutorSessionId}
-          options={(sessionOptions.length ? sessionOptions : [{ id: draftExecutorSessionId || "-", title: draftExecutorSessionId || "-" }]).map(
-            (session) => ({
-              value: session.id,
-              label: session.id,
-            }),
-          )}
+          options={(sessionOptions.length
+            ? sessionOptions
+            : [{ id: draftExecutorSessionId || "-", title: draftExecutorSessionId || "-" }]
+          ).map((session) => ({
+            value: session.id,
+            label: session.id,
+          }))}
           onChange={(next) => {
             onChangeDraftExecutorSessionId(next);
             onBlurSave();
@@ -311,57 +336,65 @@ export function NodeDetailPanel({
             aria-label={t("toggleRoute")}
             title={t("toggleRoute")}
           >
-            <span className={`${routeSwitchThumbClassName} ${routeOptions.length > 0 ? routeSwitchThumbOnClassName : routeSwitchThumbOffClassName}`}>
+            <span
+              className={`${routeSwitchThumbClassName} ${routeOptions.length > 0 ? routeSwitchThumbOnClassName : routeSwitchThumbOffClassName}`}
+            >
               {routeOptions.length > 0 ? t("routeOn") : t("routeOff")}
             </span>
           </button>
         </div>
         {routeOptions.length > 0 ? (
           <div className={routeEditorClassName}>
-          <div className={routeChipListClassName}>
-            {routeOptions.length ? (
-              routeOptions.map((route) => (
-                <span key={route} className={`${routeChipClassName} ${monoClassName}`}>
-                  <span>{route}</span>
-                  <button
-                    type="button"
-                    className={routeChipRemoveClassName}
-                    onClick={() => removeRouteOption(route)}
-                    disabled={!selectedNode || route === MAINLINE_ROUTE_VALUE || route === DEFAULT_BRANCH_ROUTE_VALUE}
-                    aria-label={t("deleteRoute", { route })}
-                  >
-                    x
-                  </button>
-                </span>
-              ))
-            ) : (
-              <span className={`${monoClassName} text-xs text-(--muted)`}>{t("noRoute")}</span>
-            )}
-          </div>
-          <div className={routeEditorRowClassName}>
-            <input
-              className={`${controlInputMonoClassName} min-h-9 box-border`}
-              value={routeDraft}
-              onChange={(e) => setRouteDraft(e.target.value)}
-              onKeyDown={(event) => {
-                if (event.key !== "Enter") return;
-                event.preventDefault();
-                addRouteOption();
-              }}
-              disabled={!selectedNode || routeOptions.length >= 5}
-              placeholder={t("routePlaceholder")}
-            />
-            <button
-              type="button"
-              className={`${actionButtonClassName} inline-grid h-9 w-9 min-w-9 place-items-center self-stretch p-0`}
-              onClick={addRouteOption}
-              disabled={!selectedNode || !routeDraft.trim() || routeDraft.trim() === MAINLINE_ROUTE_VALUE || routeDraft.trim() === DEFAULT_BRANCH_ROUTE_VALUE || routeOptions.length >= 5}
-              aria-label={t("addRoute")}
-              title={t("addRoute")}
-            >
-              <PlusIcon />
-            </button>
-          </div>
+            <div className={routeChipListClassName}>
+              {routeOptions.length ? (
+                routeOptions.map((route) => (
+                  <span key={route} className={`${routeChipClassName} ${monoClassName}`}>
+                    <span>{route}</span>
+                    <button
+                      type="button"
+                      className={routeChipRemoveClassName}
+                      onClick={() => removeRouteOption(route)}
+                      disabled={!selectedNode || route === MAINLINE_ROUTE_VALUE || route === DEFAULT_BRANCH_ROUTE_VALUE}
+                      aria-label={t("deleteRoute", { route })}
+                    >
+                      x
+                    </button>
+                  </span>
+                ))
+              ) : (
+                <span className={`${monoClassName} text-xs text-(--muted)`}>{t("noRoute")}</span>
+              )}
+            </div>
+            <div className={routeEditorRowClassName}>
+              <input
+                className={`${controlInputMonoClassName} min-h-9 box-border`}
+                value={routeDraft}
+                onChange={(e) => setRouteDraft(e.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key !== "Enter") return;
+                  event.preventDefault();
+                  addRouteOption();
+                }}
+                disabled={!selectedNode || routeOptions.length >= 5}
+                placeholder={t("routePlaceholder")}
+              />
+              <button
+                type="button"
+                className={`${actionButtonClassName} inline-grid h-9 w-9 min-w-9 place-items-center self-stretch p-0`}
+                onClick={addRouteOption}
+                disabled={
+                  !selectedNode ||
+                  !routeDraft.trim() ||
+                  routeDraft.trim() === MAINLINE_ROUTE_VALUE ||
+                  routeDraft.trim() === DEFAULT_BRANCH_ROUTE_VALUE ||
+                  routeOptions.length >= 5
+                }
+                aria-label={t("addRoute")}
+                title={t("addRoute")}
+              >
+                <PlusIcon />
+              </button>
+            </div>
           </div>
         ) : null}
       </div>
@@ -426,14 +459,22 @@ export function NodeDetailPanel({
             <div className={depDropdownClassName}>
               {dependencyOptions.length ? (
                 dependencyOptions.map((node) => (
-                  <label key={node.id} className={`${depOptionClassName} ${draftDependsOn.includes(node.id) ? depOptionCheckedClassName : ""}`}>
+                  <label
+                    key={node.id}
+                    className={`${depOptionClassName} ${draftDependsOn.includes(node.id) ? depOptionCheckedClassName : ""}`}
+                  >
                     <input
                       type="checkbox"
                       className={depCheckboxClassName}
                       checked={draftDependsOn.includes(node.id)}
                       onChange={(event) => toggleDependsOn(node.id, event.target.checked)}
                     />
-                    <span className="block min-w-0 overflow-hidden text-ellipsis whitespace-nowrap" title={`${node.id} - ${node.title}`}>{node.id} - {node.title}</span>
+                    <span
+                      className="block min-w-0 overflow-hidden text-ellipsis whitespace-nowrap"
+                      title={`${node.id} - ${node.title}`}
+                    >
+                      {node.id} - {node.title}
+                    </span>
                   </label>
                 ))
               ) : (
@@ -482,8 +523,8 @@ export function NodeDetailPanel({
         <code className={fieldCodeClassName}>
           {selectedNode && selectedNode.artifacts.length
             ? selectedNode.artifacts
-              .map((artifact) => `${artifact.type}@v${artifact.schemaVersion} ${artifact.path} (${artifact.hash})`)
-              .join("\n")
+                .map((artifact) => `${artifact.type}@v${artifact.schemaVersion} ${artifact.path} (${artifact.hash})`)
+                .join("\n")
             : "-"}
         </code>
       </div>

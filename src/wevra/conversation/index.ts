@@ -1,14 +1,14 @@
-import { appendFile, mkdir, writeFile, readFile, unlink } from 'node:fs/promises'
-import { existsSync, createReadStream } from 'node:fs'
-import { join, dirname } from 'node:path'
-import { createHash } from 'node:crypto'
-import { createInterface } from 'node:readline'
-import type { Message, ToolDefinition, ToolPreferences, ThinkingConfig } from '../types'
-import type { ToolRegistry } from '../tools/registry'
+import { appendFile, mkdir, writeFile, readFile, unlink } from "node:fs/promises"
+import { existsSync, createReadStream } from "node:fs"
+import { join, dirname } from "node:path"
+import { createHash } from "node:crypto"
+import { createInterface } from "node:readline"
+import type { Message, ToolDefinition, ToolPreferences, ThinkingConfig } from "../types"
+import type { ToolRegistry } from "../tools/registry"
 
 // ── Types ──
 
-export type ConversationScope = 'global' | `pipeline:${string}`
+export type ConversationScope = "global" | `pipeline:${string}`
 
 export interface ConversationMeta {
   id: string
@@ -21,9 +21,9 @@ export interface ConversationMeta {
   archived: boolean
   frozenPrompt: string
   frozenTools: string[]
-  mode: 'plan' | 'normal' | 'auto'
+  mode: "plan" | "normal" | "auto"
   modeVersion: number
-  thinkingLevel?: ThinkingConfig['level']
+  thinkingLevel?: ThinkingConfig["level"]
   toolPreferences?: ToolPreferences
   lastPromptTokens?: number
   lastCompletionTokens?: number
@@ -36,12 +36,12 @@ interface ConversationIndex {
 // ── Utilities ──
 
 function generateId(scope: ConversationScope, ts: number): string {
-  const prefix = scope === 'global' ? 'global' : scope.replace('pipeline:', 'pipe-')
+  const prefix = scope === "global" ? "global" : scope.replace("pipeline:", "pipe-")
   return hash16(`${prefix}-${ts}`)
 }
 
 function hash16(input: string): string {
-  return createHash('sha256').update(input).digest('hex').slice(0, 16)
+  return createHash("sha256").update(input).digest("hex").slice(0, 16)
 }
 
 // ── ConversationManager ──
@@ -59,42 +59,48 @@ export class ConversationManager {
 
   // ── Paths ──
 
-  private getIndexPath() { return join(this.dataDir, 'conversations', 'index.json') }
-  private getConvPath(id: string) { return join(this.dataDir, 'conversations', `${id}.jsonl`) }
+  private getIndexPath() {
+    return join(this.dataDir, "conversations", "index.json")
+  }
+  private getConvPath(id: string) {
+    return join(this.dataDir, "conversations", `${id}.jsonl`)
+  }
 
   // ── Index operations ──
 
   private async loadIndex(): Promise<ConversationIndex> {
     if (this.index) return this.index
     const indexPath = this.getIndexPath()
-    const baseDir = join(this.dataDir, 'conversations')
+    const baseDir = join(this.dataDir, "conversations")
 
     if (!existsSync(indexPath)) {
       await mkdir(baseDir, { recursive: true })
       // Auto-create a default global conversation on first startup
       const now = Date.now()
       const ts = now
-      const id = generateId('global', ts)
+      const id = generateId("global", ts)
       this.index = {
-        conversations: [{
-          id,
-          title: 'New conversation',
-          scope: 'global',
-          messageCount: 0,
-          createdAt: now,
-          lastActiveAt: now,
-          lastAssistantAt: now,
-          archived: false,
-          frozenPrompt: this.promptBuilder.buildGlobalPrompt('global'),
-          frozenTools: this.registry.toToolDefinitions().map(t => t.name),
-          mode: 'normal',
-          modeVersion: 0,
-        }],
+        conversations: [
+          {
+            id,
+            title: "New conversation",
+            scope: "global",
+            messageCount: 0,
+            createdAt: now,
+            lastActiveAt: now,
+            lastAssistantAt: now,
+            archived: false,
+            frozenPrompt: this.promptBuilder.buildGlobalPrompt("global"),
+            frozenTools: this.registry.toToolDefinitions().map((t) => t.name),
+            mode: "normal",
+            modeVersion: 0,
+          },
+        ],
       }
-      await writeFile(this.getConvPath(id), '')
+      await writeFile(this.getConvPath(id), "")
       await this.flushIndex()
     } else {
-      const raw = await readFile(indexPath, 'utf-8')
+      const raw = await readFile(indexPath, "utf-8")
       this.index = JSON.parse(raw) as ConversationIndex
     }
     return this.index
@@ -108,7 +114,9 @@ export class ConversationManager {
     this.indexDirty = false
   }
 
-  private saveIndex() { this.indexDirty = true }
+  private saveIndex() {
+    this.indexDirty = true
+  }
 
   // ── Startup recovery ──
 
@@ -133,7 +141,7 @@ export class ConversationManager {
     const now = Date.now()
     let changed = false
     for (const c of this.index.conversations) {
-      if (!c.archived && (now - c.lastAssistantAt) > 24 * 60 * 60 * 1000) {
+      if (!c.archived && now - c.lastAssistantAt > 24 * 60 * 60 * 1000) {
         c.archived = true
         changed = true
       }
@@ -150,10 +158,10 @@ export class ConversationManager {
 
     const toolCallIds = new Set<string>()
     for (const msg of messages) {
-      if (msg.role === 'assistant' && msg.toolCalls) {
+      if (msg.role === "assistant" && msg.toolCalls) {
         for (const tc of msg.toolCalls) toolCallIds.add(tc.id)
       }
-      if (msg.role === 'tool' && msg.toolCallId) toolCallIds.delete(msg.toolCallId)
+      if (msg.role === "tool" && msg.toolCallId) toolCallIds.delete(msg.toolCallId)
     }
 
     if (toolCallIds.size > 0) {
@@ -161,7 +169,7 @@ export class ConversationManager {
       let truncIdx = -1
       for (let i = messages.length - 1; i >= 0; i--) {
         const msg = messages[i]
-        if (msg.role === 'assistant' && msg.toolCalls && msg.toolCalls.length > 0) {
+        if (msg.role === "assistant" && msg.toolCalls && msg.toolCalls.length > 0) {
           truncIdx = i - 1
           break
         }
@@ -169,13 +177,16 @@ export class ConversationManager {
       // fallback: if no assistant-with-toolcalls found, fall back to before the last user message
       if (truncIdx < 0) {
         for (let i = messages.length - 1; i >= 0; i--) {
-          if (messages[i].role === 'user') { truncIdx = i - 1; break }
+          if (messages[i].role === "user") {
+            truncIdx = i - 1
+            break
+          }
         }
       }
       if (truncIdx >= 0) {
         const truncated = messages.slice(0, truncIdx + 1)
-        const lines = truncated.map(m => JSON.stringify(m))
-        await writeFile(path, lines.join('\n') + (lines.length > 0 ? '\n' : ''))
+        const lines = truncated.map((m) => JSON.stringify(m))
+        await writeFile(path, lines.join("\n") + (lines.length > 0 ? "\n" : ""))
         meta.messageCount = truncated.length
         meta.lastActiveAt = Date.now()
         this.saveIndex()
@@ -189,14 +200,14 @@ export class ConversationManager {
 
   async appendMessage(convId: string, message: Message): Promise<void> {
     const line = JSON.stringify(message)
-    await appendFile(this.getConvPath(convId), line + '\n')
+    await appendFile(this.getConvPath(convId), line + "\n")
 
     const index = await this.loadIndex()
-    const conv = index.conversations.find(c => c.id === convId)
+    const conv = index.conversations.find((c) => c.id === convId)
     if (conv) {
       conv.messageCount++
       conv.lastActiveAt = Date.now()
-      if (message.role === 'assistant') {
+      if (message.role === "assistant") {
         conv.lastAssistantAt = Date.now()
       }
       // Sending a message auto-unarchives
@@ -222,24 +233,28 @@ export class ConversationManager {
   private async readConvJsonl(path: string): Promise<Message[]> {
     const messages: Message[] = []
     if (!existsSync(path)) return messages
-    const stream = createReadStream(path, { encoding: 'utf-8' })
+    const stream = createReadStream(path, { encoding: "utf-8" })
     const rl = createInterface({ input: stream, crlfDelay: Infinity })
     for await (const line of rl) {
       const trimmed = line.trim()
       if (!trimmed) continue
-      try { messages.push(JSON.parse(trimmed) as Message) } catch { /* skip corrupted */ }
+      try {
+        messages.push(JSON.parse(trimmed) as Message)
+      } catch {
+        /* skip corrupted */
+      }
     }
     return messages
   }
 
   // ── Conversation operations ──
 
-  async createConversation(scope: ConversationScope = 'global'): Promise<ConversationMeta> {
+  async createConversation(scope: ConversationScope = "global"): Promise<ConversationMeta> {
     const index = await this.loadIndex()
     const ts = Date.now()
     const conv: ConversationMeta = {
       id: generateId(scope, ts),
-      title: 'New conversation',
+      title: "New conversation",
       scope,
       messageCount: 0,
       createdAt: ts,
@@ -247,12 +262,12 @@ export class ConversationManager {
       lastAssistantAt: ts,
       archived: false,
       frozenPrompt: this.promptBuilder.buildGlobalPrompt(scope),
-      frozenTools: this.registry.toToolDefinitions().map(t => t.name),
-      mode: 'normal',
+      frozenTools: this.registry.toToolDefinitions().map((t) => t.name),
+      mode: "normal",
       modeVersion: 0,
     }
     index.conversations.push(conv)
-    await writeFile(this.getConvPath(conv.id), '')
+    await writeFile(this.getConvPath(conv.id), "")
     this.messageCache.set(conv.id, [])
     this.saveIndex()
     await this.flushIndex()
@@ -261,12 +276,16 @@ export class ConversationManager {
 
   async renameConversation(id: string, title: string): Promise<void> {
     const index = await this.loadIndex()
-    const conv = index.conversations.find(c => c.id === id)
-    if (conv) { conv.title = title; this.saveIndex(); await this.flushIndex() }
+    const conv = index.conversations.find((c) => c.id === id)
+    if (conv) {
+      conv.title = title
+      this.saveIndex()
+      await this.flushIndex()
+    }
   }
 
   listConversations(): ConversationMeta[] {
-    if (!this.index) throw new Error('Not loaded')
+    if (!this.index) throw new Error("Not loaded")
     this.checkArchived()
     return this.index.conversations
   }
@@ -277,30 +296,30 @@ export class ConversationManager {
 
   getConversation(id: string): ConversationMeta | undefined {
     if (!this.index) return undefined
-    return this.index.conversations.find(c => c.id === id)
+    return this.index.conversations.find((c) => c.id === id)
   }
 
   async setToolPreference(
     id: string,
-    key: 'mode' | 'alwaysAllow' | 'alwaysDeny',
+    key: "mode" | "alwaysAllow" | "alwaysDeny",
     value: string,
-    action?: 'add' | 'remove',
+    action?: "add" | "remove",
   ): Promise<void> {
     const index = await this.loadIndex()
-    const conv = index.conversations.find(c => c.id === id)
+    const conv = index.conversations.find((c) => c.id === id)
     if (!conv) return
     if (!conv.toolPreferences) {
-      conv.toolPreferences = { mode: 'normal', alwaysAllow: [], alwaysDeny: [] }
+      conv.toolPreferences = { mode: "normal", alwaysAllow: [], alwaysDeny: [] }
     }
-    if (key === 'mode') {
-      conv.toolPreferences.mode = value as ToolPreferences['mode']
-      conv.mode = value as 'plan' | 'normal' | 'auto'
+    if (key === "mode") {
+      conv.toolPreferences.mode = value as ToolPreferences["mode"]
+      conv.mode = value as "plan" | "normal" | "auto"
       conv.modeVersion = (conv.modeVersion ?? 0) + 1
     } else {
       const list = conv.toolPreferences[key]
-      if (action === 'add' && !list.includes(value)) {
+      if (action === "add" && !list.includes(value)) {
         list.push(value)
-      } else if (action === 'remove') {
+      } else if (action === "remove") {
         const idx = list.indexOf(value)
         if (idx >= 0) list.splice(idx, 1)
       }
@@ -309,9 +328,9 @@ export class ConversationManager {
     await this.flushIndex()
   }
 
-  async setThinkingLevel(id: string, level: ThinkingConfig['level']): Promise<void> {
+  async setThinkingLevel(id: string, level: ThinkingConfig["level"]): Promise<void> {
     const index = await this.loadIndex()
-    const conv = index.conversations.find(c => c.id === id)
+    const conv = index.conversations.find((c) => c.id === id)
     if (!conv) return
     conv.thinkingLevel = level
     this.saveIndex()
@@ -320,7 +339,7 @@ export class ConversationManager {
 
   async updateTokenUsage(convId: string, promptTokens: number, completionTokens: number): Promise<void> {
     if (!this.index) return
-    const conv = this.index.conversations.find(c => c.id === convId)
+    const conv = this.index.conversations.find((c) => c.id === convId)
     if (!conv) return
     conv.lastPromptTokens = promptTokens
     conv.lastCompletionTokens = completionTokens
@@ -330,7 +349,7 @@ export class ConversationManager {
 
   async archiveConversation(convId: string): Promise<void> {
     if (!this.index) return
-    const conv = this.index.conversations.find(c => c.id === convId)
+    const conv = this.index.conversations.find((c) => c.id === convId)
     if (!conv || conv.archived) return
     conv.archived = true
     this.saveIndex()
@@ -339,7 +358,7 @@ export class ConversationManager {
 
   async deleteConversation(convId: string): Promise<void> {
     if (!this.index) return
-    const idx = this.index.conversations.findIndex(c => c.id === convId)
+    const idx = this.index.conversations.findIndex((c) => c.id === convId)
     if (idx === -1) return
     this.index.conversations.splice(idx, 1)
     this.messageCache.delete(convId)

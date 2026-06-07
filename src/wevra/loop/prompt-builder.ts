@@ -1,5 +1,5 @@
-import type { SkillDef } from '../types'
-import type { MemoryEntry } from '../types'
+import type { SkillDef } from "../types"
+import type { MemoryEntry } from "../types"
 
 interface GlobalPromptContext {
   memories: MemoryEntry[]
@@ -9,7 +9,7 @@ interface GlobalPromptContext {
   scope?: ConversationScope
 }
 
-import type { ConversationScope } from '../conversation'
+import type { ConversationScope } from "../conversation"
 
 interface PipelinePromptContext {
   memories: MemoryEntry[]
@@ -39,23 +39,21 @@ You are Wevra, an Agent developed by the TaskMeld team, running within the TaskM
 - Create a pipeline: confirm name, nodes, and trigger conditions with the user first → pipeline_create → present the result`)
 
   sections.push(`## Environment
-- Session started at: ${new Date().toISOString().replace('T', ' ').slice(0, 19)}`)
+- Session started at: ${new Date().toISOString().replace("T", " ").slice(0, 19)}`)
 
   if (ctx.memories.length > 0) {
-    const memoryLines = ctx.memories.map(m =>
-      `- ${m.content} (importance: ${m.importance})`,
-    ).join('\n')
+    const memoryLines = ctx.memories.map((m) => `- ${m.content} (importance: ${m.importance})`).join("\n")
     sections.push(`## Global Memory\n${memoryLines}`)
   }
 
   if (ctx.skillIndex.length > 0) {
-    const indexLines = ctx.skillIndex.map(s =>
-      `- ${s.name}: ${s.description}`,
-    ).join('\n')
-    sections.push(`## Available Skills\n${indexLines}\n\nUse the skill_load tool to load full skill content when needed.`)
+    const indexLines = ctx.skillIndex.map((s) => `- ${s.name}: ${s.description}`).join("\n")
+    sections.push(
+      `## Available Skills\n${indexLines}\n\nUse the skill_load tool to load full skill content when needed.`,
+    )
   }
 
-  return sections.join('\n\n')
+  return sections.join("\n\n")
 }
 
 export function buildPipelinePrompt(ctx: PipelinePromptContext): string {
@@ -76,24 +74,22 @@ You may only operate on this pipeline. Accessing other pipelines requires user a
 - Name: ${ctx.pipelineName}
 - Description: ${ctx.pipelineDescription}
 - Nodes:
-${ctx.nodes.map(n => `  - ${n.id} "${n.name}": ${n.description}`).join('\n')}`)
+${ctx.nodes.map((n) => `  - ${n.id} "${n.name}": ${n.description}`).join("\n")}`)
 
   sections.push(`## Environment
-- Session started at: ${new Date().toISOString().replace('T', ' ').slice(0, 19)}`)
+- Session started at: ${new Date().toISOString().replace("T", " ").slice(0, 19)}`)
 
   if (ctx.memories.length > 0) {
-    const memoryLines = ctx.memories.map(m =>
-      `- ${m.content} (importance: ${m.importance})`,
-    ).join('\n')
+    const memoryLines = ctx.memories.map((m) => `- ${m.content} (importance: ${m.importance})`).join("\n")
     sections.push(`## Pipeline Memory\n${memoryLines}`)
   }
 
   if (ctx.skillIndex.length > 0) {
-    const indexLines = ctx.skillIndex.map(s =>
-      `- ${s.name}: ${s.description}`,
-    ).join('\n')
-    sections.push(`## Available Skills\n${indexLines}\n\nUse the skill_load tool to load full skill content when needed.`)
+    const indexLines = ctx.skillIndex.map((s) => `- ${s.name}: ${s.description}`).join("\n")
+    sections.push(
+      `## Available Skills\n${indexLines}\n\nUse the skill_load tool to load full skill content when needed.`,
+    )
   }
 
-  return sections.join('\n\n')
+  return sections.join("\n\n")
 }

@@ -1,10 +1,5 @@
 import { AgentItem } from "../../../entities/agent";
-import {
-  PipelineNode,
-  PipelineTemplateNode,
-  WorkflowDefinition,
-  WorkflowGroup,
-} from "../../../entities/pipeline";
+import { PipelineNode, PipelineTemplateNode, WorkflowDefinition, WorkflowGroup } from "../../../entities/pipeline";
 import { TimelineItem } from "../../../entities/timeline";
 import type { ApiError } from "../../../shared/ws-client";
 import i18n from "../../../shared/i18n";
@@ -31,9 +26,7 @@ export const dedupeEdges = (edges: Array<{ from: string; to: string; when: strin
 };
 
 export const dependsOnFromWorkflow = (workflow: WorkflowDefinition, nodeId: string) =>
-  workflow.edges
-    .filter((edge) => edge.to === nodeId && edge.when === null)
-    .map((edge) => edge.from);
+  workflow.edges.filter((edge) => edge.to === nodeId && edge.when === null).map((edge) => edge.from);
 
 export const getParallelGroupMembers = (workflow: WorkflowDefinition, groupId: string) =>
   workflow.nodes.filter((node) => (node.parallelGroupId ?? "").trim() === groupId).map((node) => node.id);
@@ -41,11 +34,7 @@ export const getParallelGroupMembers = (workflow: WorkflowDefinition, groupId: s
 export const getInferredParallelGroups = (workflow: WorkflowDefinition): InferredParallelGroup[] => {
   const explicitById = new Map(workflow.groups.map((group) => [group.id, group]));
   const groupIds = Array.from(
-    new Set(
-      workflow.nodes
-        .map((node) => (node.parallelGroupId ?? "").trim())
-        .filter(Boolean),
-    ),
+    new Set(workflow.nodes.map((node) => (node.parallelGroupId ?? "").trim()).filter(Boolean)),
   );
 
   return groupIds
@@ -148,8 +137,7 @@ export const moveWorkflowNodeWithinLane = (
   const lanePosition = laneNodeIndices.indexOf(currentIndex);
   if (lanePosition < 0) return workflow;
 
-  const swapTargetIndex =
-    direction === "up" ? laneNodeIndices[lanePosition - 1] : laneNodeIndices[lanePosition + 1];
+  const swapTargetIndex = direction === "up" ? laneNodeIndices[lanePosition - 1] : laneNodeIndices[lanePosition + 1];
   if (swapTargetIndex === undefined) return workflow;
 
   const targetNodeId = workflow.nodes[swapTargetIndex]?.id ?? "";
@@ -309,8 +297,7 @@ export const buildTemplateNodesFromWorkflow = (
       return {
         id: node.id,
         title: node.name ?? fallback?.title ?? node.id,
-        executor:
-          node.executor ??
+        executor: node.executor ??
           fallback?.executor ?? {
             agentId: "operator-main",
             role: "operator",
@@ -420,9 +407,8 @@ export const buildAgentCards = (
     const ownedNodes = pipeline.filter((node) => node.executor.agentId === agent.id);
     const busy = (timelineBusyCounts[agent.id] ?? 0) > 0;
     const lastAgentEvent =
-      timeline.find(
-        (item) => item.text.includes(`Agent ${agent.id} `) || item.text.includes(`agent:${agent.id}`),
-      )?.text ?? "";
+      timeline.find((item) => item.text.includes(`Agent ${agent.id} `) || item.text.includes(`agent:${agent.id}`))
+        ?.text ?? "";
     const lastAgentEventField = extractEventField(lastAgentEvent);
     const output = agentOutputById[agent.id];
     const lastNode = ownedNodes
@@ -473,12 +459,12 @@ const isApiErrorLike = (value: unknown): value is ApiError => {
 export const getApiErrorMessage = (error: unknown) =>
   isApiErrorLike(error)
     ? String(
-      (() => {
-        const body = ((error as { body?: unknown }).body as { error?: string; detail?: string } | null) ?? null;
-        if (body?.error && body?.detail) return `${body.error}: ${body.detail}`;
-        return body?.error ?? `HTTP ${(error as { status: number }).status}`;
-      })(),
-    )
+        (() => {
+          const body = ((error as { body?: unknown }).body as { error?: string; detail?: string } | null) ?? null;
+          if (body?.error && body?.detail) return `${body.error}: ${body.detail}`;
+          return body?.error ?? `HTTP ${(error as { status: number }).status}`;
+        })(),
+      )
     : error instanceof Error
       ? error.message
       : "unknown_error";
@@ -487,7 +473,9 @@ export const getApiErrorMessage = (error: unknown) =>
 // Evaluated for information-leak risk (L-17): these IDs are user-authored, visible
 // throughout the admin UI, and essential for the pipeline author to locate the
 // exact problem. Removing them would degrade the editing experience. Kept as-is.
-export const validateWorkflowBeforeSave = (workflow: WorkflowDefinition): { ok: true } | { ok: false; message: string } => {
+export const validateWorkflowBeforeSave = (
+  workflow: WorkflowDefinition,
+): { ok: true } | { ok: false; message: string } => {
   if (workflow.version !== "3.0") {
     return { ok: false, message: i18n.t("common:validation.versionInvalid", { version: String(workflow.version) }) };
   }
@@ -510,13 +498,17 @@ export const validateWorkflowBeforeSave = (workflow: WorkflowDefinition): { ok: 
   const indegreeByEntity = new Map<string, number>([...entityIds].map((id) => [id, 0]));
   for (const edge of workflow.edges) {
     if (!entityIds.has(edge.from) || !entityIds.has(edge.to)) {
-      return { ok: false, message: i18n.t("common:validation.edgeReferencesMissing", { from: edge.from, to: edge.to }) };
+      return {
+        ok: false,
+        message: i18n.t("common:validation.edgeReferencesMissing", { from: edge.from, to: edge.to }),
+      };
     }
     if (edge.from === edge.to) {
       return { ok: false, message: i18n.t("common:validation.selfLoopEdge", { from: edge.from, to: edge.to }) };
     }
     const key = `${edge.from}|${edge.to}|${edge.when ?? ""}`;
-    if (edgeSeen.has(key)) return { ok: false, message: i18n.t("common:validation.duplicateEdge", { from: edge.from, to: edge.to }) };
+    if (edgeSeen.has(key))
+      return { ok: false, message: i18n.t("common:validation.duplicateEdge", { from: edge.from, to: edge.to }) };
     edgeSeen.add(key);
     const kind: "dependency" | "route" = edge.when === null ? "dependency" : "route";
     const kinds = outgoingKindsBySource.get(edge.from) ?? new Set<"dependency" | "route">();
@@ -552,16 +544,26 @@ export const validateWorkflowBeforeSave = (workflow: WorkflowDefinition): { ok: 
         return { ok: false, message: i18n.t("common:validation.yesCannotBeRouteEdge", { nodeId: node.id }) };
       }
       if (!allowed.includes(edge.when ?? "")) {
-        return { ok: false, message: i18n.t("common:validation.undeclaredRouteEdge", { nodeId: node.id, route: edge.when }) };
+        return {
+          ok: false,
+          message: i18n.t("common:validation.undeclaredRouteEdge", { nodeId: node.id, route: edge.when }),
+        };
       }
       const targetNode = workflow.nodes.find((candidate) => candidate.id === edge.to);
       const targetGroup = workflow.groups.find((group) => group.id === edge.to);
       const targetGroupMembers = targetGroup
-        ? targetGroup.members.map((memberId) => workflow.nodes.find((candidate) => candidate.id === memberId)).filter(Boolean)
+        ? targetGroup.members
+            .map((memberId) => workflow.nodes.find((candidate) => candidate.id === memberId))
+            .filter(Boolean)
         : [];
-      const isBranchTarget = targetNode?.lane === "branch" || (targetGroupMembers.length > 0 && targetGroupMembers.every((member) => member?.lane === "branch"));
+      const isBranchTarget =
+        targetNode?.lane === "branch" ||
+        (targetGroupMembers.length > 0 && targetGroupMembers.every((member) => member?.lane === "branch"));
       if (!isBranchTarget) {
-        return { ok: false, message: i18n.t("common:validation.routeMustTargetBranch", { nodeId: node.id, route: edge.when }) };
+        return {
+          ok: false,
+          message: i18n.t("common:validation.routeMustTargetBranch", { nodeId: node.id, route: edge.when }),
+        };
       }
     }
     for (const route of allowed.filter((item) => item !== MAINLINE_ROUTE_VALUE)) {
@@ -605,11 +607,7 @@ export const validateWorkflowBeforeSave = (workflow: WorkflowDefinition): { ok: 
 
   for (const group of workflow.groups) {
     const memberSet = new Set(group.members);
-    const groupIncoming = new Set(
-      workflow.edges
-        .filter((edge) => edge.to === group.id)
-        .map((edge) => edge.from),
-    );
+    const groupIncoming = new Set(workflow.edges.filter((edge) => edge.to === group.id).map((edge) => edge.from));
     for (const edge of workflow.edges) {
       if (edge.when !== null) continue;
       if (!memberSet.has(edge.to)) continue;

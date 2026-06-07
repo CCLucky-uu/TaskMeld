@@ -1,10 +1,10 @@
-import { t } from "../i18n";
-import type { CliCommandHandler, CliRouteDefinition } from "../types";
+import { t } from "../i18n"
+import type { CliCommandHandler, CliRouteDefinition } from "../types"
 
 export const systemSnapshotCommand: CliCommandHandler = async (_input, ctx) => {
   // The system snapshot is provided by the mainline service layer; the CLI only handles orchestration and output.
-  return ctx.app.systemService.getSnapshot();
-};
+  return ctx.app.systemService.getSnapshot()
+}
 
 export const systemRoutes: CliRouteDefinition[] = [
   {
@@ -18,4 +18,4 @@ export const systemRoutes: CliRouteDefinition[] = [
       summary: t("system.snapshot.summary"),
     },
   },
-];
+]

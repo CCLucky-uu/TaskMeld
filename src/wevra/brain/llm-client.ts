@@ -1,17 +1,24 @@
 import type {
-  Message, ToolDefinition, LLMResponse, StreamEvent,
-  OpenAIChatResponse, OpenAIStreamChunk, ToolCall, TokenUsage,
-  RuntimeModelConfig, ThinkingConfig,
-} from '../types'
+  Message,
+  ToolDefinition,
+  LLMResponse,
+  StreamEvent,
+  OpenAIChatResponse,
+  OpenAIStreamChunk,
+  ToolCall,
+  TokenUsage,
+  RuntimeModelConfig,
+  ThinkingConfig,
+} from "../types"
 
-export type DebugCallback = (event: { type: 'request' | 'stream_chunk' | 'response' | 'error'; data: unknown }) => void
+export type DebugCallback = (event: { type: "request" | "stream_chunk" | "response" | "error"; data: unknown }) => void
 
 export interface LLMClient {
   chat(messages: Message[], tools?: ToolDefinition[]): Promise<LLMResponse>
   streamChat(messages: Message[], tools?: ToolDefinition[], signal?: AbortSignal): AsyncIterable<StreamEvent>
   setDebugCallback(cb: DebugCallback | null): void
   updateModel(model: RuntimeModelConfig): void
-  setThinkingLevel(level: ThinkingConfig['level']): void
+  setThinkingLevel(level: ThinkingConfig["level"]): void
 }
 
 export function createLLMClient(modelConfig: RuntimeModelConfig, timeoutMs: number): LLMClient {
@@ -34,38 +41,38 @@ class OpenAICompatClient implements LLMClient {
     this.modelConfig = model
   }
 
-  setThinkingLevel(level: ThinkingConfig['level']): void {
+  setThinkingLevel(level: ThinkingConfig["level"]): void {
     this.modelConfig = { ...this.modelConfig, thinking: { level } }
   }
 
   async chat(messages: Message[], tools?: ToolDefinition[]): Promise<LLMResponse> {
     const body = this.buildRequest(messages, tools, false)
-    this.debug?.({ type: 'request', data: { raw: body } })
+    this.debug?.({ type: "request", data: { raw: body } })
     const response = await this.fetch(body)
     const data: OpenAIChatResponse = await response.json()
-    this.debug?.({ type: 'response', data: { raw: data, parsed: this.parseResponse(data) } })
+    this.debug?.({ type: "response", data: { raw: data, parsed: this.parseResponse(data) } })
     return this.parseResponse(data)
   }
 
   async *streamChat(messages: Message[], tools?: ToolDefinition[], signal?: AbortSignal): AsyncIterable<StreamEvent> {
     const body = this.buildRequest(messages, tools, true)
-    this.debug?.({ type: 'request', data: { raw: body } })
+    this.debug?.({ type: "request", data: { raw: body } })
     const response = await this.fetch(body, signal)
 
     if (!response.body) {
-      yield { type: 'error', error: 'Empty response body' }
+      yield { type: "error", error: "Empty response body" }
       return
     }
 
     const reader = response.body.getReader()
     const decoder = new TextDecoder()
-    let buffer = ''
+    let buffer = ""
 
     // Accumulate tool call state
     const toolCalls = new Map<number, { id: string; name: string; arguments: string }>()
     let thinkingStarted = false
     let textStarted = false
-    let reasoningContent = ''  // Accumulate reasoning_content for passthrough
+    let reasoningContent = "" // Accumulate reasoning_content for passthrough
 
     try {
       while (true) {
@@ -73,17 +80,17 @@ class OpenAICompatClient implements LLMClient {
         if (done) break
 
         buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split('\n')
-        buffer = lines.pop() ?? ''
+        const lines = buffer.split("\n")
+        buffer = lines.pop() ?? ""
 
         for (const line of lines) {
           const trimmed = line.trim()
-          if (!trimmed || !trimmed.startsWith('data: ')) continue
+          if (!trimmed || !trimmed.startsWith("data: ")) continue
 
           const dataStr = trimmed.slice(6)
-          if (dataStr === '[DONE]') return
+          if (dataStr === "[DONE]") return
 
-          this.debug?.({ type: 'stream_chunk', data: { raw: JSON.parse(dataStr) } })
+          this.debug?.({ type: "stream_chunk", data: { raw: JSON.parse(dataStr) } })
 
           try {
             const chunk: OpenAIStreamChunk = JSON.parse(dataStr)
@@ -92,40 +99,41 @@ class OpenAICompatClient implements LLMClient {
 
             // DeepSeek reasoning_content — only treat as thinking when there is actual content
             // DeepSeek V4 sends reasoning_content: "NULL" string during reply phase, must be filtered
-            const hasReasoning = delta.reasoning_content !== undefined
-              && delta.reasoning_content !== null
-              && delta.reasoning_content !== 'NULL'
-              && delta.reasoning_content !== ''
+            const hasReasoning =
+              delta.reasoning_content !== undefined &&
+              delta.reasoning_content !== null &&
+              delta.reasoning_content !== "NULL" &&
+              delta.reasoning_content !== ""
 
             if (hasReasoning) {
               if (!thinkingStarted) {
                 thinkingStarted = true
-                yield { type: 'thinking_start' }
+                yield { type: "thinking_start" }
               }
               reasoningContent += delta.reasoning_content
-              yield { type: 'thinking_delta', content: delta.reasoning_content! }
+              yield { type: "thinking_delta", content: delta.reasoning_content! }
               continue
             }
 
             // If reasoning_content field exists but is empty, thinking has ended
             if (delta.reasoning_content !== undefined && thinkingStarted) {
-              yield { type: 'thinking_end' }
+              yield { type: "thinking_end" }
               thinkingStarted = false
             }
 
             // Text content — filter DeepSeek's "NULL" placeholder
             const content = delta.content
-            if (content && content !== 'NULL') {
+            if (content && content !== "NULL") {
               if (!textStarted) {
                 // End thinking (if active)
                 if (thinkingStarted) {
-                  yield { type: 'thinking_end' }
+                  yield { type: "thinking_end" }
                   thinkingStarted = false
                 }
                 textStarted = true
-                yield { type: 'text_start' }
+                yield { type: "text_start" }
               }
-              yield { type: 'text_delta', content: content! }
+              yield { type: "text_delta", content: content! }
             }
 
             // Tool calls
@@ -133,7 +141,7 @@ class OpenAICompatClient implements LLMClient {
               for (const tc of delta.tool_calls) {
                 const idx = tc.index
                 if (!toolCalls.has(idx)) {
-                  toolCalls.set(idx, { id: tc.id ?? '', name: '', arguments: '' })
+                  toolCalls.set(idx, { id: tc.id ?? "", name: "", arguments: "" })
                   // Don't yield tool_start here; wait for finish_reason to emit complete arguments
                 }
                 const existing = toolCalls.get(idx)!
@@ -146,7 +154,7 @@ class OpenAICompatClient implements LLMClient {
             // Usage (may be present at end of stream)
             if (chunk.usage) {
               yield {
-                type: 'step_finish',
+                type: "step_finish",
                 usage: this.parseUsage(chunk.usage),
               }
             }
@@ -155,21 +163,21 @@ class OpenAICompatClient implements LLMClient {
             const finishReason = chunk.choices?.[0]?.finish_reason
             if (finishReason) {
               if (thinkingStarted) {
-                yield { type: 'thinking_end' }
+                yield { type: "thinking_end" }
                 thinkingStarted = false
               }
-              if (textStarted && finishReason !== 'tool_calls') {
-                yield { type: 'text_end' }
+              if (textStarted && finishReason !== "tool_calls") {
+                yield { type: "text_end" }
                 // Pass reasoning_content for non-tool-call responses
                 if (reasoningContent) {
-                  yield { type: 'step_finish', content: reasoningContent }
+                  yield { type: "step_finish", content: reasoningContent }
                 }
               }
               // If tool_calls, yield accumulated tool calls + reasoning_content
-              if (finishReason === 'tool_calls' && toolCalls.size > 0) {
+              if (finishReason === "tool_calls" && toolCalls.size > 0) {
                 for (const tc of toolCalls.values()) {
                   yield {
-                    type: 'tool_start',
+                    type: "tool_start",
                     toolCall: {
                       id: tc.id,
                       name: tc.name,
@@ -179,7 +187,7 @@ class OpenAICompatClient implements LLMClient {
                 }
                 // Pass reasoning_content to agent-loop via step_finish
                 if (reasoningContent) {
-                  yield { type: 'step_finish', content: reasoningContent }
+                  yield { type: "step_finish", content: reasoningContent }
                 }
               }
             }
@@ -196,14 +204,18 @@ class OpenAICompatClient implements LLMClient {
   // ── Internal methods ──
 
   private buildUrl(path: string): string {
-    const base = this.modelConfig.baseUrl.replace(/\/+$/, '')
+    const base = this.modelConfig.baseUrl.replace(/\/+$/, "")
     return /\/v\d+$/.test(base) ? `${base}${path}` : `${base}/v1${path}`
   }
 
-  private buildRequest(messages: Message[], tools: ToolDefinition[] | undefined, stream: boolean): Record<string, unknown> {
+  private buildRequest(
+    messages: Message[],
+    tools: ToolDefinition[] | undefined,
+    stream: boolean,
+  ): Record<string, unknown> {
     const compat = this.modelConfig.compat
-    const thinkingLevel = this.modelConfig.thinking?.level ?? 'off'
-    const thinkingEnabled = thinkingLevel !== 'off'
+    const thinkingLevel = this.modelConfig.thinking?.level ?? "off"
+    const thinkingEnabled = thinkingLevel !== "off"
 
     const req: Record<string, unknown> = {
       model: this.modelConfig.modelId,
@@ -223,11 +235,11 @@ class OpenAICompatClient implements LLMClient {
 
     // Tools
     if (tools && tools.length > 0) {
-      req.tools = tools.map(t => ({
-        type: 'function' as const,
+      req.tools = tools.map((t) => ({
+        type: "function" as const,
         function: { name: t.name, description: t.description, parameters: t.parameters },
       }))
-      req.tool_choice = 'auto'
+      req.tool_choice = "auto"
     }
 
     // reasoning_effort — only when model supports it and thinking is enabled
@@ -237,7 +249,7 @@ class OpenAICompatClient implements LLMClient {
 
     // DeepSeek-specific: extra_body thinking toggle
     if (compat.extraBodyThinkingToggle && thinkingEnabled) {
-      req.extra_body = { thinking: { type: 'enabled', level: thinkingLevel } }
+      req.extra_body = { thinking: { type: "enabled", level: thinkingLevel } }
     }
 
     return req
@@ -245,33 +257,35 @@ class OpenAICompatClient implements LLMClient {
 
   private toOpenAIMessages(messages: Message[]): unknown[] {
     const compat = this.modelConfig.compat
-    return messages.map(m => {
-      if (m.role === 'tool') {
+    return messages.map((m) => {
+      if (m.role === "tool") {
         return {
-          role: 'tool',
+          role: "tool",
           tool_call_id: m.toolCallId,
           content: m.content,
         }
       }
-      if (m.role === 'assistant') {
+      if (m.role === "assistant") {
         const hasToolCalls = m.toolCalls && m.toolCalls.length > 0
         return {
-          role: 'assistant',
+          role: "assistant",
           content: m.content || null,
           // Only DeepSeek needs passthrough
           ...(compat.requiresReasoningContentPassthrough && m.reasoningContent
             ? { reasoning_content: m.reasoningContent }
             : {}),
-          ...(hasToolCalls ? {
-            tool_calls: m.toolCalls!.map(tc => ({
-              id: tc.id,
-              type: 'function',
-              function: {
-                name: tc.name,
-                arguments: JSON.stringify(tc.arguments),
-              },
-            })),
-          } : {}),
+          ...(hasToolCalls
+            ? {
+                tool_calls: m.toolCalls!.map((tc) => ({
+                  id: tc.id,
+                  type: "function",
+                  function: {
+                    name: tc.name,
+                    arguments: JSON.stringify(tc.arguments),
+                  },
+                })),
+              }
+            : {}),
         }
       }
       return {
@@ -285,14 +299,14 @@ class OpenAICompatClient implements LLMClient {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), this.timeoutMs)
     // Chain external signal → internal abort
-    externalSignal?.addEventListener('abort', () => controller.abort(), { once: true })
+    externalSignal?.addEventListener("abort", () => controller.abort(), { once: true })
 
     try {
-      const resp = await fetch(this.buildUrl('/chat/completions'), {
-        method: 'POST',
+      const resp = await fetch(this.buildUrl("/chat/completions"), {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.modelConfig.apiKey}`,
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${this.modelConfig.apiKey}`,
         },
         body: JSON.stringify(body),
         signal: controller.signal,
@@ -313,21 +327,21 @@ class OpenAICompatClient implements LLMClient {
     const choice = data.choices[0]
     const rawToolCalls = choice.message.tool_calls ?? []
 
-    const toolCalls: ToolCall[] = rawToolCalls.map(tc => ({
+    const toolCalls: ToolCall[] = rawToolCalls.map((tc) => ({
       id: tc.id,
       name: tc.function.name,
       arguments: safeParseJSON(tc.function.arguments),
     }))
 
     return {
-      content: choice.message.content ?? '',
+      content: choice.message.content ?? "",
       toolCalls,
       usage: this.parseUsage(data.usage),
-      finishReason: choice.finish_reason as LLMResponse['finishReason'],
+      finishReason: choice.finish_reason as LLMResponse["finishReason"],
     }
   }
 
-  private parseUsage(usage: OpenAIChatResponse['usage']): TokenUsage {
+  private parseUsage(usage: OpenAIChatResponse["usage"]): TokenUsage {
     return {
       promptTokens: usage.prompt_tokens,
       completionTokens: usage.completion_tokens,
@@ -336,17 +350,24 @@ class OpenAICompatClient implements LLMClient {
       reasoningTokens: usage.completion_tokens_details?.reasoning_tokens,
     }
   }
-
 }
 
 // ── Utilities ──
 
 function safeParseJSON(raw: string): Record<string, unknown> {
-  try { return JSON.parse(raw) } catch { /* continue */ }
+  try {
+    return JSON.parse(raw)
+  } catch {
+    /* continue */
+  }
 
-  const fixes = ['}', '}]', '"}"]', '"]']
+  const fixes = ["}", "}]", '"}"]', '"]']
   for (const fix of fixes) {
-    try { return JSON.parse(raw + fix) } catch { /* continue */ }
+    try {
+      return JSON.parse(raw + fix)
+    } catch {
+      /* continue */
+    }
   }
 
   return {}
@@ -354,11 +375,13 @@ function safeParseJSON(raw: string): Record<string, unknown> {
 
 function mapThinkingLevelToEffort(level: string): string {
   switch (level) {
-    case 'low': return 'low'
-    case 'medium': return 'medium'
-    case 'high':
-    case 'max':
+    case "low":
+      return "low"
+    case "medium":
+      return "medium"
+    case "high":
+    case "max":
     default:
-      return 'high'
+      return "high"
   }
 }

@@ -1,16 +1,16 @@
-import assert from "node:assert/strict";
-import { join } from "node:path";
-import { createItemBatchController } from "../src/pipeline/item-batch-controller";
-import { createWorkflowGraph } from "../src/pipeline/workflow-graph";
-import { createRuntimeStore } from "../src/app/runtime-store";
-import { createSchedulerService } from "../src/pipeline/scheduler-service";
-import { createPipelineService } from "../src/services/pipeline-service";
-import { createRunStateHelpers } from "../src/pipeline/execution/run-state-helpers";
-import { resolveActiveBatchKeywordsForInstruction } from "../src/pipeline/execution/structured-node-runner";
-import { createDependencyState } from "../src/pipeline/scheduler/dependency-state";
-import { createRouteItemManager } from "../src/pipeline/execution/route-item-manager";
-import { seedRunWithItems } from "../src/pipeline/runtime-model";
-import type { WorkflowDefinitionRuntime } from "../src/pipeline/template";
+import assert from "node:assert/strict"
+import { join } from "node:path"
+import { createItemBatchController } from "../src/pipeline/item-batch-controller"
+import { createWorkflowGraph } from "../src/pipeline/workflow-graph"
+import { createRuntimeStore } from "../src/app/runtime-store"
+import { createSchedulerService } from "../src/pipeline/scheduler-service"
+import { createPipelineService } from "../src/services/pipeline-service"
+import { createRunStateHelpers } from "../src/pipeline/execution/run-state-helpers"
+import { resolveActiveBatchKeywordsForInstruction } from "../src/pipeline/execution/structured-node-runner"
+import { createDependencyState } from "../src/pipeline/scheduler/dependency-state"
+import { createRouteItemManager } from "../src/pipeline/execution/route-item-manager"
+import { seedRunWithItems } from "../src/pipeline/runtime-model"
+import type { WorkflowDefinitionRuntime } from "../src/pipeline/template"
 
 const makeWorkflowWithParallelGroup = (): WorkflowDefinitionRuntime => ({
   version: "3.0",
@@ -25,8 +25,12 @@ const makeWorkflowWithParallelGroup = (): WorkflowDefinitionRuntime => ({
     },
   },
   plugins: [
-    { pluginId: 'remote-batch', enabled: false, config: { url: "", startBatch: 1, batchSize: 5, sourceField: "list30" } },
-    { pluginId: 'scheduler', enabled: true, config: {} },
+    {
+      pluginId: "remote-batch",
+      enabled: false,
+      config: { url: "", startBatch: 1, batchSize: 5, sourceField: "list30" },
+    },
+    { pluginId: "scheduler", enabled: true, config: {} },
   ],
   nodes: [
     {
@@ -114,7 +118,7 @@ const makeWorkflowWithParallelGroup = (): WorkflowDefinitionRuntime => ({
       joinPolicy: "all",
     },
   ],
-});
+})
 
 const makeLinearWorkflow = (): WorkflowDefinitionRuntime => ({
   version: "3.0",
@@ -129,8 +133,12 @@ const makeLinearWorkflow = (): WorkflowDefinitionRuntime => ({
     },
   },
   plugins: [
-    { pluginId: 'remote-batch', enabled: false, config: { url: "", startBatch: 1, batchSize: 5, sourceField: "list30" } },
-    { pluginId: 'scheduler', enabled: true, config: {} },
+    {
+      pluginId: "remote-batch",
+      enabled: false,
+      config: { url: "", startBatch: 1, batchSize: 5, sourceField: "list30" },
+    },
+    { pluginId: "scheduler", enabled: true, config: {} },
   ],
   nodes: [
     {
@@ -172,23 +180,31 @@ const makeLinearWorkflow = (): WorkflowDefinitionRuntime => ({
   ],
   edges: [{ from: "n1", to: "n2", when: null }],
   groups: [],
-});
+})
 
 const makeLinearWorkflowWithSchedulerPluginDisabled = (): WorkflowDefinitionRuntime => ({
   ...makeLinearWorkflow(),
   plugins: [
-    { pluginId: 'remote-batch', enabled: false, config: { url: "", startBatch: 1, batchSize: 5, sourceField: "list30" } },
-    { pluginId: 'scheduler', enabled: false, config: {} },
+    {
+      pluginId: "remote-batch",
+      enabled: false,
+      config: { url: "", startBatch: 1, batchSize: 5, sourceField: "list30" },
+    },
+    { pluginId: "scheduler", enabled: false, config: {} },
   ],
-});
+})
 
 const makeLinearWorkflowWithRemoteBatch = (): WorkflowDefinitionRuntime => ({
   ...makeLinearWorkflow(),
   plugins: [
-    { pluginId: 'remote-batch', enabled: true, config: { url: "https://example.test/keywords", startBatch: 2, batchSize: 3, sourceField: "list30" } },
-    { pluginId: 'scheduler', enabled: true, config: {} },
+    {
+      pluginId: "remote-batch",
+      enabled: true,
+      config: { url: "https://example.test/keywords", startBatch: 2, batchSize: 3, sourceField: "list30" },
+    },
+    { pluginId: "scheduler", enabled: true, config: {} },
   ],
-});
+})
 
 const makeAnyDependencyWorkflow = (): WorkflowDefinitionRuntime => ({
   ...makeLinearWorkflow(),
@@ -214,7 +230,7 @@ const makeAnyDependencyWorkflow = (): WorkflowDefinitionRuntime => ({
     { from: "n1", to: "n3", when: null },
     { from: "n2", to: "n3", when: null },
   ],
-});
+})
 
 const makeRouteWorkflow = (): WorkflowDefinitionRuntime => ({
   ...makeLinearWorkflow(),
@@ -246,47 +262,47 @@ const makeRouteWorkflow = (): WorkflowDefinitionRuntime => ({
     { from: "n3", to: "n4", when: "yes" },
     { from: "n3", to: "n10", when: "no" },
   ],
-});
+})
 
 const run = async () => {
-  let rejected = false;
+  let rejected = false
   const batchController = createItemBatchController({
     pipelineId: "test-pipeline",
     executeBatch: async () => {
-      throw new Error("boom");
+      throw new Error("boom")
     },
-  });
-  const started = batchController.start(["a", "b"], 1);
-  assert.equal(started.ok, true, "batch run should start");
-  await new Promise((resolve) => setTimeout(resolve, 20));
-  const failedSnapshot = batchController.getSnapshot();
-  assert.equal(failedSnapshot.status, "failed", "thrown batch error should close snapshot as failed");
-  assert.equal(failedSnapshot.error, "boom");
-  const restarted = batchController.start(["c"], 1);
-  assert.equal(restarted.ok, true, "controller should accept new batch after handled failure");
+  })
+  const started = batchController.start(["a", "b"], 1)
+  assert.equal(started.ok, true, "batch run should start")
+  await new Promise((resolve) => setTimeout(resolve, 20))
+  const failedSnapshot = batchController.getSnapshot()
+  assert.equal(failedSnapshot.status, "failed", "thrown batch error should close snapshot as failed")
+  assert.equal(failedSnapshot.error, "boom")
+  const restarted = batchController.start(["c"], 1)
+  assert.equal(restarted.ok, true, "controller should accept new batch after handled failure")
 
-  const graph = createWorkflowGraph(makeWorkflowWithParallelGroup());
+  const graph = createWorkflowGraph(makeWorkflowWithParallelGroup())
   const helperStore = createRuntimeStore({
     graph,
     defaultItemKeys: ["kw-1"],
     runStateFile: join(process.cwd(), ".data", "test-run-state-scope.json"),
     initialRun: seedRunWithItems(graph.getTemplateNodes(), ["kw-1"]),
     getSchedulerState: () => ({ enabled: true, mode: "auto" }),
-  });
+  })
   const stateHelpers = createRunStateHelpers({
     runtimeStore: helperStore,
     graph,
     defaultItemKeys: ["kw-1"],
-  });
-  const affected = stateHelpers.collectDownstreamSubgraph("n1");
+  })
+  const affected = stateHelpers.collectDownstreamSubgraph("n1")
   assert.deepEqual(
     [...affected.nodeIds].sort(),
     ["n1", "n2", "n3", "n4"],
     "replay scope should include parallel members and nodes behind the group",
-  );
-  assert.deepEqual([...affected.groupIds], ["g1"], "replay scope should preserve parallel group ids");
+  )
+  assert.deepEqual([...affected.groupIds], ["g1"], "replay scope should preserve parallel group ids")
 
-  const linearGraph = createWorkflowGraph(makeLinearWorkflow());
+  const linearGraph = createWorkflowGraph(makeLinearWorkflow())
   const runtimeStore = createRuntimeStore({
     graph: linearGraph,
     defaultItemKeys: ["kw-1"],
@@ -348,36 +364,52 @@ const run = async () => {
       groupItemRuns: [],
     },
     getSchedulerState: () => ({ enabled: true, mode: "manual" }),
-  });
+  })
 
   const replayScope = {
     getNodeById: (nodeId: string) => runtimeStore.getRun().nodes.find((node) => node.id === nodeId) ?? null,
     getItemRun: (nodeId: string, itemKey: string) =>
       (runtimeStore.getRun().itemRuns ?? []).find((item) => item.nodeId === nodeId && item.itemKey === itemKey) ?? null,
     getGroupItemRun: (groupId: string, itemKey: string) =>
-      (runtimeStore.getRun().groupItemRuns ?? []).find((item) => item.groupId === groupId && item.itemKey === itemKey) ?? null,
-    getGroupById: (groupId: string) => (runtimeStore.getRun().groups ?? []).find((group) => group.id === groupId) ?? null,
+      (runtimeStore.getRun().groupItemRuns ?? []).find(
+        (item) => item.groupId === groupId && item.itemKey === itemKey,
+      ) ?? null,
+    getGroupById: (groupId: string) =>
+      (runtimeStore.getRun().groups ?? []).find((group) => group.id === groupId) ?? null,
     ensureItemRuns: () => {},
-    computeInitialItemStatus: (nodeId: string) => (linearGraph.getIncomingEdges(nodeId).length === 0 ? "queued" : "blocked"),
-    computeInitialGroupItemStatus: (groupId: string) => (linearGraph.getIncomingEdges(groupId).length === 0 ? "queued" : "blocked"),
+    computeInitialItemStatus: (nodeId: string) =>
+      linearGraph.getIncomingEdges(nodeId).length === 0 ? "queued" : "blocked",
+    computeInitialGroupItemStatus: (groupId: string) =>
+      linearGraph.getIncomingEdges(groupId).length === 0 ? "queued" : "blocked",
     collectDownstreamSubgraph: (nodeId: string) => {
-      assert.equal(nodeId, "n2", "retry should compute downstream from target node");
-      return { nodeIds: new Set(["n2"]), groupIds: new Set<string>() };
+      assert.equal(nodeId, "n2", "retry should compute downstream from target node")
+      return { nodeIds: new Set(["n2"]), groupIds: new Set<string>() }
     },
-    resetNodeForReplay: (node: { id: string; status: string; startedAt: string | null; finishedAt: string | null; lastError: string | null; artifacts: unknown[]; rejectFeedbacks: string[] }, opts?: { clearRejectFeedbacks?: boolean }) => {
-      node.status = node.id === "n1" ? "success" : "blocked";
-      node.startedAt = null;
-      node.finishedAt = null;
-      node.lastError = null;
-      node.artifacts = [];
-      if (opts?.clearRejectFeedbacks ?? true) node.rejectFeedbacks = [];
+    resetNodeForReplay: (
+      node: {
+        id: string
+        status: string
+        startedAt: string | null
+        finishedAt: string | null
+        lastError: string | null
+        artifacts: unknown[]
+        rejectFeedbacks: string[]
+      },
+      opts?: { clearRejectFeedbacks?: boolean },
+    ) => {
+      node.status = node.id === "n1" ? "success" : "blocked"
+      node.startedAt = null
+      node.finishedAt = null
+      node.lastError = null
+      node.artifacts = []
+      if (opts?.clearRejectFeedbacks ?? true) node.rejectFeedbacks = []
     },
     executeNodeItem: async (item: { nodeId: string; itemKey: string; status: string }) => {
-      rejected = true;
-      assert.equal(item.nodeId, "n2", "manual retry should immediately execute the now-ready target item");
-      return { ok: true, finalStatus: "success", envelope: null };
+      rejected = true
+      assert.equal(item.nodeId, "n2", "manual retry should immediately execute the now-ready target item")
+      return { ok: true, finalStatus: "success", envelope: null }
     },
-  };
+  }
 
   const scheduler = createSchedulerService({
     pipelineId: "test-pipeline",
@@ -385,21 +417,21 @@ const run = async () => {
     graph: linearGraph,
     defaultItemKeys: ["kw-1"],
     executionService: replayScope as never,
-  });
-  scheduler.setSchedulerMode("manual");
-  const retryResult = await scheduler.retryNodeExecution("n2", "kw-1");
-  assert.equal(retryResult.ok, true, "manual retry should succeed when upstream dependencies are already satisfied");
-  assert.equal(rejected, true, "manual retry should invoke executeNodeItem instead of returning node_retry_blocked");
+  })
+  scheduler.setSchedulerMode("manual")
+  const retryResult = await scheduler.retryNodeExecution("n2", "kw-1")
+  assert.equal(retryResult.ok, true, "manual retry should succeed when upstream dependencies are already satisfied")
+  assert.equal(rejected, true, "manual retry should invoke executeNodeItem instead of returning node_retry_blocked")
 
-  const explicitRunGraph = createWorkflowGraph(makeLinearWorkflowWithSchedulerPluginDisabled());
+  const explicitRunGraph = createWorkflowGraph(makeLinearWorkflowWithSchedulerPluginDisabled())
   const explicitRunStore = createRuntimeStore({
     graph: explicitRunGraph,
     defaultItemKeys: ["kw-1"],
     runStateFile: join(process.cwd(), ".data", "test-run-state-explicit-run.json"),
     initialRun: seedRunWithItems(explicitRunGraph.getTemplateNodes(), ["kw-1"]),
     getSchedulerState: () => ({ enabled: false, mode: "auto" }),
-  });
-  const explicitRunExecuted: string[] = [];
+  })
+  const explicitRunExecuted: string[] = []
   const explicitRunScheduler = createSchedulerService({
     pipelineId: "test-pipeline",
     runtimeStore: explicitRunStore,
@@ -409,20 +441,28 @@ const run = async () => {
       getNodeById: (nodeId: string) => explicitRunGraph.getWorkflowNodeById(nodeId),
       getParallelGroupByMemberNodeId: (nodeId: string) => explicitRunGraph.getParallelGroupByMemberNodeId(nodeId),
       getItemRun: (nodeId: string, itemKey: string) =>
-        (explicitRunStore.getRun().itemRuns ?? []).find((item) => item.nodeId === nodeId && item.itemKey === itemKey) ?? null,
+        (explicitRunStore.getRun().itemRuns ?? []).find((item) => item.nodeId === nodeId && item.itemKey === itemKey) ??
+        null,
       getGroupItemRun: () => null,
-      computeInitialItemStatus: (nodeId: string) => (explicitRunGraph.getIncomingEdges(nodeId).length === 0 ? "queued" : "blocked"),
-      computeInitialGroupItemStatus: (groupId: string) => (explicitRunGraph.getIncomingEdges(groupId).length === 0 ? "queued" : "blocked"),
+      computeInitialItemStatus: (nodeId: string) =>
+        explicitRunGraph.getIncomingEdges(nodeId).length === 0 ? "queued" : "blocked",
+      computeInitialGroupItemStatus: (groupId: string) =>
+        explicitRunGraph.getIncomingEdges(groupId).length === 0 ? "queued" : "blocked",
       ensureItemRuns: () => {},
       collectDownstreamSubgraph: () => ({ nodeIds: new Set<string>(), groupIds: new Set<string>() }),
       resetNodeForReplay: () => {},
       executeGroupItem: async () => ({ ok: true, finalStatus: "success" }),
-      executeNodeItem: async (item: { nodeId: string; status: string; startedAt?: string | null; finishedAt?: string | null }) => {
-        explicitRunExecuted.push(item.nodeId);
-        item.status = "success";
-        item.startedAt = new Date().toISOString();
-        item.finishedAt = new Date().toISOString();
-        return { ok: true, finalStatus: "success", envelope: null };
+      executeNodeItem: async (item: {
+        nodeId: string
+        status: string
+        startedAt?: string | null
+        finishedAt?: string | null
+      }) => {
+        explicitRunExecuted.push(item.nodeId)
+        item.status = "success"
+        item.startedAt = new Date().toISOString()
+        item.finishedAt = new Date().toISOString()
+        return { ok: true, finalStatus: "success", envelope: null }
       },
       setActiveBatchKeywordItems: () => {},
       onGatewayFrame: () => {},
@@ -430,10 +470,10 @@ const run = async () => {
       getSessionCache: () => [],
       getExecutorSessionByAgentId: () => new Map(),
     } as never,
-  });
-  const explicitRunResult = await explicitRunScheduler.drainPipeline("run");
-  assert.equal(explicitRunResult.executed, 2, "explicit run should execute even when scheduler plugin is disabled");
-  assert.deepEqual(explicitRunExecuted, ["n1", "n2"], "explicit run should traverse the linear workflow in order");
+  })
+  const explicitRunResult = await explicitRunScheduler.drainPipeline("run")
+  assert.equal(explicitRunResult.executed, 2, "explicit run should execute even when scheduler plugin is disabled")
+  assert.deepEqual(explicitRunExecuted, ["n1", "n2"], "explicit run should traverse the linear workflow in order")
 
   const batchRunStore = createRuntimeStore({
     graph: explicitRunGraph,
@@ -441,8 +481,8 @@ const run = async () => {
     runStateFile: join(process.cwd(), ".data", "test-run-state-batch.json"),
     initialRun: seedRunWithItems(explicitRunGraph.getTemplateNodes(), ["global"]),
     getSchedulerState: () => ({ enabled: false, mode: "auto" }),
-  });
-  const batchRunExecuted: string[] = [];
+  })
+  const batchRunExecuted: string[] = []
   const batchRunScheduler = createSchedulerService({
     pipelineId: "test-pipeline",
     runtimeStore: batchRunStore,
@@ -452,20 +492,29 @@ const run = async () => {
       getNodeById: (nodeId: string) => batchRunStore.getRun().nodes.find((node) => node.id === nodeId) ?? null,
       getParallelGroupByMemberNodeId: (nodeId: string) => explicitRunGraph.getParallelGroupByMemberNodeId(nodeId),
       getItemRun: (nodeId: string, itemKey: string) =>
-        (batchRunStore.getRun().itemRuns ?? []).find((item) => item.nodeId === nodeId && item.itemKey === itemKey) ?? null,
+        (batchRunStore.getRun().itemRuns ?? []).find((item) => item.nodeId === nodeId && item.itemKey === itemKey) ??
+        null,
       getGroupItemRun: () => null,
-      computeInitialItemStatus: (nodeId: string) => (explicitRunGraph.getIncomingEdges(nodeId).length === 0 ? "queued" : "blocked"),
-      computeInitialGroupItemStatus: (groupId: string) => (explicitRunGraph.getIncomingEdges(groupId).length === 0 ? "queued" : "blocked"),
+      computeInitialItemStatus: (nodeId: string) =>
+        explicitRunGraph.getIncomingEdges(nodeId).length === 0 ? "queued" : "blocked",
+      computeInitialGroupItemStatus: (groupId: string) =>
+        explicitRunGraph.getIncomingEdges(groupId).length === 0 ? "queued" : "blocked",
       ensureItemRuns: () => {},
       collectDownstreamSubgraph: () => ({ nodeIds: new Set<string>(), groupIds: new Set<string>() }),
       resetNodeForReplay: () => {},
       executeGroupItem: async () => ({ ok: true, finalStatus: "success" }),
-      executeNodeItem: async (item: { nodeId: string; itemKey: string; status: string; startedAt?: string | null; finishedAt?: string | null }) => {
-        batchRunExecuted.push(`${item.nodeId}#${item.itemKey}`);
-        item.status = "success";
-        item.startedAt = new Date().toISOString();
-        item.finishedAt = new Date().toISOString();
-        return { ok: true, finalStatus: "success", envelope: null };
+      executeNodeItem: async (item: {
+        nodeId: string
+        itemKey: string
+        status: string
+        startedAt?: string | null
+        finishedAt?: string | null
+      }) => {
+        batchRunExecuted.push(`${item.nodeId}#${item.itemKey}`)
+        item.status = "success"
+        item.startedAt = new Date().toISOString()
+        item.finishedAt = new Date().toISOString()
+        return { ok: true, finalStatus: "success", envelope: null }
       },
       setActiveBatchKeywordItems: () => {},
       onGatewayFrame: () => {},
@@ -475,20 +524,24 @@ const run = async () => {
       abortRunControllers: () => {},
       getOrCreateDrainSignal: () => new AbortController().signal,
     } as never,
-  });
-  const batchStarted = batchRunScheduler.startBatchRun(["kw-1"], 1);
-  assert.equal(batchStarted.ok, true, "batch run should start with one keyword");
+  })
+  const batchStarted = batchRunScheduler.startBatchRun(["kw-1"], 1)
+  assert.equal(batchStarted.ok, true, "batch run should start with one keyword")
   for (let i = 0; i < 20; i += 1) {
-    if (batchRunScheduler.getBatchRunState().status !== "running") break;
+    if (batchRunScheduler.getBatchRunState().status !== "running") break
     // 批跑控制器异步推进调度，这里轮询收敛即可，不把测试绑死在实现细节的微任务顺序上。
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    await new Promise((resolve) => setTimeout(resolve, 10))
   }
-  assert.equal(batchRunScheduler.getBatchRunState().status, "completed", "batch run should complete after downstream drains");
+  assert.equal(
+    batchRunScheduler.getBatchRunState().status,
+    "completed",
+    "batch run should complete after downstream drains",
+  )
   assert.deepEqual(
     batchRunExecuted,
     ["n1#batch-1", "n2#batch-1"],
     "batch run should keep dispatching downstream items after the first node succeeds",
-  );
+  )
 
   {
     const service = createPipelineService({
@@ -497,10 +550,10 @@ const run = async () => {
         runtime: { pushTimeline: () => {} },
         pipeline: { startBatchRun: () => ({ ok: true, snapshot: { status: "running" } }) },
       }),
-    } as never);
-    const disabledRemoteStart = await service.startRemoteBatchRun({ pipelineId: "A" });
-    assert.equal(disabledRemoteStart.ok, false, "startRemoteBatchRun should fail when remoteBatch plugin is disabled");
-    assert.equal(disabledRemoteStart.ok ? "" : disabledRemoteStart.error, "pipeline_plugin_disabled");
+    } as never)
+    const disabledRemoteStart = await service.startRemoteBatchRun({ pipelineId: "A" })
+    assert.equal(disabledRemoteStart.ok, false, "startRemoteBatchRun should fail when remoteBatch plugin is disabled")
+    assert.equal(disabledRemoteStart.ok ? "" : disabledRemoteStart.error, "pipeline_plugin_disabled")
   }
 
   {
@@ -517,9 +570,9 @@ const run = async () => {
       lastBatchItems: [],
       error: null,
       stopRequested: false,
-    };
-    let seededSingleRun = false;
-    let startedRemoteBatch: { items: string[]; batchSize?: number; startIndex?: number } | null = null;
+    }
+    let seededSingleRun = false
+    let startedRemoteBatch: { items: string[]; batchSize?: number; startIndex?: number } | null = null
     const remoteBatchRuntime = {
       workflow: {
         getWorkflow: () => makeLinearWorkflowWithRemoteBatch(),
@@ -527,8 +580,8 @@ const run = async () => {
       },
       runtime: {
         seedRun: () => {
-          seededSingleRun = true;
-          throw new Error("single_run_should_not_start_when_remote_batch_enabled");
+          seededSingleRun = true
+          throw new Error("single_run_should_not_start_when_remote_batch_enabled")
         },
         setRun: () => {},
         pushTimeline: () => {},
@@ -543,7 +596,7 @@ const run = async () => {
             items: [...items],
             batchSize,
             startIndex: options?.startIndex,
-          };
+          }
           return {
             ok: true as const,
             snapshot: {
@@ -552,26 +605,26 @@ const run = async () => {
               batchSize: batchSize ?? remoteBatchRunState.batchSize,
               totalItems: items.length,
             },
-          };
+          }
         },
         drainPipeline: async () => ({ executed: 0, hardFailed: false }),
       },
-    };
+    }
 
-    const originalFetch = globalThis.fetch;
+    const originalFetch = globalThis.fetch
     globalThis.fetch = (async () =>
       ({
         ok: true,
         text: async () => JSON.stringify({ list30: ["k1", "k2", "k3", "k4", "k5"] }),
-      }) as Response) as typeof fetch;
+      }) as Response) as typeof fetch
     try {
       const service = createPipelineService({
         getPipelineRuntime: (pipelineId: string) => (pipelineId === "A" ? (remoteBatchRuntime as never) : null),
-      } as never);
-      const result = await service.runPipeline("A");
-      assert.equal(result.ok, true, "remote batch enabled pipeline should start successfully");
-      assert.equal(result.mode, "remote_batch", "runPipeline should switch to remote batch mode");
-      assert.equal(seededSingleRun, false, "remote batch mode should not fall back to single run seeding");
+      } as never)
+      const result = await service.runPipeline("A")
+      assert.equal(result.ok, true, "remote batch enabled pipeline should start successfully")
+      assert.equal(result.mode, "remote_batch", "runPipeline should switch to remote batch mode")
+      assert.equal(seededSingleRun, false, "remote batch mode should not fall back to single run seeding")
       assert.deepEqual(
         startedRemoteBatch,
         {
@@ -580,14 +633,18 @@ const run = async () => {
           startIndex: 3,
         },
         "remote batch mode should honor plugin batch size and startBatch offset",
-      );
+      )
       const remoteStartResult = await service.startRemoteBatchRun({
         pipelineId: "A",
         batchSize: 2,
         startBatch: 2,
-      });
-      assert.equal(remoteStartResult.ok, true, "startRemoteBatchRun should be available for HTTP start-remote path");
-      assert.equal(remoteStartResult.ok ? remoteStartResult.totalFetched : 0, 5, "startRemoteBatchRun should expose fetched keyword size");
+      })
+      assert.equal(remoteStartResult.ok, true, "startRemoteBatchRun should be available for HTTP start-remote path")
+      assert.equal(
+        remoteStartResult.ok ? remoteStartResult.totalFetched : 0,
+        5,
+        "startRemoteBatchRun should expose fetched keyword size",
+      )
       assert.deepEqual(
         startedRemoteBatch,
         {
@@ -596,14 +653,14 @@ const run = async () => {
           startIndex: 2,
         },
         "startRemoteBatchRun should honor request-level batch overrides",
-      );
+      )
       const localStartResult = service.startBatchRun({
         pipelineId: "A",
         items: ["kw-1", "kw-2", "kw-3"],
         batchSize: 2,
         startBatch: 2,
-      });
-      assert.equal(localStartResult.ok, true, "startBatchRun should start with explicit items");
+      })
+      assert.equal(localStartResult.ok, true, "startBatchRun should start with explicit items")
       assert.deepEqual(
         startedRemoteBatch,
         {
@@ -612,118 +669,118 @@ const run = async () => {
           startIndex: 2,
         },
         "startBatchRun should map startBatch into startIndex for batch controller",
-      );
+      )
       const emptyLocalStart = service.startBatchRun({
         pipelineId: "A",
         items: [],
-      });
-      assert.equal(emptyLocalStart.ok, false, "startBatchRun should reject empty item pools");
-      assert.equal(emptyLocalStart.ok ? "" : emptyLocalStart.error, "batch_items_empty");
+      })
+      assert.equal(emptyLocalStart.ok, false, "startBatchRun should reject empty item pools")
+      assert.equal(emptyLocalStart.ok ? "" : emptyLocalStart.error, "batch_items_empty")
     } finally {
-      globalThis.fetch = originalFetch;
+      globalThis.fetch = originalFetch
     }
   }
 
-  const singleRunKeywords = resolveActiveBatchKeywordsForInstruction(null, true);
+  const singleRunKeywords = resolveActiveBatchKeywordsForInstruction(null, true)
   assert.deepEqual(
     singleRunKeywords,
     [],
     "single run should not append batch keywords when no active batch context exists",
-  );
+  )
 
-  const disabledSourceKeywords = resolveActiveBatchKeywordsForInstruction(["global"], false);
+  const disabledSourceKeywords = resolveActiveBatchKeywordsForInstruction(["global"], false)
   assert.deepEqual(
     disabledSourceKeywords,
     [],
     "non-source nodes should never inherit batch keywords even if execution context carries item markers",
-  );
+  )
 
-  const activeBatchKeywords = resolveActiveBatchKeywordsForInstruction([" global ", "global", "foo"], true);
+  const activeBatchKeywords = resolveActiveBatchKeywordsForInstruction([" global ", "global", "foo"], true)
   assert.deepEqual(
     activeBatchKeywords,
     ["global", "foo"],
     "active batch keywords should be trimmed and deduplicated before prompt injection",
-  );
+  )
 
   {
-    const workflow = makeAnyDependencyWorkflow();
-    const graph = createWorkflowGraph(workflow);
+    const workflow = makeAnyDependencyWorkflow()
+    const graph = createWorkflowGraph(workflow)
     const store = createRuntimeStore({
       graph,
       defaultItemKeys: ["kw-1"],
       runStateFile: join(process.cwd(), ".data", "test-run-state-any-policy.json"),
       initialRun: seedRunWithItems(graph.getTemplateNodes(), ["kw-1"]),
       getSchedulerState: () => ({ enabled: true, mode: "auto" }),
-    });
+    })
     const state = createRunStateHelpers({
       runtimeStore: store,
       graph,
       defaultItemKeys: ["kw-1"],
-    });
+    })
     const dependencyState = createDependencyState({
       runtimeStore: store,
       graph,
       ensureItemRuns: state.ensureItemRuns,
       getItemRun: state.getItemRun,
       getGroupItemRun: state.getGroupItemRun,
-    });
+    })
 
-    const upA = state.getItemRun("n1", "kw-1");
-    const upB = state.getItemRun("n2", "kw-1");
-    const joinAny = state.getItemRun("n3", "kw-1");
-    assert.ok(upA && upB && joinAny);
-    if (!upA || !upB || !joinAny) throw new Error("missing items");
+    const upA = state.getItemRun("n1", "kw-1")
+    const upB = state.getItemRun("n2", "kw-1")
+    const joinAny = state.getItemRun("n3", "kw-1")
+    assert.ok(upA && upB && joinAny)
+    if (!upA || !upB || !joinAny) throw new Error("missing items")
 
-    upA.status = "success";
-    upB.status = "failed";
-    joinAny.status = "blocked";
-    dependencyState.markReadyItemsFromDependencies();
-    assert.equal(joinAny.status, "queued", "dependencyPolicy:any should queue when at least one dependency succeeds");
+    upA.status = "success"
+    upB.status = "failed"
+    joinAny.status = "blocked"
+    dependencyState.markReadyItemsFromDependencies()
+    assert.equal(joinAny.status, "queued", "dependencyPolicy:any should queue when at least one dependency succeeds")
 
-    upA.status = "failed";
-    upB.status = "failed";
-    joinAny.status = "blocked";
-    dependencyState.markReadyItemsFromDependencies();
-    assert.equal(joinAny.status, "skipped", "dependencyPolicy:any should skip when all dependencies become impossible");
+    upA.status = "failed"
+    upB.status = "failed"
+    joinAny.status = "blocked"
+    dependencyState.markReadyItemsFromDependencies()
+    assert.equal(joinAny.status, "skipped", "dependencyPolicy:any should skip when all dependencies become impossible")
   }
 
   {
-    const workflow = makeRouteWorkflow();
-    const graph = createWorkflowGraph(workflow);
+    const workflow = makeRouteWorkflow()
+    const graph = createWorkflowGraph(workflow)
     const store = createRuntimeStore({
       graph,
       defaultItemKeys: ["kw-1"],
       runStateFile: join(process.cwd(), ".data", "test-run-state-route-policy.json"),
       initialRun: seedRunWithItems(graph.getTemplateNodes(), ["kw-1"]),
       getSchedulerState: () => ({ enabled: true, mode: "auto" }),
-    });
+    })
     const state = createRunStateHelpers({
       runtimeStore: store,
       graph,
       defaultItemKeys: ["kw-1"],
-    });
+    })
     const routeItemManager = createRouteItemManager({
       runtimeStore: store,
       graph,
       state,
-    });
+    })
     const dependencyState = createDependencyState({
       runtimeStore: store,
       graph,
       ensureItemRuns: state.ensureItemRuns,
       getItemRun: state.getItemRun,
       getGroupItemRun: state.getGroupItemRun,
-    });
+    })
 
-    const source = state.getItemRun("n3", "kw-1");
-    const yesBase = state.getItemRun("n4", "kw-1");
-    assert.ok(source && yesBase);
-    if (!source || !yesBase) throw new Error("missing route items");
+    const source = state.getItemRun("n3", "kw-1")
+    const yesBase = state.getItemRun("n4", "kw-1")
+    assert.ok(source && yesBase)
+    if (!source || !yesBase) throw new Error("missing route items")
 
-    source.status = "success";
-    source.route = null;
-    source.finishedAt = new Date().toISOString();
-    source.artifacts = [];
+    source.status = "success"
+    source.route = null
+    source.finishedAt = new Date().toISOString()
+    source.artifacts = []
     await routeItemManager.applyEnvelopeOutcomeToItem(source, {
       version: "2.0",
       runId: "run-route",
@@ -743,17 +800,17 @@ const run = async () => {
       control: { sleepUntil: null, retryFromNodeId: null },
       logs: [],
       error: null,
-    });
+    })
 
-    dependencyState.markReadyItemsFromDependencies();
-    const yesDerived = state.getItemRun("n4", "kw-1::n3:yes");
-    assert.ok(yesDerived, "yes route should spawn derived downstream item");
-    assert.equal(yesDerived?.status, "queued", "n3=yes should queue n4 exactly on yes-derived key");
-    assert.equal(yesBase.status, "skipped", "base key should not be routed to n4 after route split");
+    dependencyState.markReadyItemsFromDependencies()
+    const yesDerived = state.getItemRun("n4", "kw-1::n3:yes")
+    assert.ok(yesDerived, "yes route should spawn derived downstream item")
+    assert.equal(yesDerived?.status, "queued", "n3=yes should queue n4 exactly on yes-derived key")
+    assert.equal(yesBase.status, "skipped", "base key should not be routed to n4 after route split")
 
-    source.status = "success";
-    source.route = null;
-    source.finishedAt = new Date().toISOString();
+    source.status = "success"
+    source.route = null
+    source.finishedAt = new Date().toISOString()
     await routeItemManager.applyEnvelopeOutcomeToItem(source, {
       version: "2.0",
       runId: "run-route",
@@ -773,16 +830,16 @@ const run = async () => {
       control: { sleepUntil: null, retryFromNodeId: null },
       logs: [],
       error: null,
-    });
-    dependencyState.markReadyItemsFromDependencies();
-    const noDerivedForN4 = state.getItemRun("n4", "kw-1::n3:no");
-    assert.equal(noDerivedForN4?.status, "skipped", "n3!=yes should keep n4 out of execution path");
+    })
+    dependencyState.markReadyItemsFromDependencies()
+    const noDerivedForN4 = state.getItemRun("n4", "kw-1::n3:no")
+    assert.equal(noDerivedForN4?.status, "skipped", "n3!=yes should keep n4 out of execution path")
   }
 
-  console.log("pipeline regression tests passed");
-};
+  console.log("pipeline regression tests passed")
+}
 
 void run().catch((error) => {
-  console.error("pipeline regression tests failed", error);
-  process.exitCode = 1;
-});
+  console.error("pipeline regression tests failed", error)
+  process.exitCode = 1
+})

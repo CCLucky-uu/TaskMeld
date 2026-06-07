@@ -46,7 +46,10 @@ const connect = (): Promise<void> => {
   connectPromise = new Promise((resolve, reject) => {
     ws = new WebSocket(`${WS_BASE}/api/ws`);
     ws.onopen = () => {
-      if (disposed) { ws?.close(); return; }
+      if (disposed) {
+        ws?.close();
+        return;
+      }
       connectPromise = null;
       connectError = null;
       resolve();
@@ -58,7 +61,11 @@ const connect = (): Promise<void> => {
     };
     ws.onmessage = (raw) => {
       let frame: { type?: string; id?: string; ok?: boolean; payload?: unknown; error?: unknown };
-      try { frame = JSON.parse(raw.data as string); } catch { return; }
+      try {
+        frame = JSON.parse(raw.data as string);
+      } catch {
+        return;
+      }
       if (frame.type === "res" && frame.id && pending.has(frame.id)) {
         const entry = pending.get(frame.id)!;
         pending.delete(frame.id);
@@ -74,7 +81,9 @@ const connect = (): Promise<void> => {
     ws.onclose = () => {
       connectPromise = null;
       if (!disposed) {
-        reconnectTimer = setTimeout(() => { connect().catch(() => {}); }, 1000);
+        reconnectTimer = setTimeout(() => {
+          connect().catch(() => {});
+        }, 1000);
       }
     };
   });
@@ -87,10 +96,7 @@ export const disconnect = () => {
   ws?.close();
 };
 
-export const wsRequest = async <T = unknown>(
-  method: string,
-  params: Record<string, unknown> = {},
-): Promise<T> => {
+export const wsRequest = async <T = unknown>(method: string, params: Record<string, unknown> = {}): Promise<T> => {
   await connect();
   const id = `req-${++requestCounter}`;
   return new Promise<T>((resolve, reject) => {
@@ -101,5 +107,7 @@ export const wsRequest = async <T = unknown>(
 
 export const onWsEvent = (handler: (event: GatewayWsEvent) => void): (() => void) => {
   eventHandlers.add(handler);
-  return () => { eventHandlers.delete(handler); };
+  return () => {
+    eventHandlers.delete(handler);
+  };
 };

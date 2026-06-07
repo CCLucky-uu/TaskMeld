@@ -1,8 +1,8 @@
-import { readdir, stat } from "node:fs/promises";
-import { basename, resolve, sep } from "node:path";
-import type { PipelineDefinition } from "../app/pipeline-config";
-import { readIndexRecords, appendIndexRecord, type StoredArtifactIndexRecord } from "./artifact-index";
-import { scanStoredArtifacts } from "./storage-service";
+import { readdir, stat } from "node:fs/promises"
+import { basename, resolve, sep } from "node:path"
+import type { PipelineDefinition } from "../app/pipeline-config"
+import { readIndexRecords, appendIndexRecord, type StoredArtifactIndexRecord } from "./artifact-index"
+import { scanStoredArtifacts } from "./storage-service"
 
 /**
  * Incrementally rebuild artifact index — scan the disk directory, only append records for files missing from the index.
@@ -12,25 +12,25 @@ export const rebuildArtifactIndexIncremental = async (
   rootDir: string,
   pipelineId?: string,
 ): Promise<{ indexed: number; skipped: number; warnings: string[] }> => {
-  const warnings: string[] = [];
-  let indexed = 0;
-  let skipped = 0;
+  const warnings: string[] = []
+  let indexed = 0
+  let skipped = 0
 
   // 收集所有目标 pipeline 的 artifact 目录
-  const dirs: Array<{ pipelineId: string; artifactDir: string }> = [];
+  const dirs: Array<{ pipelineId: string; artifactDir: string }> = []
 
   // 扫描 rootDir 下所有 pipeline 目录
   try {
-    const entries = await readdir(rootDir, { withFileTypes: true });
+    const entries = await readdir(rootDir, { withFileTypes: true })
     for (const entry of entries) {
-      if (!entry.isDirectory()) continue;
-      const pipelineDir = resolve(rootDir, entry.name);
-      const artifactsPath = resolve(pipelineDir, "artifacts");
+      if (!entry.isDirectory()) continue
+      const pipelineDir = resolve(rootDir, entry.name)
+      const artifactsPath = resolve(pipelineDir, "artifacts")
       try {
-        const artStat = await stat(artifactsPath);
+        const artStat = await stat(artifactsPath)
         if (artStat.isDirectory()) {
           if (!pipelineId || entry.name === pipelineId) {
-            dirs.push({ pipelineId: entry.name, artifactDir: artifactsPath });
+            dirs.push({ pipelineId: entry.name, artifactDir: artifactsPath })
           }
         }
       } catch {
@@ -38,33 +38,33 @@ export const rebuildArtifactIndexIncremental = async (
       }
     }
   } catch {
-    warnings.push(`Failed to scan artifact root directory: ${rootDir}`);
+    warnings.push(`Failed to scan artifact root directory: ${rootDir}`)
   }
 
   for (const dir of dirs) {
-    const existingRecords = await readIndexRecords(dir.artifactDir);
-    const indexedPaths = new Set(existingRecords.map((r) => r.relativePath));
+    const existingRecords = await readIndexRecords(dir.artifactDir)
+    const indexedPaths = new Set(existingRecords.map((r) => r.relativePath))
 
     // 递归扫描所有 artifact 文件
     const scanDir = async (subPath: string): Promise<void> => {
-      let entries;
+      let entries
       try {
-        entries = await readdir(subPath, { withFileTypes: true });
+        entries = await readdir(subPath, { withFileTypes: true })
       } catch {
-        return;
+        return
       }
       for (const entry of entries) {
-        const fullPath = resolve(subPath, entry.name);
+        const fullPath = resolve(subPath, entry.name)
         if (entry.isDirectory()) {
-          await scanDir(fullPath);
+          await scanDir(fullPath)
         } else if (entry.isFile() && entry.name.endsWith(".json") && !entry.name.startsWith(".tmp-")) {
-          const relPath = fullPath.slice(dir.artifactDir.length + 1).replace(/\\/g, "/");
+          const relPath = fullPath.slice(dir.artifactDir.length + 1).replace(/\\/g, "/")
           if (indexedPaths.has(relPath)) {
-            skipped += 1;
-            continue;
+            skipped += 1
+            continue
           }
           try {
-            const fileStat = await stat(fullPath);
+            const fileStat = await stat(fullPath)
             // 构建基础索引记录
             const record: StoredArtifactIndexRecord = {
               schemaVersion: 1,
@@ -87,28 +87,28 @@ export const rebuildArtifactIndexIncremental = async (
               hash: "",
               createdAt: fileStat.mtime.toISOString(),
               updatedAt: fileStat.mtime.toISOString(),
-            };
-            const result = await appendIndexRecord(dir.artifactDir, record);
+            }
+            const result = await appendIndexRecord(dir.artifactDir, record)
             if (result.ok) {
-              indexed += 1;
+              indexed += 1
             } else {
-              warnings.push(result.warning.message);
-              skipped += 1;
+              warnings.push(result.warning.message)
+              skipped += 1
             }
           } catch {
-            skipped += 1;
+            skipped += 1
           }
         }
       }
-    };
+    }
 
-    const statusDirs = ["success", "failed", "rejected"];
+    const statusDirs = ["success", "failed", "rejected"]
     for (const statusDir of statusDirs) {
-      const statusPath = resolve(dir.artifactDir, statusDir);
+      const statusPath = resolve(dir.artifactDir, statusDir)
       try {
-        const s = await stat(statusPath);
+        const s = await stat(statusPath)
         if (s.isDirectory()) {
-          await scanDir(statusPath);
+          await scanDir(statusPath)
         }
       } catch {
         // dir doesn't exist
@@ -116,5 +116,5 @@ export const rebuildArtifactIndexIncremental = async (
     }
   }
 
-  return { indexed, skipped, warnings };
-};
+  return { indexed, skipped, warnings }
+}

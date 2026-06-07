@@ -12,10 +12,7 @@ const dedupeWorkflowEdges = (edges: WorkflowDefinition["edges"]): WorkflowDefini
   return out;
 };
 
-export const buildWorkflowAfterNodeDelete = (
-  workflow: WorkflowDefinition,
-  nodeId: string,
-): WorkflowDefinition => {
+export const buildWorkflowAfterNodeDelete = (workflow: WorkflowDefinition, nodeId: string): WorkflowDefinition => {
   const nextNodes = workflow.nodes.filter((node) => node.id !== nodeId);
   const incomingEdges = workflow.edges.filter((edge) => edge.to === nodeId);
   const outgoingEdges = workflow.edges.filter((edge) => edge.from === nodeId);
@@ -30,11 +27,9 @@ export const buildWorkflowAfterNodeDelete = (
   );
   const nextEdges = reconnectEdge
     ? dedupeWorkflowEdges([
-      ...workflow.edges.filter(
-        (edge) => !removedEdgeKeys.has(`${edge.from}|${edge.when ?? ""}|${edge.to}`),
-      ),
-      reconnectEdge,
-    ])
+        ...workflow.edges.filter((edge) => !removedEdgeKeys.has(`${edge.from}|${edge.when ?? ""}|${edge.to}`)),
+        reconnectEdge,
+      ])
     : workflow.edges.filter((edge) => edge.from !== nodeId && edge.to !== nodeId);
   const nextGroups = workflow.groups
     .map((group) => ({
@@ -42,9 +37,10 @@ export const buildWorkflowAfterNodeDelete = (
       members: group.members.filter((member) => member !== nodeId),
     }))
     .filter((group) => group.members.length >= 2);
-  const output = workflow.output?.mode === "explicit" && workflow.output.nodeId === nodeId
-    ? { mode: "mainline_last" as const, nodeId: null }
-    : workflow.output;
+  const output =
+    workflow.output?.mode === "explicit" && workflow.output.nodeId === nodeId
+      ? { mode: "mainline_last" as const, nodeId: null }
+      : workflow.output;
 
   return {
     ...workflow,

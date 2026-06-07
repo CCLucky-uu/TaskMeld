@@ -1,9 +1,9 @@
-import type { ToolCall, ToolResult, ToolContext, ToolPreferences } from '../types'
-import { DEFAULT_TOOL_PREFERENCES } from '../types'
-import type { ToolRegistry } from './registry'
-import type { WevraConfig } from '../config'
-import { truncateOutput } from './result'
-import { resolvePermission } from '../preferences'
+import type { ToolCall, ToolResult, ToolContext, ToolPreferences } from "../types"
+import { DEFAULT_TOOL_PREFERENCES } from "../types"
+import type { ToolRegistry } from "./registry"
+import type { WevraConfig } from "../config"
+import { truncateOutput } from "./result"
+import { resolvePermission } from "../preferences"
 
 export class ToolExecutor {
   constructor(
@@ -16,7 +16,7 @@ export class ToolExecutor {
 
     // Step 1: Lookup
     if (!tool) {
-      const available = Array.from(this.registry['tools'].keys()).join(', ')
+      const available = Array.from(this.registry["tools"].keys()).join(", ")
       return {
         output: `Error: Unknown tool "${call.name}". Available tools: ${available}`,
         isError: true,
@@ -35,7 +35,7 @@ export class ToolExecutor {
     }
 
     // Guard against stale __parseError objects from failed JSON parse
-    if (call.arguments && ('__parseError' in call.arguments)) {
+    if (call.arguments && "__parseError" in call.arguments) {
       return {
         output: `Invalid arguments for "${call.name}": failed to parse JSON arguments.`,
         isError: true,
@@ -46,14 +46,16 @@ export class ToolExecutor {
     if (!options?.skipPermission) {
       const prefs = ctx.preferences ?? DEFAULT_TOOL_PREFERENCES
       const result = resolvePermission(call.name, tool.annotations, prefs)
-      console.log(`[wevra:perm] tool=${call.name} mode=${prefs.mode} readOnly=${tool.annotations.readOnly} destructive=${tool.annotations.destructive} requiresConfirm=${tool.annotations.requiresConfirmation} → ${result.decision}`)
-      if (result.decision === 'deny') {
+      console.log(
+        `[wevra:perm] tool=${call.name} mode=${prefs.mode} readOnly=${tool.annotations.readOnly} destructive=${tool.annotations.destructive} requiresConfirm=${tool.annotations.requiresConfirmation} → ${result.decision}`,
+      )
+      if (result.decision === "deny") {
         return {
           output: result.reason!,
           isError: true,
         }
       }
-      if (result.decision === 'confirm') {
+      if (result.decision === "confirm") {
         return {
           output: `Confirmation required for "${call.name}".`,
           isError: false,
@@ -65,7 +67,7 @@ export class ToolExecutor {
     // Step 4: Execute (with timeout + AbortSignal)
     const controller = new AbortController()
     // Chain the incoming abortSignal to the new controller
-    ctx.abortSignal.addEventListener('abort', () => controller.abort(), { once: true })
+    ctx.abortSignal.addEventListener("abort", () => controller.abort(), { once: true })
 
     try {
       const result = await this.withTimeout(
@@ -88,15 +90,24 @@ export class ToolExecutor {
   }
 
   async executeAll(calls: ToolCall[], ctx: ToolContext, options?: { skipPermission?: boolean }): Promise<ToolResult[]> {
-    return Promise.all(calls.map(call => this.execute(call, ctx, options)))
+    return Promise.all(calls.map((call) => this.execute(call, ctx, options)))
   }
 
   private withTimeout<T>(promise: Promise<T>, ms: number, controller: AbortController): Promise<T> {
     return new Promise<T>((resolve, reject) => {
-      const timer = setTimeout(() => { controller.abort(); reject(new Error(`Tool execution timed out after ${ms}ms`)) }, ms)
+      const timer = setTimeout(() => {
+        controller.abort()
+        reject(new Error(`Tool execution timed out after ${ms}ms`))
+      }, ms)
       promise.then(
-        val => { clearTimeout(timer); resolve(val) },
-        err => { clearTimeout(timer); reject(err) },
+        (val) => {
+          clearTimeout(timer)
+          resolve(val)
+        },
+        (err) => {
+          clearTimeout(timer)
+          reject(err)
+        },
       )
     })
   }

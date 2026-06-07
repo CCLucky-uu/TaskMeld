@@ -16,8 +16,7 @@ type PipelinePluginModalProps = {
 };
 
 const monoClassName = "font-[JetBrains_Mono,monospace]";
-const toggleClassName =
-  "h-4 w-4 rounded-none border border-(--line) bg-[#0f171d] text-(--live) accent-(--live)";
+const toggleClassName = "h-4 w-4 rounded-none border border-(--line) bg-[#0f171d] text-(--live) accent-(--live)";
 const fieldClassName = "min-w-0";
 const fieldLabelClassName = "mb-1.5 block text-xs text-(--muted)";
 const actionButtonClassName =
@@ -25,12 +24,16 @@ const actionButtonClassName =
 
 // Helper: get or create a plugin instance from the array
 function getPlugin(plugins: WorkflowPlugins, pluginId: string): WorkflowPluginInstance {
-  return plugins.find(p => p.pluginId === pluginId) ?? { pluginId, enabled: false, config: {} };
+  return plugins.find((p) => p.pluginId === pluginId) ?? { pluginId, enabled: false, config: {} };
 }
 
 // Helper: update a plugin instance in the array
-function updatePlugin(plugins: WorkflowPlugins, pluginId: string, updates: Partial<WorkflowPluginInstance>): WorkflowPlugins {
-  const idx = plugins.findIndex(p => p.pluginId === pluginId);
+function updatePlugin(
+  plugins: WorkflowPlugins,
+  pluginId: string,
+  updates: Partial<WorkflowPluginInstance>,
+): WorkflowPlugins {
+  const idx = plugins.findIndex((p) => p.pluginId === pluginId);
   const existing = idx >= 0 ? plugins[idx]! : { pluginId, enabled: false, config: {} };
   const updated = { ...existing, ...updates };
   if (idx >= 0) {
@@ -42,50 +45,45 @@ function updatePlugin(plugins: WorkflowPlugins, pluginId: string, updates: Parti
 }
 
 // Helper: update plugin config
-function updatePluginConfig(plugins: WorkflowPlugins, pluginId: string, configUpdates: Record<string, unknown>): WorkflowPlugins {
+function updatePluginConfig(
+  plugins: WorkflowPlugins,
+  pluginId: string,
+  configUpdates: Record<string, unknown>,
+): WorkflowPlugins {
   const existing = getPlugin(plugins, pluginId);
   return updatePlugin(plugins, pluginId, { config: { ...existing.config, ...configUpdates } });
 }
 
-export function PipelinePluginModal({
-  pipelineId,
-  pluginState,
-  onClose,
-  onSave,
-}: PipelinePluginModalProps) {
+export function PipelinePluginModal({ pipelineId, pluginState, onClose, onSave }: PipelinePluginModalProps) {
   const { t } = useTranslation(["pipeline", "modal"]);
   const [draft, setDraft] = useState<WorkflowPlugins>(pluginState);
 
-  const remoteBatch = getPlugin(draft, 'remote-batch');
-  const scheduler = getPlugin(draft, 'scheduler');
+  const remoteBatch = getPlugin(draft, "remote-batch");
+  const scheduler = getPlugin(draft, "scheduler");
 
   return (
     <div>
       <div className={panelHeaderClassName}>
         <h2>{t("pluginConfigTitle", { pipelineId })}</h2>
-        <button
-          className={drawerCloseClassName}
-          type="button"
-          onClick={onClose}
-          aria-label={t("modal:close")}
-        >
+        <button className={drawerCloseClassName} type="button" onClick={onClose} aria-label={t("modal:close")}>
           <CloseIcon />
         </button>
       </div>
-      <p className={`${modalSublineClassName} ${monoClassName}`}>
-        {t("pluginSharedNote")}
-      </p>
+      <p className={`${modalSublineClassName} ${monoClassName}`}>{t("pluginSharedNote")}</p>
       <label className="flex items-center justify-between gap-3 border-y border-(--line) bg-transparent p-3 text-sm text-(--text)">
         <div className="grid gap-1">
           <strong>{t("remoteBatchPlugin")}</strong>
-          <span className={`${monoClassName} text-xs text-(--muted)`}>{t("remoteBatchPluginHint", { pipelineId })}</span>
+          <span className={`${monoClassName} text-xs text-(--muted)`}>
+            {t("remoteBatchPluginHint", { pipelineId })}
+          </span>
         </div>
         <input
           className={toggleClassName}
           type="checkbox"
           checked={remoteBatch.enabled}
           onChange={(event) =>
-            setDraft((current) => updatePlugin(current, 'remote-batch', { enabled: event.target.checked }))}
+            setDraft((current) => updatePlugin(current, "remote-batch", { enabled: event.target.checked }))
+          }
         />
       </label>
       {remoteBatch.enabled ? (
@@ -94,9 +92,10 @@ export function PipelinePluginModal({
             <label className={fieldLabelClassName}>{t("remoteUrl")}</label>
             <input
               className={controlInputElevatedMonoClassName}
-              value={String(remoteBatch.config.url ?? '')}
+              value={String(remoteBatch.config.url ?? "")}
               onChange={(event) =>
-                setDraft((current) => updatePluginConfig(current, 'remote-batch', { url: event.target.value }))}
+                setDraft((current) => updatePluginConfig(current, "remote-batch", { url: event.target.value }))
+              }
               placeholder="http://host/path"
               spellCheck={false}
             />
@@ -108,7 +107,12 @@ export function PipelinePluginModal({
                 className={controlInputElevatedMonoClassName}
                 value={String(remoteBatch.config.batchSize ?? 5)}
                 onChange={(event) =>
-                  setDraft((current) => updatePluginConfig(current, 'remote-batch', { batchSize: Math.max(1, Math.trunc(Number(event.target.value) || 1)) }))}
+                  setDraft((current) =>
+                    updatePluginConfig(current, "remote-batch", {
+                      batchSize: Math.max(1, Math.trunc(Number(event.target.value) || 1)),
+                    }),
+                  )
+                }
                 placeholder="5"
                 inputMode="numeric"
               />
@@ -119,7 +123,12 @@ export function PipelinePluginModal({
                 className={controlInputElevatedMonoClassName}
                 value={String(remoteBatch.config.startBatch ?? 1)}
                 onChange={(event) =>
-                  setDraft((current) => updatePluginConfig(current, 'remote-batch', { startBatch: Math.max(1, Math.trunc(Number(event.target.value) || 1)) }))}
+                  setDraft((current) =>
+                    updatePluginConfig(current, "remote-batch", {
+                      startBatch: Math.max(1, Math.trunc(Number(event.target.value) || 1)),
+                    }),
+                  )
+                }
                 placeholder="1"
                 inputMode="numeric"
               />
@@ -129,15 +138,14 @@ export function PipelinePluginModal({
             <label className={fieldLabelClassName}>{t("sourceField")}</label>
             <input
               className={controlInputElevatedMonoClassName}
-              value={String(remoteBatch.config.sourceField ?? 'list30')}
+              value={String(remoteBatch.config.sourceField ?? "list30")}
               onChange={(event) =>
-                setDraft((current) => updatePluginConfig(current, 'remote-batch', { sourceField: event.target.value }))}
+                setDraft((current) => updatePluginConfig(current, "remote-batch", { sourceField: event.target.value }))
+              }
               placeholder={t("sourceFieldPlaceholder")}
               spellCheck={false}
             />
-            <small className={`${monoClassName} mt-1.5 block text-xs text-(--muted)`}>
-              {t("sourceFieldHint")}
-            </small>
+            <small className={`${monoClassName} mt-1.5 block text-xs text-(--muted)`}>{t("sourceFieldHint")}</small>
           </div>
         </div>
       ) : null}
@@ -151,18 +159,15 @@ export function PipelinePluginModal({
           type="checkbox"
           checked={scheduler.enabled}
           onChange={(event) =>
-            setDraft((current) => updatePlugin(current, 'scheduler', { enabled: event.target.checked }))}
+            setDraft((current) => updatePlugin(current, "scheduler", { enabled: event.target.checked }))
+          }
         />
       </label>
       <div className={actionRowClassName}>
         <button className={actionButtonClassName} type="button" onClick={onClose}>
           {t("modal:cancel")}
         </button>
-        <button
-          className={actionButtonClassName}
-          type="button"
-          onClick={() => onSave(draft)}
-        >
+        <button className={actionButtonClassName} type="button" onClick={() => onSave(draft)}>
           {t("modal:save")}
         </button>
       </div>

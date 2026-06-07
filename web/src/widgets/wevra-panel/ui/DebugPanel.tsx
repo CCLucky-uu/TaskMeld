@@ -39,16 +39,24 @@ export function DebugPanel({ onClose }: { onClose: () => void }) {
       <div className="flex items-center justify-between px-3 py-2 border-b border-(--line) shrink-0 font-mono">
         <span className="text-xs font-semibold text-(--muted)">DEBUG</span>
         <div className="flex gap-2">
-          <button onClick={clear} className="text-xs text-(--muted) hover:opacity-80 appearance-none border-none outline-none bg-transparent cursor-pointer">Clear</button>
-          <button onClick={onClose} className="text-xs text-(--muted) hover:opacity-80 appearance-none border-none outline-none bg-transparent cursor-pointer">✕</button>
+          <button
+            onClick={clear}
+            className="text-xs text-(--muted) hover:opacity-80 appearance-none border-none outline-none bg-transparent cursor-pointer"
+          >
+            Clear
+          </button>
+          <button
+            onClick={onClose}
+            className="text-xs text-(--muted) hover:opacity-80 appearance-none border-none outline-none bg-transparent cursor-pointer"
+          >
+            ✕
+          </button>
         </div>
       </div>
 
       {/* Entries */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto text-xs font-mono">
-        {entries.length === 0 && (
-          <div className="p-4 text-(--muted) text-center">等待事件...</div>
-        )}
+        {entries.length === 0 && <div className="p-4 text-(--muted) text-center">等待事件...</div>}
         {entries.map((entry) => (
           <div key={entry.id} className="border-b border-(--line)">
             <button
@@ -57,9 +65,7 @@ export function DebugPanel({ onClose }: { onClose: () => void }) {
             >
               <TypeBadge type={entry.event.type} />
               <span className="text-(--muted)">{formatTime(entry.ts)}</span>
-              <span className="text-(--muted) truncate flex-1">
-                {summarize(entry.event)}
-              </span>
+              <span className="text-(--muted) truncate flex-1">{summarize(entry.event)}</span>
             </button>
             {expanded.has(entry.id) && (
               <pre className="px-3 py-2 bg-(--panel-2) text-(--text) whitespace-pre-wrap break-all overflow-x-auto max-h-[400px] overflow-y-auto text-[11px] leading-relaxed">
@@ -95,7 +101,9 @@ function TypeBadge({ type }: { type: string }) {
     error: "bg-red-500/20 text-red-400",
   };
   return (
-    <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${colors[type] ?? "bg-gray-500/20 text-gray-400"}`}>
+    <span
+      className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${colors[type] ?? "bg-gray-500/20 text-gray-400"}`}
+    >
       {type.toUpperCase()}
     </span>
   );
@@ -116,7 +124,7 @@ function summarize(event: DebugEvent): string {
     }
     case "stream_chunk": {
       const raw = event.data.raw;
-      const text = typeof raw === 'string' ? raw : JSON.stringify(raw);
+      const text = typeof raw === "string" ? raw : JSON.stringify(raw);
       return text.slice(0, 80);
     }
     case "response":

@@ -1,2 +1,2 @@
-export * from "./types";
-export * from "./gateway-client";
+export * from "./types"
+export * from "./gateway-client"

@@ -1,39 +1,50 @@
-import type { PipelineRegistry } from "../app/pipeline-registry";
-import { createAgentService, type AgentService } from "./agent-service";
-import { createArtifactService, type ArtifactService } from "./artifact-service";
-import { createPipelineService, type PipelineService } from "./pipeline-service";
-import { createSchedulerService, type SchedulerService } from "./scheduler-service";
-import { createSessionService, type SessionService } from "./session-service";
-import { createSystemService, type SystemService } from "./system-service";
+import type { PipelineRegistry } from "../app/pipeline-registry"
+import { createAgentService, type AgentService } from "./agent-service"
+import { createArtifactService, type ArtifactService } from "./artifact-service"
+import { createPipelineService, type PipelineService } from "./pipeline-service"
+import { createSchedulerService, type SchedulerService } from "./scheduler-service"
+import { createSessionService, type SessionService } from "./session-service"
+import { createSystemService, type SystemService } from "./system-service"
 
 export type ReadonlyServices = {
-  system: SystemService;
-  pipeline: PipelineService;
-  agent: AgentService;
-  session: SessionService;
-  artifact: ArtifactService;
-};
+  system: SystemService
+  pipeline: PipelineService
+  agent: AgentService
+  session: SessionService
+  artifact: ArtifactService
+}
 
 export type WritableServices = {
-  pipeline: Pick<PipelineService, "startPipeline" | "getPipelineExecutionStatus" | "stopPipeline" | "runPipeline" | "retryNode" | "getOutput" | "listOutputs" | "listLinks" | "getQueue">;
-  session: Pick<SessionService, "sendMessage" | "sendMessageAndWaitForReply">;
-  scheduler: SchedulerService;
-  agent: Pick<AgentService, "createAgent" | "updateAgent" | "deleteAgent">;
-};
+  pipeline: Pick<
+    PipelineService,
+    | "startPipeline"
+    | "getPipelineExecutionStatus"
+    | "stopPipeline"
+    | "runPipeline"
+    | "retryNode"
+    | "getOutput"
+    | "listOutputs"
+    | "listLinks"
+    | "getQueue"
+  >
+  session: Pick<SessionService, "sendMessage" | "sendMessageAndWaitForReply">
+  scheduler: SchedulerService
+  agent: Pick<AgentService, "createAgent" | "updateAgent" | "deleteAgent">
+}
 
 export type AppServices = {
-  readonly: ReadonlyServices;
-  writable: WritableServices;
-};
+  readonly: ReadonlyServices
+  writable: WritableServices
+}
 
 type InternalServices = {
-  system: SystemService;
-  pipeline: PipelineService;
-  agent: AgentService;
-  session: SessionService;
-  artifact: ArtifactService;
-  scheduler: SchedulerService;
-};
+  system: SystemService
+  pipeline: PipelineService
+  agent: AgentService
+  session: SessionService
+  artifact: ArtifactService
+  scheduler: SchedulerService
+}
 
 const createAllServices = (app: PipelineRegistry): InternalServices => ({
   system: createSystemService(app),
@@ -42,10 +53,10 @@ const createAllServices = (app: PipelineRegistry): InternalServices => ({
   session: createSessionService(app),
   artifact: createArtifactService(app),
   scheduler: createSchedulerService(app),
-});
+})
 
 export const createReadonlyServices = (app: PipelineRegistry): ReadonlyServices => {
-  const services = createAllServices(app);
+  const services = createAllServices(app)
   return {
     // Unified factory for mainline integration; the CLI entry only needs to pass in the registry to get all read-only services.
     system: services.system,
@@ -53,11 +64,11 @@ export const createReadonlyServices = (app: PipelineRegistry): ReadonlyServices 
     agent: services.agent,
     session: services.session,
     artifact: services.artifact,
-  };
-};
+  }
+}
 
 export const createAppServices = (app: PipelineRegistry): AppServices => {
-  const services = createAllServices(app);
+  const services = createAllServices(app)
   return {
     readonly: {
       system: services.system,
@@ -89,5 +100,5 @@ export const createAppServices = (app: PipelineRegistry): AppServices => {
         deleteAgent: services.agent.deleteAgent,
       },
     },
-  };
-};
+  }
+}

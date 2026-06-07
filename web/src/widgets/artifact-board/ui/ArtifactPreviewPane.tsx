@@ -39,12 +39,7 @@ const toPreviewText = (content: StoredArtifactContent | null): string => {
   }
 };
 
-export function ArtifactPreviewPane({
-  item,
-  content,
-  loadingKey,
-  contentError,
-}: ArtifactPreviewPaneProps) {
+export function ArtifactPreviewPane({ item, content, loadingKey, contentError }: ArtifactPreviewPaneProps) {
   const { t } = useTranslation("artifact");
   const key = item ? `${item.pipelineId}:${item.relativePath}` : "";
   const isLoading = !!item && loadingKey === key;
@@ -57,13 +52,21 @@ export function ArtifactPreviewPane({
         <div className={monoClassName}>runId: {item?.runId ?? "-"}</div>
         <div className={monoClassName}>status: {item?.status ?? "-"}</div>
         <div className={monoClassName}>nodeId: {item?.nodeId ?? "-"}</div>
-        <div className={monoClassName}>size: {item?.sizeBytes != null ? `${(item.sizeBytes / 1024).toFixed(1)} KB` : "-"}</div>
+        <div className={monoClassName}>
+          size: {item?.sizeBytes != null ? `${(item.sizeBytes / 1024).toFixed(1)} KB` : "-"}
+        </div>
         <div className={monoClassName}>path: {item?.relativePath ?? "-"}</div>
       </div>
       <div className="min-h-0 overflow-auto p-2">
         {!item ? <p className={`${monoClassName} m-0 text-xs text-(--muted)`}>{t("selectFile")}</p> : null}
-        {item && isLoading ? <p className={`${monoClassName} m-0 text-xs text-(--muted)`}>{t("contentLoading")}</p> : null}
-        {item && !isLoading && contentError ? <p className={`${monoClassName} m-0 text-xs text-(--bad)`}>{t("contentLoadFailed", { error: contentError })}</p> : null}
+        {item && isLoading ? (
+          <p className={`${monoClassName} m-0 text-xs text-(--muted)`}>{t("contentLoading")}</p>
+        ) : null}
+        {item && !isLoading && contentError ? (
+          <p className={`${monoClassName} m-0 text-xs text-(--bad)`}>
+            {t("contentLoadFailed", { error: contentError })}
+          </p>
+        ) : null}
         {item && !isLoading ? (
           <code className="block min-h-full whitespace-pre-wrap break-words border border-[rgba(142,163,179,0.18)] bg-[rgba(6,12,16,0.86)] p-2 text-xs text-(--text)">
             {previewText || t("contentEmpty")}

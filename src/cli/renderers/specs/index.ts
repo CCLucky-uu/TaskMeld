@@ -1,11 +1,11 @@
-import type { RenderSpecMap } from "../engine/types";
-import { agentRenderSpecs } from "./agent";
-import { artifactRenderSpecs } from "./artifact";
-import { initRenderSpecs } from "./init";
-import { pipelineRenderSpecs } from "./pipeline";
-import { schedulerRenderSpecs } from "./scheduler";
-import { serverRenderSpecs } from "./server";
-import { systemRenderSpecs } from "./system";
+import type { RenderSpecMap } from "../engine/types"
+import { agentRenderSpecs } from "./agent"
+import { artifactRenderSpecs } from "./artifact"
+import { initRenderSpecs } from "./init"
+import { pipelineRenderSpecs } from "./pipeline"
+import { schedulerRenderSpecs } from "./scheduler"
+import { serverRenderSpecs } from "./server"
+import { systemRenderSpecs } from "./system"
 
 // Aggregate output definitions by module to avoid dumping all structures back into a single renderer file.
 const allSpecs: RenderSpecMap = {
@@ -16,7 +16,7 @@ const allSpecs: RenderSpecMap = {
   ...schedulerRenderSpecs,
   ...serverRenderSpecs,
   ...systemRenderSpecs,
-};
+}
 
 if (process.env.NODE_ENV !== "production") {
   const keys = [
@@ -27,11 +27,11 @@ if (process.env.NODE_ENV !== "production") {
     ...Object.keys(schedulerRenderSpecs),
     ...Object.keys(serverRenderSpecs),
     ...Object.keys(systemRenderSpecs),
-  ];
-  const dupes = keys.filter((k, i) => keys.indexOf(k) !== i);
+  ]
+  const dupes = keys.filter((k, i) => keys.indexOf(k) !== i)
   if (dupes.length > 0) {
-    throw new Error(`Duplicate render spec keys: ${dupes.join(", ")}`);
+    throw new Error(`Duplicate render spec keys: ${dupes.join(", ")}`)
   }
 }
 
-export const commandRenderSpecs = allSpecs;
+export const commandRenderSpecs = allSpecs

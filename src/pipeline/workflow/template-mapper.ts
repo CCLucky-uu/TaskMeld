@@ -1,12 +1,7 @@
-import { validateWorkflowGraph } from "./validate";
-import type {
-  PipelineTemplateNode,
-  WorkflowDefinitionRuntime,
-  WorkflowEdge,
-  WorkflowNode,
-} from "../types/workflow";
+import { validateWorkflowGraph } from "./validate"
+import type { PipelineTemplateNode, WorkflowDefinitionRuntime, WorkflowEdge, WorkflowNode } from "../types/workflow"
 
-const toUniqueList = (items: string[]) => [...new Set(items)];
+const toUniqueList = (items: string[]) => [...new Set(items)]
 
 // ====== Workflow → Template nodes (unified, with dedup) ======
 
@@ -15,13 +10,13 @@ const toUniqueList = (items: string[]) => [...new Set(items)];
  * This is the single authoritative implementation of the workflow → template mapping.
  */
 export const workflowToTemplateNodes = (workflow: WorkflowDefinitionRuntime): PipelineTemplateNode[] => {
-  const incomingByNodeId = new Map<string, string[]>();
+  const incomingByNodeId = new Map<string, string[]>()
   for (const edge of workflow.edges) {
     // template.dependsOn only expresses dependency edges; route edges belong to routing semantics and cannot be written back as ordinary dependencies.
-    if (edge.when !== null) continue;
-    const prev = incomingByNodeId.get(edge.to) ?? [];
-    prev.push(edge.from);
-    incomingByNodeId.set(edge.to, toUniqueList(prev));
+    if (edge.when !== null) continue
+    const prev = incomingByNodeId.get(edge.to) ?? []
+    prev.push(edge.from)
+    incomingByNodeId.set(edge.to, toUniqueList(prev))
   }
   return workflow.nodes.map((node) => ({
     id: node.id,
@@ -32,8 +27,8 @@ export const workflowToTemplateNodes = (workflow: WorkflowDefinitionRuntime): Pi
     dependsOn: incomingByNodeId.get(node.id) ?? [],
     allowReject: node.allowReject,
     maxRejectCount: node.maxRejectCount,
-  }));
-};
+  }))
+}
 
 // ====== Merge template nodes into workflow ======
 
@@ -41,12 +36,12 @@ export const mergeTemplateNodesIntoWorkflow = (
   current: WorkflowDefinitionRuntime,
   nextTemplateNodes: PipelineTemplateNode[],
 ): WorkflowDefinitionRuntime => {
-  const currentNodeById = new Map(current.nodes.map((node) => [node.id, node]));
-  const nodeIds = new Set(nextTemplateNodes.map((node) => node.id));
-  const groupIds = new Set(current.groups.map((group) => group.id));
+  const currentNodeById = new Map(current.nodes.map((node) => [node.id, node]))
+  const nodeIds = new Set(nextTemplateNodes.map((node) => node.id))
+  const groupIds = new Set(current.groups.map((group) => group.id))
 
   const mergedNodes: WorkflowNode[] = nextTemplateNodes.map((tpl) => {
-    const existing = currentNodeById.get(tpl.id);
+    const existing = currentNodeById.get(tpl.id)
     if (!existing) {
       return {
         id: tpl.id,
@@ -69,7 +64,7 @@ export const mergeTemplateNodesIntoWorkflow = (
         instruction: tpl.instruction,
         allowReject: tpl.allowReject,
         maxRejectCount: tpl.maxRejectCount,
-      };
+      }
     }
     return {
       ...existing,
@@ -79,18 +74,18 @@ export const mergeTemplateNodesIntoWorkflow = (
       outputSpec: tpl.outputSpec,
       allowReject: tpl.allowReject,
       maxRejectCount: tpl.maxRejectCount,
-    };
-  });
+    }
+  })
 
-  const unconditionalEdges: WorkflowEdge[] = [];
+  const unconditionalEdges: WorkflowEdge[] = []
   for (const node of nextTemplateNodes) {
     for (const dep of node.dependsOn) {
-      if (!nodeIds.has(dep)) continue;
+      if (!nodeIds.has(dep)) continue
       unconditionalEdges.push({
         from: dep,
         to: node.id,
         when: null,
-      });
+      })
     }
   }
   const conditionalEdges = current.edges.filter(
@@ -98,20 +93,18 @@ export const mergeTemplateNodesIntoWorkflow = (
       edge.when !== null &&
       (nodeIds.has(edge.from) || groupIds.has(edge.from)) &&
       (nodeIds.has(edge.to) || groupIds.has(edge.to)),
-  );
-  const allEdges = [...unconditionalEdges, ...conditionalEdges];
-  const edgeSeen = new Set<string>();
-  const mergedEdges: WorkflowEdge[] = [];
+  )
+  const allEdges = [...unconditionalEdges, ...conditionalEdges]
+  const edgeSeen = new Set<string>()
+  const mergedEdges: WorkflowEdge[] = []
   for (const edge of allEdges) {
-    const key = `${edge.from}|${edge.when ?? ""}|${edge.to}`;
-    if (edgeSeen.has(key)) continue;
-    edgeSeen.add(key);
-    mergedEdges.push(edge);
+    const key = `${edge.from}|${edge.when ?? ""}|${edge.to}`
+    if (edgeSeen.has(key)) continue
+    edgeSeen.add(key)
+    mergedEdges.push(edge)
   }
 
-  const mergedGroups = current.groups.filter(
-    (group) => group.members.every((member) => nodeIds.has(member)),
-  );
+  const mergedGroups = current.groups.filter((group) => group.members.every((member) => nodeIds.has(member)))
 
   const merged: WorkflowDefinitionRuntime = {
     version: "3.0",
@@ -121,8 +114,8 @@ export const mergeTemplateNodesIntoWorkflow = (
     nodes: mergedNodes,
     edges: mergedEdges,
     groups: mergedGroups,
-  };
+  }
 
-  if (!validateWorkflowGraph(merged).ok) return current;
-  return merged;
-};
+  if (!validateWorkflowGraph(merged).ok) return current
+  return merged
+}

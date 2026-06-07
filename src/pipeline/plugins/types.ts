@@ -1,6 +1,6 @@
 // ── Plugin Type ──
 
-export type PluginType = 'dataSource' | 'scheduler' | 'output' | 'monitor'
+export type PluginType = "dataSource" | "scheduler" | "output" | "monitor"
 
 // ── Plugin Context ──
 

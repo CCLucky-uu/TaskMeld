@@ -175,9 +175,10 @@ const buildLifecycleDisplayInfo = (item: TimelineItem, t: TFunction<"timeline">)
 
   const lifecycleLabel = t(meta.kind === "start" ? "agentStart" : "agentEnd");
   const detailSource = isRecord(item.detail) ? getString(item.detail.source) : null;
-  const text = AGENT_START_PATTERN.test(item.text) || AGENT_END_PATTERN.test(item.text)
-    ? item.text
-    : `Agent ${meta.agentId} ${lifecycleLabel} (${meta.runId ? `run:${meta.runId}` : "run:unknown"}${detailSource ? `, ${detailSource}` : ""})`;
+  const text =
+    AGENT_START_PATTERN.test(item.text) || AGENT_END_PATTERN.test(item.text)
+      ? item.text
+      : `Agent ${meta.agentId} ${lifecycleLabel} (${meta.runId ? `run:${meta.runId}` : "run:unknown"}${detailSource ? `, ${detailSource}` : ""})`;
 
   return {
     text,
@@ -243,10 +244,7 @@ const buildDisplayTimeline = (timeline: TimelineItem[], t: TFunction<"timeline">
     for (const hidden of hiddenItems) {
       hiddenIds.add(hidden.id);
     }
-    collapsedByStartIndex.set(
-      startIndex,
-      buildCollapsedEntry(agentId, hiddenItems, "collapsed", item.id, t),
-    );
+    collapsedByStartIndex.set(startIndex, buildCollapsedEntry(agentId, hiddenItems, "collapsed", item.id, t));
   }
 
   // When an agent hasn't finished yet, collapse everything after its start into a single "in progress" placeholder.
@@ -254,13 +252,11 @@ const buildDisplayTimeline = (timeline: TimelineItem[], t: TFunction<"timeline">
     const [agentId, runIdRaw] = agentRunKey.split("::");
     const runId = runIdRaw === "unknown" ? null : runIdRaw;
     for (const startIndex of startIndexes) {
-      const hiddenItems = chronological.slice(startIndex + 1).filter(
-        (entry) => {
-          if (hiddenIds.has(entry.id)) return false;
-          const entryMeta = getTimelineAgentMeta(entry);
-          return entryMeta.kind === "detail" && isSameAgentRun(entryMeta, agentId, runId);
-        },
-      );
+      const hiddenItems = chronological.slice(startIndex + 1).filter((entry) => {
+        if (hiddenIds.has(entry.id)) return false;
+        const entryMeta = getTimelineAgentMeta(entry);
+        return entryMeta.kind === "detail" && isSameAgentRun(entryMeta, agentId, runId);
+      });
       if (hiddenItems.length === 0) continue;
       for (const hidden of hiddenItems) {
         hiddenIds.add(hidden.id);
@@ -333,7 +329,9 @@ export function TimelineCard({ timeline, onOpenRunLog }: TimelineCardProps) {
         <div className={panelHeaderClassName}>
           <h2>{t("timeline")}</h2>
           <div className="flex flex-wrap items-center gap-2.5">
-            <span className={monoClassName}>{t("displayCount", { displayed: displayTimeline.length, total: timeline.length })}</span>
+            <span className={monoClassName}>
+              {t("displayCount", { displayed: displayTimeline.length, total: timeline.length })}
+            </span>
             {onOpenRunLog ? (
               <button className={actionButtonClassName} type="button" onClick={onOpenRunLog}>
                 {t("viewFullLog")}
@@ -347,9 +345,17 @@ export function TimelineCard({ timeline, onOpenRunLog }: TimelineCardProps) {
               key={line.id || `${line.ts}-${line.text}-${index}`}
               className={`border-b border-(--line) last:border-b-0 ${line.kind === "collapsed" ? "collapsed" : ""}`}
             >
-              <button className={`line-trigger appearance-none border-0 grid w-full grid-cols-[88px_1fr] gap-2.5 rounded-none px-2 py-2.25 text-left text-(--text) shadow-none max-[760px]:grid-cols-1 max-[760px]:gap-1.25 ${line.kind === "collapsed" ? "bg-[rgba(142,163,179,0.06)]" : "bg-transparent"} hover:bg-[rgba(142,163,179,0.08)] focus-visible:outline focus-visible:outline-1 focus-visible:outline-[var(--live)] focus-visible:outline-offset-[-1px]`} type="button" onClick={() => setSelectedTimelineId(line.id)}>
+              <button
+                className={`line-trigger appearance-none border-0 grid w-full grid-cols-[88px_1fr] gap-2.5 rounded-none px-2 py-2.25 text-left text-(--text) shadow-none max-[760px]:grid-cols-1 max-[760px]:gap-1.25 ${line.kind === "collapsed" ? "bg-[rgba(142,163,179,0.06)]" : "bg-transparent"} hover:bg-[rgba(142,163,179,0.08)] focus-visible:outline focus-visible:outline-1 focus-visible:outline-[var(--live)] focus-visible:outline-offset-[-1px]`}
+                type="button"
+                onClick={() => setSelectedTimelineId(line.id)}
+              >
                 <span className="text-xs text-(--muted) font-[JetBrains_Mono,monospace]">{line.ts}</span>
-                <p className={`m-0 overflow-wrap-anywhere font-[JetBrains_Mono,monospace] text-[13px] ${line.kind === "collapsed" ? "text-[var(--muted)]" : ""}`}>{line.text}</p>
+                <p
+                  className={`m-0 overflow-wrap-anywhere font-[JetBrains_Mono,monospace] text-[13px] ${line.kind === "collapsed" ? "text-[var(--muted)]" : ""}`}
+                >
+                  {line.text}
+                </p>
               </button>
             </li>
           ))}
@@ -366,23 +372,39 @@ export function TimelineCard({ timeline, onOpenRunLog }: TimelineCardProps) {
         aria-hidden={!selectedTimeline}
         onClick={() => setSelectedTimelineId("")}
       >
-        <div className={`${modalPanelBaseClassName} grid w-[min(760px,94vw)] gap-2.5 max-[760px]:h-screen max-[760px]:max-h-screen max-[760px]:w-screen`} onClick={(event) => event.stopPropagation()}>
+        <div
+          className={`${modalPanelBaseClassName} grid w-[min(760px,94vw)] gap-2.5 max-[760px]:h-screen max-[760px]:max-h-screen max-[760px]:w-screen`}
+          onClick={(event) => event.stopPropagation()}
+        >
           <div className={panelHeaderClassName}>
             <h2>{t("eventDetail")}</h2>
-            <button className={drawerCloseClassName} type="button" onClick={() => setSelectedTimelineId("")} aria-label={t("close")}>
+            <button
+              className={drawerCloseClassName}
+              type="button"
+              onClick={() => setSelectedTimelineId("")}
+              aria-label={t("close")}
+            >
               <CloseIcon />
             </button>
           </div>
           {selectedTimeline ? (
             <>
-              <div className={`${monoClassName} flex items-center justify-between gap-2.5 border border-(--line) px-2.5 py-2 text-xs`}>
+              <div
+                className={`${monoClassName} flex items-center justify-between gap-2.5 border border-(--line) px-2.5 py-2 text-xs`}
+              >
                 <span>{selectedTimeline.ts}</span>
                 <span className={`${levelTagBaseClassName} ${levelTagToneClassName[selectedTimeline.level]}`}>
-                  {selectedTimeline.level === "error" ? t("error") : selectedTimeline.level === "warn" ? t("warning") : t("info")}
+                  {selectedTimeline.level === "error"
+                    ? t("error")
+                    : selectedTimeline.level === "warn"
+                      ? t("warning")
+                      : t("info")}
                 </span>
               </div>
               <div className="max-h-[min(60vh,540px)] overflow-auto border border-(--line) bg-[#0f171d] max-[760px]:h-full max-[760px]:max-h-none">
-                <pre className="m-0 whitespace-pre-wrap wrap-break-word p-3 font-[JetBrains_Mono,monospace] text-[13px] leading-[1.45]">{renderDetail(selectedTimeline)}</pre>
+                <pre className="m-0 whitespace-pre-wrap wrap-break-word p-3 font-[JetBrains_Mono,monospace] text-[13px] leading-[1.45]">
+                  {renderDetail(selectedTimeline)}
+                </pre>
               </div>
             </>
           ) : null}

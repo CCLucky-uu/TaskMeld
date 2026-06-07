@@ -1,4 +1,4 @@
-import type { SkillDef, SkillInvocation } from '../types'
+import type { SkillDef, SkillInvocation } from "../types"
 
 export class SkillRegistry {
   private skills = new Map<string, SkillDef>()
@@ -11,8 +11,8 @@ export class SkillRegistry {
     return this.skills.get(name)
   }
 
-  list(): Array<Pick<SkillDef, 'name' | 'description' | 'invocation'>> {
-    return Array.from(this.skills.values()).map(s => ({
+  list(): Array<Pick<SkillDef, "name" | "description" | "invocation">> {
+    return Array.from(this.skills.values()).map((s) => ({
       name: s.name,
       description: s.description,
       invocation: s.invocation,
@@ -20,11 +20,11 @@ export class SkillRegistry {
   }
 
   getByInvocation(invocation: SkillInvocation): SkillDef[] {
-    return Array.from(this.skills.values()).filter(s => s.invocation === invocation)
+    return Array.from(this.skills.values()).filter((s) => s.invocation === invocation)
   }
 
   getAlwaysActive(): SkillDef[] {
-    return this.getByInvocation('always')
+    return this.getByInvocation("always")
   }
 
   get size(): number {
@@ -36,9 +36,9 @@ export class SkillRegistry {
 
 export const BUILTIN_SKILLS: SkillDef[] = [
   {
-    name: 'core-behavior',
-    description: 'Core behavior guidelines',
-    invocation: 'always',
+    name: "core-behavior",
+    description: "Core behavior guidelines",
+    invocation: "always",
     content: `## Behavior Guidelines
 - When uncertain, ask the user. Never guess or fabricate data.
 - Confirm with the user before destructive operations (e.g., deletion).
@@ -47,9 +47,9 @@ export const BUILTIN_SKILLS: SkillDef[] = [
 - Reply in English.`,
   },
   {
-    name: 'pipeline-management',
-    description: 'Recommended workflow for creating and managing pipelines',
-    invocation: 'auto',
+    name: "pipeline-management",
+    description: "Recommended workflow for creating and managing pipelines",
+    invocation: "auto",
     content: `## Pipeline Management Workflow
 When the user wants to create or modify a pipeline:
 1. Start with pipeline_list to review existing pipelines and avoid duplicates.
@@ -62,9 +62,9 @@ Notes:
 - Confirm the user's requirements before creation. Do not assume the node structure.`,
   },
   {
-    name: 'failure-diagnosis',
-    description: 'Analyze pipeline run failures and provide fix suggestions',
-    invocation: 'auto',
+    name: "failure-diagnosis",
+    description: "Analyze pipeline run failures and provide fix suggestions",
+    invocation: "auto",
     content: `## Failure Diagnosis Workflow
 When a pipeline run fails:
 1. Use pipeline_status to check the overall run state.

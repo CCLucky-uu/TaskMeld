@@ -1,18 +1,19 @@
-import type { Message, ToolCall, StreamEvent, LoopResult, ToolContext, ConfirmRequest, ToolPreferences } from '../types'
-import { DEFAULT_TOOL_PREFERENCES } from '../types'
-import type { Brain, DebugCallback } from '../brain'
-import type { ToolExecutor } from '../tools/executor'
-import type { ToolRegistry } from '../tools/registry'
-import type { SkillRegistry } from '../skills'
-import type { WevraMemory } from '../memory'
-import type { SessionData } from '../conversation'
-import type { WevraConfig } from '../config'
-import { generateMessageId } from '../util'
+import type { Message, ToolCall, StreamEvent, LoopResult, ToolContext, ConfirmRequest, ToolPreferences } from "../types"
+import { DEFAULT_TOOL_PREFERENCES } from "../types"
+import type { Brain, DebugCallback } from "../brain"
+import type { ToolExecutor } from "../tools/executor"
+import type { ToolRegistry } from "../tools/registry"
+import type { SkillRegistry } from "../skills"
+import type { WevraMemory } from "../memory"
+import type { SessionData } from "../conversation"
+import type { WevraConfig } from "../config"
+import { generateMessageId } from "../util"
 
 const MODE_PROMPTS: Record<string, string> = {
-  normal: 'Normal mode is active. Read-only tools execute freely. Write and destructive tools require user confirmation before execution.',
-  plan: 'Plan mode is active. You have read-only access — write and destructive tools are unavailable until the user switches mode.',
-  auto: 'Auto mode is active. All tools are available without confirmation.',
+  normal:
+    "Normal mode is active. Read-only tools execute freely. Write and destructive tools require user confirmation before execution.",
+  plan: "Plan mode is active. You have read-only access — write and destructive tools are unavailable until the user switches mode.",
+  auto: "Auto mode is active. All tools are available without confirmation.",
 }
 
 export interface LoopCallbacks {
@@ -20,7 +21,7 @@ export interface LoopCallbacks {
   onDebug?: (payload: unknown) => void
   /** Message write callback — called for each assistant/tool message produced in the loop */
   onMessage?: (message: Message) => Promise<void>
-  onConfirm?: (req: ConfirmRequest) => Promise<'allow' | 'deny' | 'always-allow'>
+  onConfirm?: (req: ConfirmRequest) => Promise<"allow" | "deny" | "always-allow">
 }
 
 export class WevraLoop {
@@ -40,7 +41,7 @@ export class WevraLoop {
     preferences?: ToolPreferences,
     externalAbort?: AbortController,
   ): Promise<LoopResult> {
-    if (!this.brain) return { type: 'error', content: 'No LLM model configured', iterations: 0 }
+    if (!this.brain) return { type: "error", content: "No LLM model configured", iterations: 0 }
 
     const allTools = session.frozenTools
     let iterations = 0
@@ -50,43 +51,42 @@ export class WevraLoop {
 
       // Check external abort
       if (externalAbort?.signal.aborted) {
-        return { type: 'error', content: 'Chat aborted by user.', iterations }
+        return { type: "error", content: "Chat aborted by user.", iterations }
       }
 
       // Build request messages: frozen prompt (cacheable) + history with mode markers expanded
-      const expandedHistory = fullHistory.map(msg => {
-        if (msg.role === 'system') {
-          const match = msg.content.match(/^\[mode:(\w+):v(\d+)\]$/)
-          if (match) {
-            const template = MODE_PROMPTS[match[1]] ?? ''
-            const prompt = template ? `${template} [mode-version: ${match[2]}]` : ''
-            return prompt ? { ...msg, content: prompt } : null
+      const expandedHistory = fullHistory
+        .map((msg) => {
+          if (msg.role === "system") {
+            const match = msg.content.match(/^\[mode:(\w+):v(\d+)\]$/)
+            if (match) {
+              const template = MODE_PROMPTS[match[1]] ?? ""
+              const prompt = template ? `${template} [mode-version: ${match[2]}]` : ""
+              return prompt ? { ...msg, content: prompt } : null
+            }
           }
-        }
-        return msg
-      }).filter((msg): msg is Message => msg !== null)
+          return msg
+        })
+        .filter((msg): msg is Message => msg !== null)
 
-      const requestMessages: Message[] = [
-        { role: 'system', content: session.frozenPrompt },
-        ...expandedHistory,
-      ]
+      const requestMessages: Message[] = [{ role: "system", content: session.frozenPrompt }, ...expandedHistory]
 
       // LLM inference (streaming)
-      let assistantContent = ''
+      let assistantContent = ""
       const toolCalls: ToolCall[] = []
-      let reasoningContent = ''  // DeepSeek reasoning_content must be passed back
+      let reasoningContent = "" // DeepSeek reasoning_content must be passed back
 
       for await (const event of this.brain.streamChat(requestMessages, allTools, externalAbort?.signal)) {
         callbacks?.onStream?.(event)
 
         switch (event.type) {
-          case 'text_delta':
-            assistantContent += event.content ?? ''
+          case "text_delta":
+            assistantContent += event.content ?? ""
             break
-          case 'tool_start':
+          case "tool_start":
             if (event.toolCall) toolCalls.push(event.toolCall)
             break
-          case 'step_finish':
+          case "step_finish":
             if (event.content) reasoningContent = event.content
             break
         }
@@ -94,7 +94,7 @@ export class WevraLoop {
 
       // Append assistant message
       const assistantMsg: Message = {
-        role: 'assistant',
+        role: "assistant",
         content: assistantContent,
         toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
         reasoningContent: reasoningContent || undefined,
@@ -105,7 +105,7 @@ export class WevraLoop {
       // No tool calls → done
       if (toolCalls.length === 0) {
         return {
-          type: 'text',
+          type: "text",
           content: assistantContent,
           iterations,
         }
@@ -120,7 +120,7 @@ export class WevraLoop {
       for (let i = 0; i < results.length; i++) {
         if (results[i].needsConfirmation && callbacks?.onConfirm) {
           callbacks?.onStream?.({
-            type: 'confirm_request',
+            type: "confirm_request",
             toolCall: {
               id: toolCalls[i].id,
               name: toolCalls[i].name,
@@ -134,9 +134,9 @@ export class WevraLoop {
             toolArgs: toolCalls[i].arguments,
           })
 
-          callbacks?.onStream?.({ type: 'confirm_response', content: decision })
+          callbacks?.onStream?.({ type: "confirm_response", content: decision })
 
-          if (decision === 'deny') {
+          if (decision === "deny") {
             finalResults.push({
               output: `User denied execution of "${toolCalls[i].name}".`,
               isError: true,
@@ -159,7 +159,7 @@ export class WevraLoop {
       for (let i = 0; i < toolCalls.length; i++) {
         const result = finalResults[i]
         const toolMsg: Message = {
-          role: 'tool',
+          role: "tool",
           toolCallId: toolCalls[i].id,
           content: result.output,
           isError: result.isError,
@@ -168,7 +168,7 @@ export class WevraLoop {
         await callbacks?.onMessage?.(toolMsg)
 
         callbacks?.onStream?.({
-          type: 'tool_delta',
+          type: "tool_delta",
           content: result.output,
           toolResult: { ...result, toolCallId: toolCalls[i].id },
         })
@@ -178,18 +178,22 @@ export class WevraLoop {
     }
 
     return {
-      type: 'max_iterations',
-      content: 'Reached maximum iterations.',
+      type: "max_iterations",
+      content: "Reached maximum iterations.",
       iterations,
     }
   }
 
-  private buildToolContext(sessionId: string, preferences: ToolPreferences, externalAbort?: AbortController): ToolContext {
+  private buildToolContext(
+    sessionId: string,
+    preferences: ToolPreferences,
+    externalAbort?: AbortController,
+  ): ToolContext {
     // Merge external abort with tool timeout
     const merged = new AbortController()
     const timeoutSignal = AbortSignal.timeout(this.config.toolTimeoutMs)
-    timeoutSignal.addEventListener('abort', () => merged.abort(), { once: true })
-    externalAbort?.signal.addEventListener('abort', () => merged.abort(), { once: true })
+    timeoutSignal.addEventListener("abort", () => merged.abort(), { once: true })
+    externalAbort?.signal.addEventListener("abort", () => merged.abort(), { once: true })
 
     return {
       sessionId,

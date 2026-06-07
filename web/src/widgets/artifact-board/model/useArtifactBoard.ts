@@ -47,7 +47,7 @@ export const useArtifactBoard = (pipelineOptions: ArtifactPipelineOption[]) => {
   const [contentCache, setContentCache] = useState<Record<string, StoredArtifactContent | null>>({});
 
   const groups = useMemo(() => buildArtifactDateGroups(items), [items]);
-  const selectedContent = selectedItemKey ? contentCache[selectedItemKey] ?? null : null;
+  const selectedContent = selectedItemKey ? (contentCache[selectedItemKey] ?? null) : null;
 
   const loadArtifacts = async (filters: ArtifactFilterState) => {
     const query = resolveArtifactQuery(filters);
@@ -144,7 +144,7 @@ export const useArtifactBoard = (pipelineOptions: ArtifactPipelineOption[]) => {
       });
       setContentCache((prev) => ({ ...prev, [key]: content }));
     } catch (err) {
-    setContentCache((prev) => ({ ...prev, [key]: null }));
+      setContentCache((prev) => ({ ...prev, [key]: null }));
       setContentError(err instanceof Error ? err.message : String(err));
     } finally {
       setContentLoadingKey("");
@@ -179,9 +179,7 @@ export const useArtifactBoard = (pipelineOptions: ArtifactPipelineOption[]) => {
       if (!nodeId) continue;
       set.add(nodeId);
     }
-    return [...set]
-      .sort((a, b) => a.localeCompare(b))
-      .map<ArtifactNodeOption>((id) => ({ id }));
+    return [...set].sort((a, b) => a.localeCompare(b)).map<ArtifactNodeOption>((id) => ({ id }));
   }, [items]);
 
   return {

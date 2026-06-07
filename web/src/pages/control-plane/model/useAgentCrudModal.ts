@@ -182,9 +182,18 @@ export function useAgentCrudModal({ agents, refreshAgents }: UseAgentCrudModalOp
   // Returns true if an agent modal was closed; the caller can use this to
   // short-circuit the Escape key handler so other modals don't also close.
   const closeOnEscape = useCallback((): boolean => {
-    if (createOpen) { closeCreate(); return true; }
-    if (editOpen) { closeEdit(); return true; }
-    if (deleteOpen) { closeDelete(); return true; }
+    if (createOpen) {
+      closeCreate();
+      return true;
+    }
+    if (editOpen) {
+      closeEdit();
+      return true;
+    }
+    if (deleteOpen) {
+      closeDelete();
+      return true;
+    }
     return false;
   }, [createOpen, editOpen, deleteOpen, closeCreate, closeEdit, closeDelete]);
 

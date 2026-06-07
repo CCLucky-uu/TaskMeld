@@ -5,7 +5,7 @@ import type {
   PluginContext,
   BatchPluginContext,
   NodePluginContext,
-} from './types'
+} from "./types"
 
 export class PluginRegistry {
   private plugins = new Map<string, PipelinePlugin<any>>()
@@ -26,10 +26,13 @@ export class PluginRegistry {
    * Get enabled plugin instances for a pipeline's workflow plugins config.
    * Optionally filter by plugin type.
    */
-  getEnabled(instances: PluginInstance[], type?: PluginType): Array<{ plugin: PipelinePlugin; config: Record<string, unknown> }> {
+  getEnabled(
+    instances: PluginInstance[],
+    type?: PluginType,
+  ): Array<{ plugin: PipelinePlugin; config: Record<string, unknown> }> {
     return instances
-      .filter(inst => inst.enabled)
-      .map(inst => {
+      .filter((inst) => inst.enabled)
+      .map((inst) => {
         const plugin = this.plugins.get(inst.pluginId)
         if (!plugin) return null
         if (type && plugin.type !== type) return null
@@ -43,7 +46,7 @@ export class PluginRegistry {
    * Returns null if no dataSource plugin is enabled.
    */
   async fetchItems(pipelineId: string, instances: PluginInstance[]): Promise<string[] | null> {
-    const sources = this.getEnabled(instances, 'dataSource')
+    const sources = this.getEnabled(instances, "dataSource")
     for (const { plugin, config } of sources) {
       if (plugin.hooks?.fetchItems) {
         const ctx: PluginContext = { pipelineId, pluginId: plugin.id, config, enabled: true }
@@ -58,7 +61,7 @@ export class PluginRegistry {
    * Returns true if no scheduler plugin blocks it.
    */
   shouldSchedule(pipelineId: string, instances: PluginInstance[]): boolean {
-    const schedulers = this.getEnabled(instances, 'scheduler')
+    const schedulers = this.getEnabled(instances, "scheduler")
     for (const { plugin, config } of schedulers) {
       if (plugin.hooks?.shouldSchedule) {
         const ctx: PluginContext = { pipelineId, pluginId: plugin.id, config, enabled: true }
@@ -71,7 +74,11 @@ export class PluginRegistry {
   /**
    * Emit a lifecycle hook to all enabled plugins that implement it.
    */
-  async emit(hookName: keyof NonNullable<PipelinePlugin['hooks']>, instances: PluginInstance[], ctx: PluginContext): Promise<void> {
+  async emit(
+    hookName: keyof NonNullable<PipelinePlugin["hooks"]>,
+    instances: PluginInstance[],
+    ctx: PluginContext,
+  ): Promise<void> {
     const enabled = this.getEnabled(instances)
     for (const { plugin } of enabled) {
       const hook = plugin.hooks?.[hookName] as ((ctx: any) => void | Promise<void>) | undefined
@@ -88,7 +95,11 @@ export class PluginRegistry {
   /**
    * Emit a batch hook with batch-specific context.
    */
-  async emitBatch(hookName: 'onBatchStart' | 'onBatchComplete', instances: PluginInstance[], ctx: BatchPluginContext): Promise<void> {
+  async emitBatch(
+    hookName: "onBatchStart" | "onBatchComplete",
+    instances: PluginInstance[],
+    ctx: BatchPluginContext,
+  ): Promise<void> {
     const enabled = this.getEnabled(instances)
     for (const { plugin } of enabled) {
       const hook = plugin.hooks?.[hookName] as ((ctx: any) => void | Promise<void>) | undefined
@@ -105,7 +116,7 @@ export class PluginRegistry {
   /**
    * Emit a node hook.
    */
-  async emitNode(hookName: 'onNodeAfterRun', instances: PluginInstance[], ctx: NodePluginContext): Promise<void> {
+  async emitNode(hookName: "onNodeAfterRun", instances: PluginInstance[], ctx: NodePluginContext): Promise<void> {
     const enabled = this.getEnabled(instances)
     for (const { plugin } of enabled) {
       const hook = plugin.hooks?.[hookName] as ((ctx: any) => void | Promise<void>) | undefined

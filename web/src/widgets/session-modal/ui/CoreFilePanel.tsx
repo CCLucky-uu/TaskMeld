@@ -42,28 +42,49 @@ export function CoreFilePanel({
     <div className="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-2">
       <div className="flex items-center justify-between gap-[10px] bg-transparent px-0 py-[6px] pb-2 text-xs text-[var(--muted)]">
         <div className={`${monoClassName} flex min-w-0 gap-3`}>
-          <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">agent: {selectedAgentId || "-"}</span>
-          <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">file: {selectedFileName || "-"}</span>
+          <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
+            agent: {selectedAgentId || "-"}
+          </span>
+          <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
+            file: {selectedFileName || "-"}
+          </span>
           <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">updated: {updatedAtText}</span>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
           {!isEditingFile ? (
-            <button className={`${drawerCloseClassName} h-auto w-auto px-[9px] py-1 text-xs`} type="button" onClick={onBeginEdit} disabled={!canEditCurrentFile}>
+            <button
+              className={`${drawerCloseClassName} h-auto w-auto px-[9px] py-1 text-xs`}
+              type="button"
+              onClick={onBeginEdit}
+              disabled={!canEditCurrentFile}
+            >
               {t("edit")}
             </button>
           ) : (
             <>
-              <button className={`${drawerCloseClassName} h-auto w-auto px-[9px] py-1 text-xs`} type="button" onClick={onCancelEdit} disabled={isSavingFile}>
+              <button
+                className={`${drawerCloseClassName} h-auto w-auto px-[9px] py-1 text-xs`}
+                type="button"
+                onClick={onCancelEdit}
+                disabled={isSavingFile}
+              >
                 {t("cancel")}
               </button>
-              <button className={`${drawerCloseClassName} h-auto w-auto border-[var(--live)] px-[9px] py-1 text-xs text-[var(--live)] hover:bg-[rgba(50,215,186,0.12)]`} type="button" onClick={onSave} disabled={isSavingFile}>
+              <button
+                className={`${drawerCloseClassName} h-auto w-auto border-[var(--live)] px-[9px] py-1 text-xs text-[var(--live)] hover:bg-[rgba(50,215,186,0.12)]`}
+                type="button"
+                onClick={onSave}
+                disabled={isSavingFile}
+              >
                 {isSavingFile ? t("saving") : t("save")}
               </button>
             </>
           )}
         </div>
       </div>
-      {fileSaveError ? <p className={`${monoClassName} m-0 text-xs text-[var(--bad)]`}>{t("saveFailed", { error: fileSaveError })}</p> : null}
+      {fileSaveError ? (
+        <p className={`${monoClassName} m-0 text-xs text-[var(--bad)]`}>{t("saveFailed", { error: fileSaveError })}</p>
+      ) : null}
       <div className={`${isEditingFile ? "overflow-hidden px-3 pt-0" : "overflow-auto px-3 pt-2"} min-h-0`}>
         {isEditingFile ? (
           <textarea
@@ -75,7 +96,9 @@ export function CoreFilePanel({
         ) : canRenderMarkdown ? (
           <MarkdownViewer content={filePaneText} />
         ) : (
-          <pre className="m-0 whitespace-pre-wrap break-words p-0 font-[JetBrains_Mono,monospace] text-[13px] leading-[1.45] text-[var(--text)]">{filePaneText}</pre>
+          <pre className="m-0 whitespace-pre-wrap break-words p-0 font-[JetBrains_Mono,monospace] text-[13px] leading-[1.45] text-[var(--text)]">
+            {filePaneText}
+          </pre>
         )}
       </div>
     </div>

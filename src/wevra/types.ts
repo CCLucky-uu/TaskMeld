@@ -9,9 +9,9 @@ export interface ToolAnnotations {
   idempotent: boolean
 }
 
-export type PermissionLevel = 'auto' | 'confirm' | 'elevated'
+export type PermissionLevel = "auto" | "confirm" | "elevated"
 
-export type ExecutionMode = 'plan' | 'normal' | 'auto'
+export type ExecutionMode = "plan" | "normal" | "auto"
 
 export interface ToolPreferences {
   mode: ExecutionMode
@@ -20,7 +20,7 @@ export interface ToolPreferences {
 }
 
 export const DEFAULT_TOOL_PREFERENCES: ToolPreferences = {
-  mode: 'normal',
+  mode: "normal",
   alwaysAllow: [],
   alwaysDeny: [],
 }
@@ -55,15 +55,13 @@ export interface ToolResult {
 }
 
 export interface Attachment {
-  type: 'image' | 'file'
+  type: "image" | "file"
   mimeType: string
   data: string
   name?: string
 }
 
-export type ValidationResult =
-  | { valid: true; parsed: unknown }
-  | { valid: false; error: string }
+export type ValidationResult = { valid: true; parsed: unknown } | { valid: false; error: string }
 
 export interface Tool extends ToolDefinition {
   validate?(args: unknown): ValidationResult
@@ -93,7 +91,7 @@ export interface Logger {
 
 // ── LLM / Brain ──
 
-export type MessageRole = 'system' | 'user' | 'assistant' | 'tool'
+export type MessageRole = "system" | "user" | "assistant" | "tool"
 
 export interface Message {
   role: MessageRole
@@ -109,7 +107,7 @@ export interface LLMResponse {
   content: string
   toolCalls: ToolCall[]
   usage: TokenUsage
-  finishReason: 'stop' | 'tool_calls' | 'length'
+  finishReason: "stop" | "tool_calls" | "length"
 }
 
 export interface TokenUsage {
@@ -121,19 +119,19 @@ export interface TokenUsage {
 }
 
 export type StreamEventType =
-  | 'thinking_start'
-  | 'thinking_delta'
-  | 'thinking_end'
-  | 'text_start'
-  | 'text_delta'
-  | 'text_end'
-  | 'tool_start'
-  | 'tool_delta'
-  | 'tool_end'
-  | 'step_finish'
-  | 'confirm_request'
-  | 'confirm_response'
-  | 'error'
+  | "thinking_start"
+  | "thinking_delta"
+  | "thinking_end"
+  | "text_start"
+  | "text_delta"
+  | "text_end"
+  | "tool_start"
+  | "tool_delta"
+  | "tool_end"
+  | "step_finish"
+  | "confirm_request"
+  | "confirm_response"
+  | "error"
 
 export interface StreamEvent {
   type: StreamEventType
@@ -154,7 +152,7 @@ export interface LLMConfig {
 }
 
 export interface ThinkingConfig {
-  level: 'off' | 'low' | 'medium' | 'high' | 'max'
+  level: "off" | "low" | "medium" | "high" | "max"
   budgetTokens?: number
 }
 
@@ -163,7 +161,7 @@ export interface ThinkingConfig {
 export interface ModelCompat {
   supportsReasoningEffort: boolean
   supportsUsageInStreaming: boolean
-  maxTokensField: 'max_tokens' | 'max_completion_tokens'
+  maxTokensField: "max_tokens" | "max_completion_tokens"
   requiresReasoningContentPassthrough: boolean
   temperatureIgnoredInThinking: boolean
   extraBodyThinkingToggle: boolean
@@ -181,7 +179,7 @@ export interface ModelProfile {
 export interface ProviderProfile {
   name: string
   baseUrl: string
-  api: 'openai-completions'
+  api: "openai-completions"
   models: ModelProfile[]
   readonly?: boolean
 }
@@ -191,7 +189,7 @@ export interface RuntimeModelConfig {
   modelId: string
   baseUrl: string
   apiKey: string
-  api: 'openai-completions'
+  api: "openai-completions"
   contextWindow: number
   maxTokens: number
   reasoning: boolean
@@ -205,18 +203,21 @@ export interface ModelsJson {
   version: number
   default?: { provider: string; model: string }
   enabledModels?: string[]
-  providers: Record<string, {
-    baseUrl: string
-    api: string
-    apiKey: string
-    models: Array<ModelProfile & { enabled?: boolean }>
-  }>
+  providers: Record<
+    string,
+    {
+      baseUrl: string
+      api: string
+      apiKey: string
+      models: Array<ModelProfile & { enabled?: boolean }>
+    }
+  >
 }
 
 // ── Memory ──
 
-export type MemoryType = 'fact' | 'preference' | 'event' | 'summary'
-export type MemoryScope = 'global' | 'pipeline'
+export type MemoryType = "fact" | "preference" | "event" | "summary"
+export type MemoryScope = "global" | "pipeline"
 
 export interface MemoryEntry {
   content: string
@@ -239,7 +240,7 @@ export interface RecallOptions {
 
 // ── Skill ──
 
-export type SkillInvocation = 'always' | 'auto' | 'user' | 'model'
+export type SkillInvocation = "always" | "auto" | "user" | "model"
 
 export interface SkillDef {
   name: string
@@ -250,7 +251,7 @@ export interface SkillDef {
 
 // ── Agent Loop ──
 
-export type LoopResultType = 'text' | 'confirm' | 'error' | 'max_iterations'
+export type LoopResultType = "text" | "confirm" | "error" | "max_iterations"
 
 export interface LoopResult {
   type: LoopResultType
@@ -292,7 +293,7 @@ export interface OpenAIChatResponse {
       content: string | null
       tool_calls?: Array<{
         id: string
-        type: 'function'
+        type: "function"
         function: {
           name: string
           arguments: string
@@ -326,7 +327,7 @@ export interface OpenAIStreamChunk {
       tool_calls?: Array<{
         index: number
         id?: string
-        type?: 'function'
+        type?: "function"
         function?: {
           name?: string
           arguments?: string

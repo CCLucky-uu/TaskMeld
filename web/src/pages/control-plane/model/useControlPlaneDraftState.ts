@@ -103,11 +103,7 @@ export function useControlPlaneDraftState({
     setDraftWorkflowLane(selectedWorkflowNode.lane === "branch" ? "branch" : "main");
     setDraftWorkflowRouteAllowed(selectedWorkflowNode.routePolicy?.allowed?.join(", ") ?? "");
     setDraftWorkflowRouteTargets(selectedRouteTargets);
-  }, [
-    selectedWorkflowNode?.lane,
-    selectedWorkflowNode?.routePolicy,
-    selectedRouteTargets,
-  ]);
+  }, [selectedWorkflowNode?.lane, selectedWorkflowNode?.routePolicy, selectedRouteTargets]);
 
   useEffect(() => {
     if (!selectedGroup) {
@@ -144,7 +140,8 @@ export function useControlPlaneDraftState({
     return (
       draftTitle.trim() !== (selectedNode.title ?? "").trim() ||
       draftAgentId.trim() !== (selectedNode.executor.agentId ?? "").trim() ||
-      draftExecutorSessionId.trim() !== ((selectedNode.executor.sessionId && selectedNode.executor.sessionId.trim()) || "") ||
+      draftExecutorSessionId.trim() !==
+        ((selectedNode.executor.sessionId && selectedNode.executor.sessionId.trim()) || "") ||
       (draftInstruction ?? "").trim() !== (selectedNode.instruction ?? "").trim() ||
       draftAllowReject !== (selectedNode.allowReject === true) ||
       Math.max(0, Math.min(10, Math.trunc(Number(draftMaxRejectCount) || 0))) !==
@@ -168,7 +165,12 @@ export function useControlPlaneDraftState({
     const currentAllowed = selectedWorkflowNode.routePolicy?.allowed ?? [];
     const normalizedCurrentAllowed = Array.from(new Set(currentAllowed.map((item) => item.trim()).filter(Boolean)));
     const normalizedDraftAllowed = Array.from(
-      new Set(draftWorkflowRouteAllowed.split(",").map((item) => item.trim()).filter(Boolean)),
+      new Set(
+        draftWorkflowRouteAllowed
+          .split(",")
+          .map((item) => item.trim())
+          .filter(Boolean),
+      ),
     );
     const allowedEqual =
       normalizedCurrentAllowed.length === normalizedDraftAllowed.length &&

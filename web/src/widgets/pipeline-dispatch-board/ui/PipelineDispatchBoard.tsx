@@ -17,10 +17,7 @@ import type {
   PipelineOutput,
   PipelineListItem,
 } from "../../../entities/pipeline/types";
-import {
-  actionRowClassName,
-  panelHeaderClassName,
-} from "../../../shared/ui/panelClasses";
+import { actionRowClassName, panelHeaderClassName } from "../../../shared/ui/panelClasses";
 import {
   controlInputClassName,
   controlSingleLineMonoClassName,
@@ -101,7 +98,9 @@ export function PipelineDispatchBoard({ pipelines }: Props) {
     }
   }, []);
 
-  useEffect(() => { void loadLinks(); }, [loadLinks]);
+  useEffect(() => {
+    void loadLinks();
+  }, [loadLinks]);
 
   useEffect(() => {
     if (tab === "queue" && queuePipeline) void loadQueue(queuePipeline);
@@ -169,9 +168,24 @@ export function PipelineDispatchBoard({ pipelines }: Props) {
     <div className="flex flex-col h-full min-h-0">
       {/* Tab bar */}
       <div className="flex items-center gap-1 px-3 py-2 border-b border-[var(--line)]">
-        <button className={`${tabBtnClass} ${tab === "links" ? tabBtnActiveClass : ""}`} onClick={() => setTab("links")}>{t("links")}</button>
-        <button className={`${tabBtnClass} ${tab === "queue" ? tabBtnActiveClass : ""}`} onClick={() => setTab("queue")}>{t("queue")}</button>
-        <button className={`${tabBtnClass} ${tab === "outputs" ? tabBtnActiveClass : ""}`} onClick={() => setTab("outputs")}>{t("outputs")}</button>
+        <button
+          className={`${tabBtnClass} ${tab === "links" ? tabBtnActiveClass : ""}`}
+          onClick={() => setTab("links")}
+        >
+          {t("links")}
+        </button>
+        <button
+          className={`${tabBtnClass} ${tab === "queue" ? tabBtnActiveClass : ""}`}
+          onClick={() => setTab("queue")}
+        >
+          {t("queue")}
+        </button>
+        <button
+          className={`${tabBtnClass} ${tab === "outputs" ? tabBtnActiveClass : ""}`}
+          onClick={() => setTab("outputs")}
+        >
+          {t("outputs")}
+        </button>
       </div>
 
       <div className="flex-1 overflow-y-auto min-h-0">
@@ -196,9 +210,7 @@ export function PipelineDispatchBoard({ pipelines }: Props) {
               </button>
             </div>
 
-            {message && (
-              <p className={`${modalSublineClassName} mb-2 text-[var(--bad)]`}>{message}</p>
-            )}
+            {message && <p className={`${modalSublineClassName} mb-2 text-[var(--bad)]`}>{message}</p>}
 
             {/* Create form */}
             {createOpen && (
@@ -206,35 +218,71 @@ export function PipelineDispatchBoard({ pipelines }: Props) {
                 <div className="grid grid-cols-2 gap-2 mb-2">
                   <div>
                     <label className="block mb-1 text-[11px] text-[var(--muted)]">{t("upstreamPipeline")}</label>
-                    <select className={controlInputMonoClassName} value={newFrom} onChange={(e) => setNewFrom(e.target.value)}>
-                      {pipelines.map((p) => <option key={p.id} value={p.id}>{p.id} | {p.title}</option>)}
+                    <select
+                      className={controlInputMonoClassName}
+                      value={newFrom}
+                      onChange={(e) => setNewFrom(e.target.value)}
+                    >
+                      {pipelines.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.id} | {p.title}
+                        </option>
+                      ))}
                     </select>
                   </div>
                   <div>
                     <label className="block mb-1 text-[11px] text-[var(--muted)]">{t("downstreamPipeline")}</label>
-                    <select className={controlInputMonoClassName} value={newTo} onChange={(e) => setNewTo(e.target.value)}>
-                      {pipelines.map((p) => <option key={p.id} value={p.id}>{p.id} | {p.title}</option>)}
+                    <select
+                      className={controlInputMonoClassName}
+                      value={newTo}
+                      onChange={(e) => setNewTo(e.target.value)}
+                    >
+                      {pipelines.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.id} | {p.title}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2 mb-2">
                   <div>
                     <label className="block mb-1 text-[11px] text-[var(--muted)]">{t("failPolicy")}</label>
-                    <select className={controlInputMonoClassName} value={newOnFailed} onChange={(e) => setNewOnFailed(e.target.value as "continue" | "pause")}>
+                    <select
+                      className={controlInputMonoClassName}
+                      value={newOnFailed}
+                      onChange={(e) => setNewOnFailed(e.target.value as "continue" | "pause")}
+                    >
                       <option value="continue">{t("continueOption")}</option>
                       <option value="pause">{t("pauseOption")}</option>
                     </select>
                   </div>
                   <div>
                     <label className="block mb-1 text-[11px] text-[var(--muted)]">{t("maxQueue")}</label>
-                    <input className={controlSingleLineMonoClassName} type="number" min={1} max={10000} value={newMaxPending} onChange={(e) => setNewMaxPending(Number(e.target.value) || 100)} />
+                    <input
+                      className={controlSingleLineMonoClassName}
+                      type="number"
+                      min={1}
+                      max={10000}
+                      value={newMaxPending}
+                      onChange={(e) => setNewMaxPending(Number(e.target.value) || 100)}
+                    />
                   </div>
                 </div>
                 <div className={actionRowClassName}>
-                  <button className="px-3 py-1 text-xs border border-[var(--live-25)] bg-transparent text-[var(--live)] cursor-pointer" onClick={handleCreate} disabled={saving || !newFrom || !newTo || newFrom === newTo}>
+                  <button
+                    className="px-3 py-1 text-xs border border-[var(--live-25)] bg-transparent text-[var(--live)] cursor-pointer"
+                    onClick={handleCreate}
+                    disabled={saving || !newFrom || !newTo || newFrom === newTo}
+                  >
                     {saving ? t("creating") : t("confirmCreate")}
                   </button>
-                  <button className="px-3 py-1 text-xs border border-[var(--line)] bg-transparent text-[var(--muted)] cursor-pointer" onClick={() => setCreateOpen(false)}>{t("cancel")}</button>
+                  <button
+                    className="px-3 py-1 text-xs border border-[var(--line)] bg-transparent text-[var(--muted)] cursor-pointer"
+                    onClick={() => setCreateOpen(false)}
+                  >
+                    {t("cancel")}
+                  </button>
                 </div>
               </div>
             )}
@@ -245,7 +293,10 @@ export function PipelineDispatchBoard({ pipelines }: Props) {
             ) : (
               <div className="space-y-1">
                 {links.map((link) => (
-                  <div key={link.id} className="flex items-center gap-2 p-2 border border-[var(--line)] bg-[var(--surface-3)] text-xs">
+                  <div
+                    key={link.id}
+                    className="flex items-center gap-2 p-2 border border-[var(--line)] bg-[var(--surface-3)] text-xs"
+                  >
                     <span className="text-[var(--live)] font-mono text-[11px]">{link.id}</span>
                     <span className="font-mono text-[var(--text)]">{link.fromPipelineId}</span>
                     <span className="text-[var(--muted)]">→</span>
@@ -253,16 +304,24 @@ export function PipelineDispatchBoard({ pipelines }: Props) {
                     {link.inputContract?.requireType && (
                       <span className="text-[var(--muted)] text-[10px]">type:{link.inputContract.requireType}</span>
                     )}
-                    <span className={`ml-auto px-1.5 py-0.5 text-[10px] font-semibold ${link.enabled ? "text-[var(--good)]" : "text-[var(--muted)]"}`}>
+                    <span
+                      className={`ml-auto px-1.5 py-0.5 text-[10px] font-semibold ${link.enabled ? "text-[var(--good)]" : "text-[var(--muted)]"}`}
+                    >
                       {link.enabled ? t("common:common.enabled") : t("common:common.disabled")}
                     </span>
                     <span className="text-[10px] text-[var(--muted)]">
                       onFailed:{link.onJobFailed} | max:{link.maxPendingJobs}
                     </span>
-                    <button className="px-1.5 py-0.5 text-[10px] border border-[var(--line)] bg-transparent text-[var(--text)] cursor-pointer" onClick={() => handleToggle(link)}>
+                    <button
+                      className="px-1.5 py-0.5 text-[10px] border border-[var(--line)] bg-transparent text-[var(--text)] cursor-pointer"
+                      onClick={() => handleToggle(link)}
+                    >
                       {link.enabled ? t("disable") : t("enable")}
                     </button>
-                    <button className="px-1.5 py-0.5 text-[10px] border border-[var(--bad-25)] bg-transparent text-[var(--bad)] cursor-pointer" onClick={() => handleDelete(link.id)}>
+                    <button
+                      className="px-1.5 py-0.5 text-[10px] border border-[var(--bad-25)] bg-transparent text-[var(--bad)] cursor-pointer"
+                      onClick={() => handleDelete(link.id)}
+                    >
                       <Trash2Icon className="w-3 h-3" />
                     </button>
                   </div>
@@ -277,9 +336,17 @@ export function PipelineDispatchBoard({ pipelines }: Props) {
           <div className="p-3">
             <div className="mb-2">
               <label className="block mb-1 text-[11px] text-[var(--muted)]">{t("selectPipeline")}</label>
-              <select className={controlInputMonoClassName} value={queuePipeline} onChange={(e) => setQueuePipeline(e.target.value)}>
+              <select
+                className={controlInputMonoClassName}
+                value={queuePipeline}
+                onChange={(e) => setQueuePipeline(e.target.value)}
+              >
                 <option value="">{t("selectPipelinePlaceholder")}</option>
-                {pipelines.map((p) => <option key={p.id} value={p.id}>{p.id} | {p.title}</option>)}
+                {pipelines.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.id} | {p.title}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -301,11 +368,18 @@ export function PipelineDispatchBoard({ pipelines }: Props) {
                 {queue.length > 0 && (
                   <div className="space-y-1">
                     {queue.map((job) => (
-                      <div key={job.jobId} className="flex items-center gap-2 p-2 border border-[var(--line)] bg-[var(--surface-3)] text-xs">
-                        <span className="font-mono text-[11px] text-[var(--text)] truncate max-w-[180px]">{job.jobId}</span>
+                      <div
+                        key={job.jobId}
+                        className="flex items-center gap-2 p-2 border border-[var(--line)] bg-[var(--surface-3)] text-xs"
+                      >
+                        <span className="font-mono text-[11px] text-[var(--text)] truncate max-w-[180px]">
+                          {job.jobId}
+                        </span>
                         <span className="text-[var(--muted)]">←</span>
                         <span className="font-mono text-[var(--text)]">{job.fromPipelineId}</span>
-                        <span className={`px-1 py-0.5 text-[10px] font-semibold text-[var(--${statusTone[job.status] ?? "muted"})]`}>
+                        <span
+                          className={`px-1 py-0.5 text-[10px] font-semibold text-[var(--${statusTone[job.status] ?? "muted"})]`}
+                        >
                           {t(`common:status.${job.status}`)}
                         </span>
                         {job.targetRunId && (
@@ -315,14 +389,18 @@ export function PipelineDispatchBoard({ pipelines }: Props) {
                           {new Date(job.createdAt).toLocaleString()}
                         </span>
                         {(job.status === "failed" || job.status === "canceled") && (
-                          <button className="px-1.5 py-0.5 text-[10px] border border-[var(--live-25)] bg-transparent text-[var(--live)] cursor-pointer"
-                            onClick={() => handleRetry(queuePipeline, job.jobId)}>
+                          <button
+                            className="px-1.5 py-0.5 text-[10px] border border-[var(--live-25)] bg-transparent text-[var(--live)] cursor-pointer"
+                            onClick={() => handleRetry(queuePipeline, job.jobId)}
+                          >
                             <RefreshCwIcon className="w-3 h-3" />
                           </button>
                         )}
                         {job.status === "pending" && (
-                          <button className="px-1.5 py-0.5 text-[10px] border border-[var(--bad-25)] bg-transparent text-[var(--bad)] cursor-pointer"
-                            onClick={() => handleCancel(queuePipeline, job.jobId)}>
+                          <button
+                            className="px-1.5 py-0.5 text-[10px] border border-[var(--bad-25)] bg-transparent text-[var(--bad)] cursor-pointer"
+                            onClick={() => handleCancel(queuePipeline, job.jobId)}
+                          >
                             <CloseIcon className="w-3 h-3" />
                           </button>
                         )}
@@ -340,9 +418,17 @@ export function PipelineDispatchBoard({ pipelines }: Props) {
           <div className="p-3">
             <div className="mb-2">
               <label className="block mb-1 text-[11px] text-[var(--muted)]">{t("selectPipeline")}</label>
-              <select className={controlInputMonoClassName} value={outputsPipeline} onChange={(e) => setOutputsPipeline(e.target.value)}>
+              <select
+                className={controlInputMonoClassName}
+                value={outputsPipeline}
+                onChange={(e) => setOutputsPipeline(e.target.value)}
+              >
                 <option value="">{t("selectPipelinePlaceholder")}</option>
-                {pipelines.map((p) => <option key={p.id} value={p.id}>{p.id} | {p.title}</option>)}
+                {pipelines.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.id} | {p.title}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -353,7 +439,10 @@ export function PipelineDispatchBoard({ pipelines }: Props) {
             ) : (
               <div className="space-y-1">
                 {outputs.map((output) => (
-                  <div key={output.outputId} className="flex items-center gap-2 p-2 border border-[var(--line)] bg-[var(--surface-3)] text-xs">
+                  <div
+                    key={output.outputId}
+                    className="flex items-center gap-2 p-2 border border-[var(--line)] bg-[var(--surface-3)] text-xs"
+                  >
                     <span className="font-mono text-[11px] text-[var(--text)]">{output.outputId}</span>
                     <span className="text-[var(--muted)]">node:{output.outputNodeId}</span>
                     <span className="text-[10px] text-[var(--muted)]">type:{output.artifactRef.type}</span>

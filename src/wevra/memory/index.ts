@@ -1,4 +1,4 @@
-import type { MemoryEntry, RecallOptions, MemoryScope, Message } from '../types'
+import type { MemoryEntry, RecallOptions, MemoryScope, Message } from "../types"
 
 export class WevraMemory {
   private store = new Map<string, MemoryEntry[]>()
@@ -8,15 +8,15 @@ export class WevraMemory {
     const query = options.query.toLowerCase()
 
     const scored = entries
-      .map(entry => ({
+      .map((entry) => ({
         entry,
         score: this.relevanceScore(entry, query),
       }))
-      .filter(s => s.score > 0)
-      .filter(s => !options.minImportance || s.entry.importance >= options.minImportance)
+      .filter((s) => s.score > 0)
+      .filter((s) => !options.minImportance || s.entry.importance >= options.minImportance)
       .sort((a, b) => b.score - a.score)
 
-    return scored.slice(0, options.topK ?? 5).map(s => s.entry)
+    return scored.slice(0, options.topK ?? 5).map((s) => s.entry)
   }
 
   async remember(entry: MemoryEntry): Promise<void> {
@@ -36,7 +36,7 @@ export class WevraMemory {
 
   private relevanceScore(entry: MemoryEntry, query: string): number {
     const content = entry.content.toLowerCase()
-    const tags = entry.tags.map(t => t.toLowerCase())
+    const tags = entry.tags.map((t) => t.toLowerCase())
 
     let score = 0
     if (content.includes(query)) score += 1

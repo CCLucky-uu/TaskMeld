@@ -1,7 +1,7 @@
-import assert from "node:assert/strict";
-import { mkdtempSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import assert from "node:assert/strict"
+import { mkdtempSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 import {
   defaultTemplateNodes,
   defaultWorkflowDefinition,
@@ -9,8 +9,8 @@ import {
   readWorkflowDefinitionFromRawDetailed,
   readWorkflowDefinitionFromRaw,
   validateWorkflowDefinition,
-} from "../src/pipeline/template";
-import { seedRunWithItems } from "../src/pipeline/runtime-model";
+} from "../src/pipeline/template"
+import { seedRunWithItems } from "../src/pipeline/runtime-model"
 import {
   collectEnvelopeCandidates,
   createNodeExecutionPrompt,
@@ -19,15 +19,25 @@ import {
   rememberObservedEnvelopes,
   shouldFailFastForCompletedSession,
   type ObservedEnvelope,
-} from "../src/pipeline/structured-output";
+} from "../src/pipeline/structured-output"
 
 const run = async () => {
-  const toPersistedV3 = (workflowLike: { scheduler: unknown; plugins?: unknown; nodes: unknown[]; edges: Array<{ from: string; to: string; when: string | null }>; groups: unknown[] }) => ({
+  const toPersistedV3 = (workflowLike: {
+    scheduler: unknown
+    plugins?: unknown
+    nodes: unknown[]
+    edges: Array<{ from: string; to: string; when: string | null }>
+    groups: unknown[]
+  }) => ({
     version: "3.0" as const,
     scheduler: workflowLike.scheduler,
     plugins: workflowLike.plugins ?? [
-      { pluginId: 'remote-batch', enabled: false, config: { url: "", startBatch: 1, batchSize: 5, sourceField: "list30" } },
-      { pluginId: 'scheduler', enabled: true, config: {} },
+      {
+        pluginId: "remote-batch",
+        enabled: false,
+        config: { url: "", startBatch: 1, batchSize: 5, sourceField: "list30" },
+      },
+      { pluginId: "scheduler", enabled: true, config: {} },
     ],
     nodes: workflowLike.nodes,
     edges: workflowLike.edges.map((edge) =>
@@ -36,117 +46,125 @@ const run = async () => {
         : { from: edge.from, to: edge.to, kind: "route" as const, route: edge.when },
     ),
     groups: workflowLike.groups,
-  });
-  const legacy = defaultTemplateNodes();
-  const workflow = defaultWorkflowDefinition();
+  })
+  const legacy = defaultTemplateNodes()
+  const workflow = defaultWorkflowDefinition()
 
-  assert.equal(workflow.version, "3.0");
-  assert.equal(legacy.length, 0, "default template should not ship preset workflow nodes");
-  assert.equal(workflow.nodes.length, 0, "default workflow should start empty");
-  assert.equal(workflow.scheduler.dispatchBy, "item");
+  assert.equal(workflow.version, "3.0")
+  assert.equal(legacy.length, 0, "default template should not ship preset workflow nodes")
+  assert.equal(workflow.nodes.length, 0, "default workflow should start empty")
+  assert.equal(workflow.scheduler.dispatchBy, "item")
 
-  const parsed = readWorkflowDefinitionFromRaw(toPersistedV3(workflow));
-  assert.ok(parsed, "workflow should be valid after mapping");
-  assert.equal(parsed?.nodes.length, 0);
-  const detailedFromPersisted = readWorkflowDefinitionFromRawDetailed(toPersistedV3(workflow));
-  assert.equal(detailedFromPersisted.ok, true, "version=3.0 应接受磁盘 kind/route 形状");
+  const parsed = readWorkflowDefinitionFromRaw(toPersistedV3(workflow))
+  assert.ok(parsed, "workflow should be valid after mapping")
+  assert.equal(parsed?.nodes.length, 0)
+  const detailedFromPersisted = readWorkflowDefinitionFromRawDetailed(toPersistedV3(workflow))
+  assert.equal(detailedFromPersisted.ok, true, "version=3.0 应接受磁盘 kind/route 形状")
   const detailedFromApiWhen = readWorkflowDefinitionFromRawDetailed({
     ...workflow,
     version: "3.0",
-  });
-  assert.equal(detailedFromApiWhen.ok, true, "version=3.0 应接受 API when 形状");
+  })
+  assert.equal(detailedFromApiWhen.ok, true, "version=3.0 应接受 API when 形状")
 
-  const workflowWithStringSchema = readWorkflowDefinitionFromRaw(toPersistedV3({
-    ...workflow,
-    nodes: [
-      {
-        id: "schema-node",
-        name: "Schema Node",
-        type: "task",
-        enabled: true,
-        isMainline: true,
-        lane: "main",
-        parallelGroupId: null,
-        executor: { agentId: "agent-a", role: "coder", fallbackAgentId: null, sessionId: null },
-        inputMode: "single",
-        outputMode: "single",
-        dependencyPolicy: "all",
-        routePolicy: null,
-        retryPolicy: { maxAttempts: 1, backoffMs: 0 },
-        outputSpec: {
-          type: "patch.v1",
-          // 工作流/API 导入经常来自 JSON 文本或表单，schemaVersion 允许用字符串数字表达。
-          schemaVersion: "1",
+  const workflowWithStringSchema = readWorkflowDefinitionFromRaw(
+    toPersistedV3({
+      ...workflow,
+      nodes: [
+        {
+          id: "schema-node",
+          name: "Schema Node",
+          type: "task",
+          enabled: true,
+          isMainline: true,
+          lane: "main",
+          parallelGroupId: null,
+          executor: { agentId: "agent-a", role: "coder", fallbackAgentId: null, sessionId: null },
+          inputMode: "single",
+          outputMode: "single",
+          dependencyPolicy: "all",
+          routePolicy: null,
+          retryPolicy: { maxAttempts: 1, backoffMs: 0 },
+          outputSpec: {
+            type: "patch.v1",
+            // 工作流/API 导入经常来自 JSON 文本或表单，schemaVersion 允许用字符串数字表达。
+            schemaVersion: "1",
+          },
+          instruction: "noop",
+          allowReject: false,
+          maxRejectCount: 0,
         },
-        instruction: "noop",
-        allowReject: false,
-        maxRejectCount: 0,
-      },
-    ],
-  }));
+      ],
+    }),
+  )
   assert.equal(
     workflowWithStringSchema?.nodes[0]?.outputSpec.schemaVersion,
     1,
     "string schemaVersion should normalize to number in workflow definition",
-  );
+  )
 
-  const runState = seedRunWithItems(legacy, ["kw-1", "kw-2"]);
-  assert.ok(Array.isArray(runState.itemRuns), "itemRuns should exist");
-  assert.equal(runState.itemRuns?.length, legacy.length * 2);
+  const runState = seedRunWithItems(legacy, ["kw-1", "kw-2"])
+  assert.ok(Array.isArray(runState.itemRuns), "itemRuns should exist")
+  assert.equal(runState.itemRuns?.length, legacy.length * 2)
 
-  const roots = legacy.filter((node) => node.dependsOn.length === 0).map((node) => node.id);
+  const roots = legacy.filter((node) => node.dependsOn.length === 0).map((node) => node.id)
   for (const item of runState.itemRuns ?? []) {
     if (roots.includes(item.nodeId)) {
-      assert.equal(item.status, "queued");
+      assert.equal(item.status, "queued")
     } else {
-      assert.equal(item.status, "blocked");
+      assert.equal(item.status, "blocked")
     }
   }
 
-  const invalid = readWorkflowDefinitionFromRaw(toPersistedV3({
-    scheduler: workflow.scheduler,
-    plugins: workflow.plugins,
-    nodes: workflowWithStringSchema?.nodes ?? [],
-    edges: [{ from: "n1", to: "missing", when: null }],
-    groups: [],
-  }));
-  assert.equal(invalid, null, "invalid edge should fail validation");
+  const invalid = readWorkflowDefinitionFromRaw(
+    toPersistedV3({
+      scheduler: workflow.scheduler,
+      plugins: workflow.plugins,
+      nodes: workflowWithStringSchema?.nodes ?? [],
+      edges: [{ from: "n1", to: "missing", when: null }],
+      groups: [],
+    }),
+  )
+  assert.equal(invalid, null, "invalid edge should fail validation")
 
-  const cyclic = readWorkflowDefinitionFromRaw(toPersistedV3({
-    scheduler: workflow.scheduler,
-    plugins: workflow.plugins,
-    nodes: workflow.nodes,
-    edges: [
-      { from: "n1", to: "n2", when: null },
-      { from: "n2", to: "n1", when: null },
-    ],
-    groups: [],
-  }));
-  assert.equal(cyclic, null, "cyclic workflow should fail validation");
+  const cyclic = readWorkflowDefinitionFromRaw(
+    toPersistedV3({
+      scheduler: workflow.scheduler,
+      plugins: workflow.plugins,
+      nodes: workflow.nodes,
+      edges: [
+        { from: "n1", to: "n2", when: null },
+        { from: "n2", to: "n1", when: null },
+      ],
+      groups: [],
+    }),
+  )
+  assert.equal(cyclic, null, "cyclic workflow should fail validation")
 
   const v2Rejected = readWorkflowDefinitionFromRawDetailed({
     ...workflow,
     version: "2.0",
-  });
-  assert.equal(v2Rejected.ok, false, "phase 4 should require explicit v2->v3 migration");
+  })
+  assert.equal(v2Rejected.ok, false, "phase 4 should require explicit v2->v3 migration")
   if (!v2Rejected.ok) {
-    assert.equal(v2Rejected.error, "workflow_migration_required");
+    assert.equal(v2Rejected.error, "workflow_migration_required")
   }
 
-  const mixedOutgoing = readWorkflowDefinitionFromRaw(toPersistedV3({
-    ...workflow,
-    edges: [
-      { from: "n1", to: "n2", when: null },
-      { from: "n1", to: "n3", when: "yes" },
-    ],
-  }));
-  assert.equal(mixedOutgoing, null, "legacy mixed outgoing edges should be rejected");
+  const mixedOutgoing = readWorkflowDefinitionFromRaw(
+    toPersistedV3({
+      ...workflow,
+      edges: [
+        { from: "n1", to: "n2", when: null },
+        { from: "n1", to: "n3", when: "yes" },
+      ],
+    }),
+  )
+  assert.equal(mixedOutgoing, null, "legacy mixed outgoing edges should be rejected")
 
-  const validCheck = validateWorkflowDefinition(workflow);
-  assert.equal(validCheck.ok, true, "default workflow should pass validation");
+  const validCheck = validateWorkflowDefinition(workflow)
+  assert.equal(validCheck.ok, true, "default workflow should pass validation")
 
-  const tempDir = mkdtempSync(join(tmpdir(), "openclaw-invalid-workflow-"));
-  const invalidWorkflowFile = join(tempDir, "workflow.json");
+  const tempDir = mkdtempSync(join(tmpdir(), "openclaw-invalid-workflow-"))
+  const invalidWorkflowFile = join(tempDir, "workflow.json")
   writeFileSync(
     invalidWorkflowFile,
     JSON.stringify({
@@ -161,18 +179,18 @@ const run = async () => {
       groups: [],
     }),
     "utf8",
-  );
+  )
   assert.throws(
     () => loadWorkflowDefinitionWithStorage({ workflowFilePath: invalidWorkflowFile }),
     (error: unknown) => {
-      const err = error as Error & { detail?: string };
-      return err.message === "invalid_persisted_workflow_definition" && typeof err.detail === "string";
+      const err = error as Error & { detail?: string }
+      return err.message === "invalid_persisted_workflow_definition" && typeof err.detail === "string"
     },
     "invalid persisted workflow should be blocked instead of falling back to default template",
-  );
+  )
 
-  const observed: ObservedEnvelope[] = [];
-  const requestId = "node-n2-17089918-3e3b-4efe-a77b-2946e1e346a9";
+  const observed: ObservedEnvelope[] = []
+  const requestId = "node-n2-17089918-3e3b-4efe-a77b-2946e1e346a9"
   rememberObservedEnvelopes(
     observed,
     {
@@ -199,7 +217,7 @@ const run = async () => {
       error: null,
     },
     "test",
-  );
+  )
   const evaluated = evaluateEnvelopeCandidates(
     observed.map((entry) => entry.envelope),
     {
@@ -209,9 +227,9 @@ const run = async () => {
       sessionId: "agent:wxclaw:main",
       outputSpec: { type: "patch.v1", schemaVersion: 1 },
     },
-  );
-  assert.equal(evaluated.violation, undefined, "string schemaVersion should pass envelope validation");
-  assert.equal(evaluated.envelope?.artifacts[0]?.schemaVersion, 1, "envelope schemaVersion should normalize to number");
+  )
+  assert.equal(evaluated.violation, undefined, "string schemaVersion should pass envelope validation")
+  assert.equal(evaluated.envelope?.artifacts[0]?.schemaVersion, 1, "envelope schemaVersion should normalize to number")
 
   const mixedTextEnvelopes = collectEnvelopeCandidates({
     message: {
@@ -249,11 +267,11 @@ const run = async () => {
         },
       ],
     },
-  });
-  assert.equal(mixedTextEnvelopes.length, 1, "mixed text should still yield one envelope candidate");
-  assert.equal(mixedTextEnvelopes[0]?.requestId, requestId, "embedded envelope should keep the expected requestId");
+  })
+  assert.equal(mixedTextEnvelopes.length, 1, "mixed text should still yield one envelope candidate")
+  assert.equal(mixedTextEnvelopes[0]?.requestId, requestId, "embedded envelope should keep the expected requestId")
 
-  const delayedObserved: ObservedEnvelope[] = [];
+  const delayedObserved: ObservedEnvelope[] = []
   rememberObservedEnvelopes(
     delayedObserved,
     {
@@ -289,17 +307,17 @@ const run = async () => {
       },
     },
     "event:agent",
-  );
+  )
   const pendingObserved = evaluateObservedEnvelopeWindow(delayedObserved, {
     runId: "run-1776517077519",
     nodeId: "n2",
     requestId,
     sessionId: "agent:wxclaw:main",
     outputSpec: { type: "patch.v1", schemaVersion: 1 },
-  });
-  assert.equal(pendingObserved.envelope, undefined, "session not completed should not confirm envelope early");
-  assert.equal(pendingObserved.violation, undefined, "session not completed should not fail early");
-  assert.equal(pendingObserved.seenCandidate, true, "session not completed should still remember seen candidates");
+  })
+  assert.equal(pendingObserved.envelope, undefined, "session not completed should not confirm envelope early")
+  assert.equal(pendingObserved.violation, undefined, "session not completed should not fail early")
+  assert.equal(pendingObserved.seenCandidate, true, "session not completed should still remember seen candidates")
 
   rememberObservedEnvelopes(
     delayedObserved,
@@ -327,7 +345,7 @@ const run = async () => {
       error: null,
     },
     "event:chat.final",
-  );
+  )
   const confirmedObserved = evaluateObservedEnvelopeWindow(
     delayedObserved,
     {
@@ -338,19 +356,23 @@ const run = async () => {
       outputSpec: { type: "patch.v1", schemaVersion: 1 },
     },
     { confirmFinal: true },
-  );
-  assert.equal(confirmedObserved.envelope?.artifacts[0]?.name, "final", "final confirmation should use the latest valid envelope");
+  )
+  assert.equal(
+    confirmedObserved.envelope?.artifacts[0]?.name,
+    "final",
+    "final confirmation should use the latest valid envelope",
+  )
 
   assert.equal(
     shouldFailFastForCompletedSession(Date.now() - 5_000),
     true,
     "ended session without envelope should enter the fast-fail branch",
-  );
+  )
   assert.equal(
     shouldFailFastForCompletedSession(Date.now()),
     false,
     "fresh completion signal should still respect the grace period",
-  );
+  )
 
   const routePrompt = createNodeExecutionPrompt({
     runId: "run-route-1",
@@ -382,13 +404,25 @@ const run = async () => {
         lane: "branch",
       },
     ],
-  });
-  assert.match(routePrompt, /## Routing Rules/, "route node prompt should include route rules");
-  assert.match(routePrompt, /`yes` -> `n-yes`/, "route node prompt should include route target mapping");
-  assert.match(routePrompt, /## Node Objective\n请根据命中结果把条目分发到对应下游节点。/, "route node prompt should keep node target");
-  assert.match(routePrompt, /## Downstream Rejection Feedback \(please prioritize fixes\)/, "route node prompt should keep reject feedback section");
-  assert.match(routePrompt, /## Rejection Configuration/, "allowReject=true prompt should include reject config section");
-  assert.match(routePrompt, /### Rejection Rules/, "allowReject=true prompt should include reject rules section");
+  })
+  assert.match(routePrompt, /## Routing Rules/, "route node prompt should include route rules")
+  assert.match(routePrompt, /`yes` -> `n-yes`/, "route node prompt should include route target mapping")
+  assert.match(
+    routePrompt,
+    /## Node Objective\n请根据命中结果把条目分发到对应下游节点。/,
+    "route node prompt should keep node target",
+  )
+  assert.match(
+    routePrompt,
+    /## Downstream Rejection Feedback \(please prioritize fixes\)/,
+    "route node prompt should keep reject feedback section",
+  )
+  assert.match(
+    routePrompt,
+    /## Rejection Configuration/,
+    "allowReject=true prompt should include reject config section",
+  )
+  assert.match(routePrompt, /### Rejection Rules/, "allowReject=true prompt should include reject rules section")
 
   const noRejectPrompt = createNodeExecutionPrompt({
     runId: "run-no-reject-1",
@@ -405,14 +439,22 @@ const run = async () => {
     rejectFeedbacks: [],
     allowedRoutes: [],
     routeTargets: [],
-  });
-  assert.doesNotMatch(noRejectPrompt, /## Rejection Configuration/, "allowReject=false prompt should not include reject config section");
-  assert.doesNotMatch(noRejectPrompt, /### Rejection Rules/, "allowReject=false prompt should not include reject rules section");
+  })
+  assert.doesNotMatch(
+    noRejectPrompt,
+    /## Rejection Configuration/,
+    "allowReject=false prompt should not include reject config section",
+  )
+  assert.doesNotMatch(
+    noRejectPrompt,
+    /### Rejection Rules/,
+    "allowReject=false prompt should not include reject rules section",
+  )
 
-  console.log("workflow-v2 tests passed");
-};
+  console.log("workflow-v2 tests passed")
+}
 
 void run().catch((error) => {
-  console.error("workflow-v2 tests failed", error);
-  process.exitCode = 1;
-});
+  console.error("workflow-v2 tests failed", error)
+  process.exitCode = 1
+})

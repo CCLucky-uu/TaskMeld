@@ -1,4 +1,4 @@
-import type { RenderSpecMap } from "../engine/types";
+import type { RenderSpecMap } from "../engine/types"
 
 export const artifactRenderSpecs: RenderSpecMap = {
   "artifact.list": {
@@ -28,4 +28,4 @@ export const artifactRenderSpecs: RenderSpecMap = {
       },
     ],
   },
-};
+}

@@ -96,15 +96,17 @@ const DEFAULT_REMOTE_BATCH_CONFIG = {
 
 // Helper: find a plugin instance from the plugins array by pluginId
 const findPlugin = (plugins: WorkflowPlugins | undefined, pluginId: string) =>
-  Array.isArray(plugins) ? plugins.find(p => p.pluginId === pluginId) : undefined;
+  Array.isArray(plugins) ? plugins.find((p) => p.pluginId === pluginId) : undefined;
 
 const getRemoteBatchConfig = (plugins: WorkflowPlugins | undefined) => {
-  const inst = findPlugin(plugins, 'remote-batch');
-  return inst?.enabled ? { ...DEFAULT_REMOTE_BATCH_CONFIG, enabled: true, ...inst.config } : DEFAULT_REMOTE_BATCH_CONFIG;
+  const inst = findPlugin(plugins, "remote-batch");
+  return inst?.enabled
+    ? { ...DEFAULT_REMOTE_BATCH_CONFIG, enabled: true, ...inst.config }
+    : DEFAULT_REMOTE_BATCH_CONFIG;
 };
 
 const isSchedulerEnabled = (plugins: WorkflowPlugins | undefined) => {
-  const inst = findPlugin(plugins, 'scheduler');
+  const inst = findPlugin(plugins, "scheduler");
   return inst ? inst.enabled : false;
 };
 const MAINLINE_ROUTE_VALUE = "yes";
@@ -149,7 +151,10 @@ const collectVisibleNodeIdsForBranch = (
   const visibleNodeIds = new Set<string>([splitNodeId]);
   const visitedEntities = new Set<string>();
   const queue = workflow.edges
-    .filter((edge) => edge.from === splitNodeId && (route === MAINLINE_ROUTE_VALUE ? edge.when === null : edge.when === route))
+    .filter(
+      (edge) =>
+        edge.from === splitNodeId && (route === MAINLINE_ROUTE_VALUE ? edge.when === null : edge.when === route),
+    )
     .map((edge) => edge.to);
   const groupMembersById = new Map(workflow.groups.map((group) => [group.id, group.members]));
 
@@ -227,7 +232,8 @@ export function useControlPlanePage() {
   const assistantTextByRunAgentRef = useRef<Map<string, string>>(new Map());
   const pendingNodeSaveRef = useRef<Promise<void> | null>(null);
   const getPipelineStateSnapshot = useCallback(
-    (pipelineId: PipelineId, stateById: Record<string, PipelineViewState>) => stateById[pipelineId] ?? createEmptyPipelineViewState(),
+    (pipelineId: PipelineId, stateById: Record<string, PipelineViewState>) =>
+      stateById[pipelineId] ?? createEmptyPipelineViewState(),
     [],
   );
   const currentPipelineListRef = useRef(pipelineList);
@@ -267,7 +273,8 @@ export function useControlPlanePage() {
   const isRunning = currentPipelineState.isRunning;
   const isPipelineEditing = editingPipelineId === activePipelineId;
   const batchStartBatch =
-    batchStartBatchById[activePipelineId] || String(getRemoteBatchConfig(currentPipelineState.workflow?.plugins).startBatch);
+    batchStartBatchById[activePipelineId] ||
+    String(getRemoteBatchConfig(currentPipelineState.workflow?.plugins).startBatch);
 
   const inferredGroups = useMemo(() => (workflow ? getInferredParallelGroups(workflow) : []), [workflow]);
   const parallelGroups = useMemo(
@@ -278,9 +285,13 @@ export function useControlPlanePage() {
       })),
     [inferredGroups],
   );
-  const selectedNode = useMemo(() => (selectedGroupId ? undefined : pipeline.find((n) => n.id === selectedNodeId)), [selectedNodeId, selectedGroupId, pipeline]);
+  const selectedNode = useMemo(
+    () => (selectedGroupId ? undefined : pipeline.find((n) => n.id === selectedNodeId)),
+    [selectedNodeId, selectedGroupId, pipeline],
+  );
   const selectedWorkflowNode = useMemo(
-    () => (selectedNodeId && !selectedGroupId ? workflow?.nodes.find((node) => node.id === selectedNodeId) ?? null : null),
+    () =>
+      selectedNodeId && !selectedGroupId ? (workflow?.nodes.find((node) => node.id === selectedNodeId) ?? null) : null,
     [workflow, selectedNodeId, selectedGroupId],
   );
   const selectedGroup = useMemo(() => {
@@ -403,9 +414,9 @@ export function useControlPlanePage() {
       selectedIndex <= 0
         ? []
         : templateNodes
-          .slice(0, selectedIndex)
-          .filter((node) => !disallowedIds.has(node.id))
-          .map((node) => ({ id: node.id, title: node.title }));
+            .slice(0, selectedIndex)
+            .filter((node) => !disallowedIds.has(node.id))
+            .map((node) => ({ id: node.id, title: node.title }));
     const groupOptions = inferredGroups
       .filter((group) => !disallowedIds.has(group.id))
       .map((group) => ({ id: group.id, title: `${t("modal:fieldLabel.group")} ${group.id}` }));
@@ -496,15 +507,18 @@ export function useControlPlanePage() {
     return current || mainSessionIdForAgent(agentId);
   }, [draftAgentId, draftExecutorSessionId]);
 
-  const setDraftAgentIdWithSessionSync = useCallback((nextAgentId: string) => {
-    const normalizedAgentId = nextAgentId.trim();
-    setDraftAgentIdBase(normalizedAgentId);
-    setDraftExecutorSessionId((current) => {
-      const currentId = current.trim();
-      if (!normalizedAgentId || !currentId) return "";
-      return isSessionForAgent(currentId, normalizedAgentId) ? currentId : "";
-    });
-  }, [setDraftAgentIdBase, setDraftExecutorSessionId]);
+  const setDraftAgentIdWithSessionSync = useCallback(
+    (nextAgentId: string) => {
+      const normalizedAgentId = nextAgentId.trim();
+      setDraftAgentIdBase(normalizedAgentId);
+      setDraftExecutorSessionId((current) => {
+        const currentId = current.trim();
+        if (!normalizedAgentId || !currentId) return "";
+        return isSessionForAgent(currentId, normalizedAgentId) ? currentId : "";
+      });
+    },
+    [setDraftAgentIdBase, setDraftExecutorSessionId],
+  );
 
   const filteredSessionsForSelectedAgent = useMemo(() => {
     if (!selectedAgentId) return sessions;
@@ -523,10 +537,7 @@ export function useControlPlanePage() {
     [agents, pipeline, timeline, agentOutputById],
   );
 
-  const hasPipelineExecution = useMemo(
-    () => computeHasPipelineExecution(pipeline, isRunning),
-    [isRunning, pipeline],
-  );
+  const hasPipelineExecution = useMemo(() => computeHasPipelineExecution(pipeline, isRunning), [isRunning, pipeline]);
 
   const getPipelineRemoteBatchPlugin = useCallback(
     (pipelineId: PipelineId): WorkflowRemoteBatchPlugin =>
@@ -542,7 +553,7 @@ export function useControlPlanePage() {
 
   const getPipelineSchedulerPlugin = useCallback(
     (pipelineId: PipelineId) => {
-      const inst = findPlugin(getPipelinePlugins(pipelineId), 'scheduler');
+      const inst = findPlugin(getPipelinePlugins(pipelineId), "scheduler");
       return { enabled: inst ? inst.enabled : false };
     },
     [getPipelinePlugins],
@@ -550,12 +561,11 @@ export function useControlPlanePage() {
 
   const load = useCallback(async () => {
     const startedAt = performance.now();
-    const [pipelineListResult, agentsResult, sessionsResult] =
-      await Promise.allSettled([
-        fetchPipelineList(),
-        fetchAgents(),
-        fetchSessions(),
-      ]);
+    const [pipelineListResult, agentsResult, sessionsResult] = await Promise.allSettled([
+      fetchPipelineList(),
+      fetchAgents(),
+      fetchSessions(),
+    ]);
     const nextPipelineList =
       pipelineListResult.status === "fulfilled" && pipelineListResult.value.length > 0
         ? pipelineListResult.value
@@ -580,7 +590,9 @@ export function useControlPlanePage() {
       const nextState: Record<string, PipelineViewState> = {};
       for (let index = 0; index < pipelineIds.length; index += 1) {
         const pipelineId = pipelineIds[index]!;
-        const workflowEntry = workflowPayloads[index] as PromiseSettledResult<Awaited<ReturnType<typeof fetchWorkflowDefinition>>>;
+        const workflowEntry = workflowPayloads[index] as PromiseSettledResult<
+          Awaited<ReturnType<typeof fetchWorkflowDefinition>>
+        >;
         const previousState = getPipelineStateSnapshot(pipelineId, prev);
         const workflowValue = workflowEntry?.status === "fulfilled" ? workflowEntry.value : previousState.workflow;
         nextState[pipelineId] = {
@@ -593,7 +605,9 @@ export function useControlPlanePage() {
     setBatchStartBatchById((prev) => {
       const next: Record<string, string> = {};
       for (let index = 0; index < pipelineIds.length; index += 1) {
-        const workflowEntry = workflowPayloads[index] as PromiseSettledResult<Awaited<ReturnType<typeof fetchWorkflowDefinition>>>;
+        const workflowEntry = workflowPayloads[index] as PromiseSettledResult<
+          Awaited<ReturnType<typeof fetchWorkflowDefinition>>
+        >;
         const pipelineId = pipelineIds[index]!;
         const current = prev[pipelineId]?.trim();
         next[pipelineId] =
@@ -606,7 +620,9 @@ export function useControlPlanePage() {
     });
 
     if (nextPipelineList.length > 0) {
-      setActivePipelineId((current) => (nextPipelineList.some((item) => item.id === current) ? current : nextPipelineList[0]!.id));
+      setActivePipelineId((current) =>
+        nextPipelineList.some((item) => item.id === current) ? current : nextPipelineList[0]!.id,
+      );
       setEditingPipelineId((current) =>
         current && nextPipelineList.some((item) => item.id === current) ? current : null,
       );
@@ -617,18 +633,21 @@ export function useControlPlanePage() {
       setSelectedGroupId("");
     }
 
-    if ([pipelineListResult, agentsResult, sessionsResult, ...workflowPayloads].some((entry) => entry.status === "rejected")) {
+    if (
+      [pipelineListResult, agentsResult, sessionsResult, ...workflowPayloads].some(
+        (entry) => entry.status === "rejected",
+      )
+    ) {
       setActionMessage((current) => current || t("actionMessage.partialLoadFailed"));
     }
   }, [getPipelineStateSnapshot, setDraftNewNodeAgentId]);
 
   const refresh = useCallback(async () => {
-    const [pipelineListResult, agentsResult, sessionsResult] =
-      await Promise.allSettled([
-        fetchPipelineList(),
-        fetchAgents(),
-        fetchSessions(),
-      ]);
+    const [pipelineListResult, agentsResult, sessionsResult] = await Promise.allSettled([
+      fetchPipelineList(),
+      fetchAgents(),
+      fetchSessions(),
+    ]);
     const nextPipelineList =
       pipelineListResult.status === "fulfilled" && pipelineListResult.value.length > 0
         ? pipelineListResult.value
@@ -646,7 +665,9 @@ export function useControlPlanePage() {
     }
 
     if (nextPipelineList.length > 0) {
-      setActivePipelineId((current) => (nextPipelineList.some((item) => item.id === current) ? current : nextPipelineList[0]!.id));
+      setActivePipelineId((current) =>
+        nextPipelineList.some((item) => item.id === current) ? current : nextPipelineList[0]!.id,
+      );
       setEditingPipelineId((current) =>
         current && nextPipelineList.some((item) => item.id === current) ? current : null,
       );
@@ -700,7 +721,9 @@ export function useControlPlanePage() {
                   runId: entry.runId ?? run?.id ?? previousState.runId,
                   pipeline: entry.pipeline ?? run?.nodes ?? previousState.pipeline,
                   pipelineGroups: Array.isArray(run?.groups) ? run.groups : previousState.pipelineGroups,
-                  pipelineGroupItems: Array.isArray(run?.groupItemRuns) ? run.groupItemRuns : previousState.pipelineGroupItems,
+                  pipelineGroupItems: Array.isArray(run?.groupItemRuns)
+                    ? run.groupItemRuns
+                    : previousState.pipelineGroupItems,
                   schedulerState: entry.scheduler ?? previousState.schedulerState,
                   pipelineItems: Array.isArray(run?.itemRuns) ? run.itemRuns : previousState.pipelineItems,
                   batchRunState: entry.batchRunState !== undefined ? entry.batchRunState : previousState.batchRunState,
@@ -716,15 +739,24 @@ export function useControlPlanePage() {
                 runId: boot.run?.id ?? prev.runId,
                 pipeline: boot.run?.nodes ?? prev.pipeline,
                 pipelineGroups: Array.isArray(boot.run?.groups) ? boot.run.groups : prev.pipelineGroups,
-                pipelineGroupItems: Array.isArray(boot.run?.groupItemRuns) ? boot.run.groupItemRuns : prev.pipelineGroupItems,
+                pipelineGroupItems: Array.isArray(boot.run?.groupItemRuns)
+                  ? boot.run.groupItemRuns
+                  : prev.pipelineGroupItems,
               }));
             }
             if (boot.pipeline) {
-              updatePipelineState(fallbackPipelineId, (prev) => ({ ...prev, pipeline: boot.pipeline ?? prev.pipeline }));
+              updatePipelineState(fallbackPipelineId, (prev) => ({
+                ...prev,
+                pipeline: boot.pipeline ?? prev.pipeline,
+              }));
             }
-            if (boot.runId) updatePipelineState(fallbackPipelineId, (prev) => ({ ...prev, runId: boot.runId ?? prev.runId }));
+            if (boot.runId)
+              updatePipelineState(fallbackPipelineId, (prev) => ({ ...prev, runId: boot.runId ?? prev.runId }));
             if (boot.scheduler) {
-              updatePipelineState(fallbackPipelineId, (prev) => ({ ...prev, schedulerState: boot.scheduler ?? prev.schedulerState }));
+              updatePipelineState(fallbackPipelineId, (prev) => ({
+                ...prev,
+                schedulerState: boot.scheduler ?? prev.schedulerState,
+              }));
             }
           }
           if (boot.timeline) setTimeline(boot.timeline);
@@ -780,12 +812,19 @@ export function useControlPlanePage() {
         },
         pipelineUpdated: (payload) => {
           if (!payload) return;
-          const pipelineId = payload.pipelineId ?? currentPipelineListRef.current[0]?.id ?? activePipelineIdRef.current ?? "A";
+          const pipelineId =
+            payload.pipelineId ?? currentPipelineListRef.current[0]?.id ?? activePipelineIdRef.current ?? "A";
           if (payload.scheduler) {
-            updatePipelineState(pipelineId, (prev) => ({ ...prev, schedulerState: payload.scheduler ?? prev.schedulerState }));
+            updatePipelineState(pipelineId, (prev) => ({
+              ...prev,
+              schedulerState: payload.scheduler ?? prev.schedulerState,
+            }));
           }
           if (payload.batchRunState !== undefined) {
-            updatePipelineState(pipelineId, (prev) => ({ ...prev, batchRunState: payload.batchRunState ?? prev.batchRunState }));
+            updatePipelineState(pipelineId, (prev) => ({
+              ...prev,
+              batchRunState: payload.batchRunState ?? prev.batchRunState,
+            }));
           }
           if (payload.run) {
             updatePipelineState(pipelineId, (prev) => ({
@@ -793,13 +832,17 @@ export function useControlPlanePage() {
               runId: payload.run?.id ?? prev.runId,
               pipeline: payload.run?.nodes ?? prev.pipeline,
               pipelineGroups: Array.isArray(payload.run?.groups) ? payload.run.groups : prev.pipelineGroups,
-              pipelineGroupItems: Array.isArray(payload.run?.groupItemRuns) ? payload.run.groupItemRuns : prev.pipelineGroupItems,
+              pipelineGroupItems: Array.isArray(payload.run?.groupItemRuns)
+                ? payload.run.groupItemRuns
+                : prev.pipelineGroupItems,
               pipelineItems: Array.isArray(payload.run?.itemRuns) ? payload.run.itemRuns : prev.pipelineItems,
             }));
             return;
           }
-          if (payload.runId) updatePipelineState(pipelineId, (prev) => ({ ...prev, runId: payload.runId ?? prev.runId }));
-          if (Array.isArray(payload.nodes)) updatePipelineState(pipelineId, (prev) => ({ ...prev, pipeline: payload.nodes ?? prev.pipeline }));
+          if (payload.runId)
+            updatePipelineState(pipelineId, (prev) => ({ ...prev, runId: payload.runId ?? prev.runId }));
+          if (Array.isArray(payload.nodes))
+            updatePipelineState(pipelineId, (prev) => ({ ...prev, pipeline: payload.nodes ?? prev.pipeline }));
         },
         timelineUpdated: (payload) => {
           if (payload?.item) {
@@ -839,7 +882,10 @@ export function useControlPlanePage() {
 
   const openSessionModalForAgent = (agentId: string) => {
     setSelectedAgentId(agentId);
-    selectPreferredSessionForAgent(agentId, sessions.filter((session) => isSessionForAgent(session.id, agentId)));
+    selectPreferredSessionForAgent(
+      agentId,
+      sessions.filter((session) => isSessionForAgent(session.id, agentId)),
+    );
     setSessionModalOpen(true);
   };
 
@@ -881,9 +927,9 @@ export function useControlPlanePage() {
         scheduler: isSchedulerEnabled(plugins)
           ? currentWorkflow.scheduler
           : {
-            ...currentWorkflow.scheduler,
-            enabled: false,
-          },
+              ...currentWorkflow.scheduler,
+              enabled: false,
+            },
       };
       try {
         await saveWorkflowDefinitionReq(pipelineId, nextWorkflow);
@@ -1101,10 +1147,17 @@ export function useControlPlanePage() {
     try {
       const result = await stopPipelineRunReq(pipelineId);
       if (result.status?.batchRun) {
-        updatePipelineState(pipelineId, (prev) => ({ ...prev, batchRunState: result.status?.batchRun ?? prev.batchRunState }));
+        updatePipelineState(pipelineId, (prev) => ({
+          ...prev,
+          batchRunState: result.status?.batchRun ?? prev.batchRunState,
+        }));
       }
       updatePipelineState(pipelineId, (prev) => ({ ...prev, isRunning: false }));
-      setActionMessage(result.mode === "remote_batch" ? t("actionMessage.batchStopNodeRequested") : t("actionMessage.pipelineStopRequested"));
+      setActionMessage(
+        result.mode === "remote_batch"
+          ? t("actionMessage.batchStopNodeRequested")
+          : t("actionMessage.pipelineStopRequested"),
+      );
       await refresh();
     } catch (error) {
       const message = getApiErrorMessage(error);
@@ -1133,12 +1186,17 @@ export function useControlPlanePage() {
     const agentId = draftAgentId.trim();
     const rawSessionId = draftExecutorSessionId.trim();
     const sessionId =
-      rawSessionId && isSessionForAgent(rawSessionId, agentId)
-        ? rawSessionId
-        : mainSessionIdForAgent(agentId);
+      rawSessionId && isSessionForAgent(rawSessionId, agentId) ? rawSessionId : mainSessionIdForAgent(agentId);
     const dependsOn = Array.from(new Set(draftDependsOn.map((item) => item.trim()).filter(Boolean)));
     const maxRejectCount = Math.max(0, Math.min(10, Math.trunc(Number(draftMaxRejectCount) || 0)));
-    const rawAllowed = Array.from(new Set(draftWorkflowRouteAllowed.split(",").map((item) => item.trim()).filter(Boolean)));
+    const rawAllowed = Array.from(
+      new Set(
+        draftWorkflowRouteAllowed
+          .split(",")
+          .map((item) => item.trim())
+          .filter(Boolean),
+      ),
+    );
     const allowed = normalizeRouteOptionsWithDefaults(rawAllowed);
 
     if (includeNodeConfig) {
@@ -1156,7 +1214,10 @@ export function useControlPlanePage() {
       const disallowedDepends = getDisallowedDependencyIdsForNode(workflow, selectedNode.id);
       const invalidParallelDepends = dependsOn.find((dep) => disallowedDepends.has(dep));
       if (invalidParallelDepends) {
-        return { ok: false, error: t("actionMessage.nodeSaveFailedParallelGroupDep", { depId: invalidParallelDepends }) };
+        return {
+          ok: false,
+          error: t("actionMessage.nodeSaveFailedParallelGroupDep", { depId: invalidParallelDepends }),
+        };
       }
     }
 
@@ -1175,7 +1236,9 @@ export function useControlPlanePage() {
     if (includeWorkflowConfig) {
       const validTargetIds = new Set([
         ...workflow.nodes.map((node) => node.id),
-        ...materializeParallelGroups(workflow, workflow.nodes, workflow.edges, workflow.groups).map((group) => group.id),
+        ...materializeParallelGroups(workflow, workflow.nodes, workflow.edges, workflow.groups).map(
+          (group) => group.id,
+        ),
       ]);
       const invalidRouteTarget = Object.entries(routeTargets).find(
         ([route, targetId]) =>
@@ -1185,7 +1248,13 @@ export function useControlPlanePage() {
           route === MAINLINE_ROUTE_VALUE,
       );
       if (invalidRouteTarget) {
-        return { ok: false, error: t("actionMessage.routeSaveFailedInvalidTarget", { route: invalidRouteTarget[0], targetId: invalidRouteTarget[1] }) };
+        return {
+          ok: false,
+          error: t("actionMessage.routeSaveFailedInvalidTarget", {
+            route: invalidRouteTarget[0],
+            targetId: invalidRouteTarget[1],
+          }),
+        };
       }
     }
 
@@ -1193,29 +1262,27 @@ export function useControlPlanePage() {
       node.id !== selectedNode.id
         ? node
         : (() => {
-          const currentExecutor: NodeExecutor = node.executor ?? selectedNode.executor;
-          const agentChanged = (currentExecutor.agentId ?? "").trim() !== agentId;
-          return {
-            ...node,
-            name: includeNodeConfig ? title : node.name,
-            instruction: includeNodeConfig ? draftInstruction.trim() : node.instruction,
-            allowReject: includeNodeConfig ? draftAllowReject : node.allowReject,
-            maxRejectCount: includeNodeConfig ? maxRejectCount : node.maxRejectCount,
-            executor: includeNodeConfig
-              ? {
-                ...currentExecutor,
-                agentId,
-                sessionId,
-                fallbackAgentId: agentChanged ? null : currentExecutor.fallbackAgentId,
-              }
-              : currentExecutor,
-            lane: includeWorkflowConfig ? draftWorkflowLane : node.lane,
-            isMainline: includeWorkflowConfig ? draftWorkflowLane !== "branch" : node.isMainline,
-            routePolicy: includeWorkflowConfig
-              ? (allowed.length >= 2 ? { allowed } : null)
-              : node.routePolicy,
-          } as WorkflowNode;
-        })(),
+            const currentExecutor: NodeExecutor = node.executor ?? selectedNode.executor;
+            const agentChanged = (currentExecutor.agentId ?? "").trim() !== agentId;
+            return {
+              ...node,
+              name: includeNodeConfig ? title : node.name,
+              instruction: includeNodeConfig ? draftInstruction.trim() : node.instruction,
+              allowReject: includeNodeConfig ? draftAllowReject : node.allowReject,
+              maxRejectCount: includeNodeConfig ? maxRejectCount : node.maxRejectCount,
+              executor: includeNodeConfig
+                ? {
+                    ...currentExecutor,
+                    agentId,
+                    sessionId,
+                    fallbackAgentId: agentChanged ? null : currentExecutor.fallbackAgentId,
+                  }
+                : currentExecutor,
+              lane: includeWorkflowConfig ? draftWorkflowLane : node.lane,
+              isMainline: includeWorkflowConfig ? draftWorkflowLane !== "branch" : node.isMainline,
+              routePolicy: includeWorkflowConfig ? (allowed.length >= 2 ? { allowed } : null) : node.routePolicy,
+            } as WorkflowNode;
+          })(),
     );
 
     // uiLane is only for main/branch display and must not implicitly rewrite execution edges.
@@ -1252,51 +1319,54 @@ export function useControlPlanePage() {
     };
   };
 
-  const saveSelectedWorkflowNodeConfig = useCallback(async (opts?: { silentSuccess?: boolean }) => {
-    if (!workflow || !selectedNode) return;
+  const saveSelectedWorkflowNodeConfig = useCallback(
+    async (opts?: { silentSuccess?: boolean }) => {
+      if (!workflow || !selectedNode) return;
 
-    setIsSavingWorkflowConfig(true);
-    if (!opts?.silentSuccess) setActionMessage("");
-    try {
-      const built = buildNextWorkflowForSelectedNode({ includeNodeConfig: false, includeWorkflowConfig: true });
-      if (!built.ok) {
-        setActionMessage(built.error);
-        return;
+      setIsSavingWorkflowConfig(true);
+      if (!opts?.silentSuccess) setActionMessage("");
+      try {
+        const built = buildNextWorkflowForSelectedNode({ includeNodeConfig: false, includeWorkflowConfig: true });
+        if (!built.ok) {
+          setActionMessage(built.error);
+          return;
+        }
+        const validation = validateWorkflowBeforeSave(built.workflow);
+        if (!validation.ok) {
+          setActionMessage(t("validation.workflowConfigSaveFailed", { message: validation.message }));
+          return;
+        }
+        await saveWorkflowDefinitionReq(activePipelineId, built.workflow);
+        updatePipelineState(activePipelineId, (prev) => ({ ...prev, workflow: built.workflow }));
+        setWorkflowSaveFailed(false);
+        await refresh();
+        if (!opts?.silentSuccess) {
+          setActionMessage(t("actionMessage.nodeWorkflowSaved", { nodeId: selectedNode.id }));
+        }
+      } catch (error) {
+        const message = getApiErrorMessage(error);
+        setActionMessage(t("validation.workflowConfigSaveFailed", { message }));
+        setWorkflowSaveFailed(true);
+      } finally {
+        setIsSavingWorkflowConfig(false);
       }
-      const validation = validateWorkflowBeforeSave(built.workflow);
-      if (!validation.ok) {
-        setActionMessage(t("validation.workflowConfigSaveFailed", { message: validation.message }));
-        return;
-      }
-      await saveWorkflowDefinitionReq(activePipelineId, built.workflow);
-      updatePipelineState(activePipelineId, (prev) => ({ ...prev, workflow: built.workflow }));
-      setWorkflowSaveFailed(false);
-      await refresh();
-      if (!opts?.silentSuccess) {
-        setActionMessage(t("actionMessage.nodeWorkflowSaved", { nodeId: selectedNode.id }));
-      }
-    } catch (error) {
-      const message = getApiErrorMessage(error);
-      setActionMessage(t("validation.workflowConfigSaveFailed", { message }));
-      setWorkflowSaveFailed(true);
-    } finally {
-      setIsSavingWorkflowConfig(false);
-    }
-  }, [
-    workflow,
-    selectedNode,
-    draftTitle,
-    draftAgentId,
-    draftExecutorSessionId,
-    draftDependsOn,
-    draftInstruction,
-    draftAllowReject,
-    draftMaxRejectCount,
-    draftWorkflowLane,
-    draftWorkflowRouteAllowed,
-    draftWorkflowRouteTargets,
-    isSessionForAgent,
-  ]);
+    },
+    [
+      workflow,
+      selectedNode,
+      draftTitle,
+      draftAgentId,
+      draftExecutorSessionId,
+      draftDependsOn,
+      draftInstruction,
+      draftAllowReject,
+      draftMaxRejectCount,
+      draftWorkflowLane,
+      draftWorkflowRouteAllowed,
+      draftWorkflowRouteTargets,
+      isSessionForAgent,
+    ],
+  );
 
   // Reset save failure when switching to a different node
   useEffect(() => {
@@ -1310,7 +1380,13 @@ export function useControlPlanePage() {
       void saveSelectedWorkflowNodeConfig({ silentSuccess: true });
     }, 250);
     return () => clearTimeout(timer);
-  }, [selectedNode?.id, hasWorkflowDraftChanges, isSavingWorkflowConfig, workflowSaveFailed, saveSelectedWorkflowNodeConfig]);
+  }, [
+    selectedNode?.id,
+    hasWorkflowDraftChanges,
+    isSavingWorkflowConfig,
+    workflowSaveFailed,
+    saveSelectedWorkflowNodeConfig,
+  ]);
 
   const saveSelectedGroupConfig = useCallback(async () => {
     if (!workflow || !selectedGroup) return;
@@ -1335,7 +1411,9 @@ export function useControlPlanePage() {
       ...workflow.nodes.map((node) => node.id),
       ...getInferredParallelGroups(workflow).map((group) => group.id),
     ]);
-    const invalidUpstream = upstreamIds.find((id) => !validEntityIds.has(id) || memberIds.includes(id) || id === nextGroupId);
+    const invalidUpstream = upstreamIds.find(
+      (id) => !validEntityIds.has(id) || memberIds.includes(id) || id === nextGroupId,
+    );
     if (invalidUpstream) {
       setActionMessage(t("actionMessage.groupSaveFailedInvalidUpstream", { upstreamId: invalidUpstream }));
       return;
@@ -1368,72 +1446,71 @@ export function useControlPlanePage() {
     } finally {
       setIsSavingGroupConfig(false);
     }
-  }, [
-    workflow,
-    selectedGroup,
-    draftGroupId,
-    draftGroupMembers,
-    draftGroupUpstreams,
-    draftGroupJoinPolicy,
-    refresh,
-  ]);
+  }, [workflow, selectedGroup, draftGroupId, draftGroupMembers, draftGroupUpstreams, draftGroupJoinPolicy, refresh]);
 
-  const moveNode = useCallback(async (pipelineId: PipelineId, nodeId: string, direction: "up" | "down") => {
-    if (isSavingNodeConfig) return;
-    const targetWorkflow = getPipelineStateSnapshot(pipelineId, pipelineStateById).workflow;
-    if (!targetWorkflow) return;
-    const nextWorkflow = moveWorkflowNodeWithinLane(targetWorkflow, nodeId, direction);
-    if (nextWorkflow === targetWorkflow) return;
+  const moveNode = useCallback(
+    async (pipelineId: PipelineId, nodeId: string, direction: "up" | "down") => {
+      if (isSavingNodeConfig) return;
+      const targetWorkflow = getPipelineStateSnapshot(pipelineId, pipelineStateById).workflow;
+      if (!targetWorkflow) return;
+      const nextWorkflow = moveWorkflowNodeWithinLane(targetWorkflow, nodeId, direction);
+      if (nextWorkflow === targetWorkflow) return;
 
-    setIsSavingNodeConfig(true);
-    setActionMessage("");
-    try {
-      // Order editing may happen on a non-active pipeline card; must explicitly use the source pipelineId to save.
-      await saveWorkflowDefinitionReq(pipelineId, nextWorkflow);
-      updatePipelineState(pipelineId, (prev) => ({ ...prev, workflow: nextWorkflow }));
-      setActivePipelineId(pipelineId);
-      setSelectedNodeId(nodeId);
-      setActionMessage(direction === "up" ? t("actionMessage.nodeMovedUp", { nodeId }) : t("actionMessage.nodeMovedDown", { nodeId }));
-      await refresh();
-    } catch (error) {
-      const message = getApiErrorMessage(error);
-      setActionMessage(t("actionMessage.nodeMoveFailed", { message }));
-    } finally {
-      setIsSavingNodeConfig(false);
-    }
-  }, [getPipelineStateSnapshot, isSavingNodeConfig, pipelineStateById, refresh, updatePipelineState]);
+      setIsSavingNodeConfig(true);
+      setActionMessage("");
+      try {
+        // Order editing may happen on a non-active pipeline card; must explicitly use the source pipelineId to save.
+        await saveWorkflowDefinitionReq(pipelineId, nextWorkflow);
+        updatePipelineState(pipelineId, (prev) => ({ ...prev, workflow: nextWorkflow }));
+        setActivePipelineId(pipelineId);
+        setSelectedNodeId(nodeId);
+        setActionMessage(
+          direction === "up"
+            ? t("actionMessage.nodeMovedUp", { nodeId })
+            : t("actionMessage.nodeMovedDown", { nodeId }),
+        );
+        await refresh();
+      } catch (error) {
+        const message = getApiErrorMessage(error);
+        setActionMessage(t("actionMessage.nodeMoveFailed", { message }));
+      } finally {
+        setIsSavingNodeConfig(false);
+      }
+    },
+    [getPipelineStateSnapshot, isSavingNodeConfig, pipelineStateById, refresh, updatePipelineState],
+  );
 
-  const reorderNode = useCallback(async (
-    pipelineId: PipelineId,
-    nodeId: string,
-    targetNodeId: string,
-    position: "before" | "after" = "before",
-  ) => {
-    if (isSavingNodeConfig) return;
-    const targetWorkflow = getPipelineStateSnapshot(pipelineId, pipelineStateById).workflow;
-    if (!targetWorkflow) return;
-    const nextWorkflow = reorderWorkflowNodeWithinLane(targetWorkflow, nodeId, targetNodeId, position);
-    if (nextWorkflow === targetWorkflow) return;
+  const reorderNode = useCallback(
+    async (pipelineId: PipelineId, nodeId: string, targetNodeId: string, position: "before" | "after" = "before") => {
+      if (isSavingNodeConfig) return;
+      const targetWorkflow = getPipelineStateSnapshot(pipelineId, pipelineStateById).workflow;
+      if (!targetWorkflow) return;
+      const nextWorkflow = reorderWorkflowNodeWithinLane(targetWorkflow, nodeId, targetNodeId, position);
+      if (nextWorkflow === targetWorkflow) return;
 
-    setIsSavingNodeConfig(true);
-    setActionMessage("");
-    try {
-      // Drag-and-drop reorder and button reorder share the same explicit pipeline save path to avoid writing to the wrong target when switching between pipeline A/B cards.
-      await saveWorkflowDefinitionReq(pipelineId, nextWorkflow);
-      updatePipelineState(pipelineId, (prev) => ({ ...prev, workflow: nextWorkflow }));
-      setActivePipelineId(pipelineId);
-      setSelectedNodeId(nodeId);
-      setActionMessage(position === "after"
-        ? t("actionMessage.nodeReorderedAfter", { nodeId, targetNodeId })
-        : t("actionMessage.nodeReorderedBefore", { nodeId, targetNodeId }));
-      await refresh();
-    } catch (error) {
-      const message = getApiErrorMessage(error);
-      setActionMessage(t("actionMessage.nodeReorderFailed", { message }));
-    } finally {
-      setIsSavingNodeConfig(false);
-    }
-  }, [getPipelineStateSnapshot, isSavingNodeConfig, pipelineStateById, refresh, updatePipelineState]);
+      setIsSavingNodeConfig(true);
+      setActionMessage("");
+      try {
+        // Drag-and-drop reorder and button reorder share the same explicit pipeline save path to avoid writing to the wrong target when switching between pipeline A/B cards.
+        await saveWorkflowDefinitionReq(pipelineId, nextWorkflow);
+        updatePipelineState(pipelineId, (prev) => ({ ...prev, workflow: nextWorkflow }));
+        setActivePipelineId(pipelineId);
+        setSelectedNodeId(nodeId);
+        setActionMessage(
+          position === "after"
+            ? t("actionMessage.nodeReorderedAfter", { nodeId, targetNodeId })
+            : t("actionMessage.nodeReorderedBefore", { nodeId, targetNodeId }),
+        );
+        await refresh();
+      } catch (error) {
+        const message = getApiErrorMessage(error);
+        setActionMessage(t("actionMessage.nodeReorderFailed", { message }));
+      } finally {
+        setIsSavingNodeConfig(false);
+      }
+    },
+    [getPipelineStateSnapshot, isSavingNodeConfig, pipelineStateById, refresh, updatePipelineState],
+  );
 
   const saveWorkflowJsonDraft = useCallback(async () => {
     if (!workflowJsonDraft.trim()) {
@@ -1466,78 +1543,81 @@ export function useControlPlanePage() {
     }
   }, [workflowJsonDraft]);
 
-  const saveSelectedNodeConfig = useCallback(async (opts?: { silentSuccess?: boolean }) => {
-    if (!selectedNode || !workflow) return;
-    setIsSavingNodeConfig(true);
-    if (!opts?.silentSuccess) setActionMessage("");
-    try {
-      const built = buildNextWorkflowForSelectedNode({ includeNodeConfig: true, includeWorkflowConfig: false });
-      if (!built.ok) {
-        setActionMessage(built.error);
-        return;
+  const saveSelectedNodeConfig = useCallback(
+    async (opts?: { silentSuccess?: boolean }) => {
+      if (!selectedNode || !workflow) return;
+      setIsSavingNodeConfig(true);
+      if (!opts?.silentSuccess) setActionMessage("");
+      try {
+        const built = buildNextWorkflowForSelectedNode({ includeNodeConfig: true, includeWorkflowConfig: false });
+        if (!built.ok) {
+          setActionMessage(built.error);
+          return;
+        }
+        const validation = validateWorkflowBeforeSave(built.workflow);
+        if (!validation.ok) {
+          setActionMessage(t("validation.nodeConfigSaveFailed", { message: validation.message }));
+          return;
+        }
+        await saveWorkflowDefinitionReq(activePipelineId, built.workflow);
+        updatePipelineState(activePipelineId, (prev) => ({
+          ...prev,
+          workflow: built.workflow,
+          pipeline: prev.pipeline.map((node) =>
+            node.id === selectedNode.id
+              ? (() => {
+                  const title = draftTitle.trim();
+                  const agentId = draftAgentId.trim();
+                  const rawSessionId = draftExecutorSessionId.trim();
+                  const sessionId =
+                    rawSessionId && isSessionForAgent(rawSessionId, agentId)
+                      ? rawSessionId
+                      : mainSessionIdForAgent(agentId);
+                  const dependsOn = Array.from(new Set(draftDependsOn.map((item) => item.trim()).filter(Boolean)));
+                  const maxRejectCount = Math.max(0, Math.min(10, Math.trunc(Number(draftMaxRejectCount) || 0)));
+                  const agentChanged = (node.executor.agentId ?? "").trim() !== agentId;
+                  return {
+                    ...node,
+                    title,
+                    instruction: draftInstruction.trim(),
+                    dependsOn,
+                    allowReject: draftAllowReject,
+                    maxRejectCount,
+                    executor: {
+                      ...node.executor,
+                      agentId,
+                      sessionId,
+                      fallbackAgentId: agentChanged ? null : node.executor.fallbackAgentId,
+                    },
+                  };
+                })()
+              : node,
+          ),
+        }));
+        if (!opts?.silentSuccess) {
+          setActionMessage(t("actionMessage.nodeSaved", { nodeId: selectedNode.id }));
+        }
+        await refresh();
+      } catch (error) {
+        const message = getApiErrorMessage(error);
+        setActionMessage(t("actionMessage.nodeSaveFailed", { message }));
+      } finally {
+        setIsSavingNodeConfig(false);
       }
-      const validation = validateWorkflowBeforeSave(built.workflow);
-      if (!validation.ok) {
-        setActionMessage(t("validation.nodeConfigSaveFailed", { message: validation.message }));
-        return;
-      }
-      await saveWorkflowDefinitionReq(activePipelineId, built.workflow);
-      updatePipelineState(activePipelineId, (prev) => ({
-        ...prev,
-        workflow: built.workflow,
-        pipeline: prev.pipeline.map((node) =>
-          node.id === selectedNode.id
-            ? (() => {
-              const title = draftTitle.trim();
-              const agentId = draftAgentId.trim();
-              const rawSessionId = draftExecutorSessionId.trim();
-              const sessionId =
-                rawSessionId && isSessionForAgent(rawSessionId, agentId)
-                  ? rawSessionId
-                  : mainSessionIdForAgent(agentId);
-              const dependsOn = Array.from(new Set(draftDependsOn.map((item) => item.trim()).filter(Boolean)));
-              const maxRejectCount = Math.max(0, Math.min(10, Math.trunc(Number(draftMaxRejectCount) || 0)));
-              const agentChanged = (node.executor.agentId ?? "").trim() !== agentId;
-              return {
-                ...node,
-                title,
-                instruction: draftInstruction.trim(),
-                dependsOn,
-                allowReject: draftAllowReject,
-                maxRejectCount,
-                executor: {
-                  ...node.executor,
-                  agentId,
-                  sessionId,
-                  fallbackAgentId: agentChanged ? null : node.executor.fallbackAgentId,
-                },
-              };
-            })()
-            : node,
-        ),
-      }));
-      if (!opts?.silentSuccess) {
-        setActionMessage(t("actionMessage.nodeSaved", { nodeId: selectedNode.id }));
-      }
-      await refresh();
-    } catch (error) {
-      const message = getApiErrorMessage(error);
-      setActionMessage(t("actionMessage.nodeSaveFailed", { message }));
-    } finally {
-      setIsSavingNodeConfig(false);
-    }
-  }, [
-    workflow,
-    selectedNode,
-    draftTitle,
-    draftAgentId,
-    draftExecutorSessionId,
-    draftDependsOn,
-    draftInstruction,
-    draftAllowReject,
-    draftMaxRejectCount,
-    isSessionForAgent,
-  ]);
+    },
+    [
+      workflow,
+      selectedNode,
+      draftTitle,
+      draftAgentId,
+      draftExecutorSessionId,
+      draftDependsOn,
+      draftInstruction,
+      draftAllowReject,
+      draftMaxRejectCount,
+      isSessionForAgent,
+    ],
+  );
 
   const saveSelectedNodeConfigOnBlur = () => {
     if (!selectedNode) return;
@@ -1676,7 +1756,9 @@ export function useControlPlanePage() {
       ...workflow.nodes.map((node) => node.id),
       ...getInferredParallelGroups(workflow).map((group) => group.id),
     ]);
-    const invalidUpstream = upstreamIds.find((id) => !validEntityIds.has(id) || memberIds.includes(id) || id === groupId);
+    const invalidUpstream = upstreamIds.find(
+      (id) => !validEntityIds.has(id) || memberIds.includes(id) || id === groupId,
+    );
     if (invalidUpstream) {
       setActionMessage(t("actionMessage.groupAddFailedInvalidUpstream", { upstreamId: invalidUpstream }));
       return;
@@ -1685,9 +1767,9 @@ export function useControlPlanePage() {
     const nextNodes = workflow.nodes.map((node) =>
       memberIds.includes(node.id)
         ? {
-          ...node,
-          parallelGroupId: groupId,
-        }
+            ...node,
+            parallelGroupId: groupId,
+          }
         : node,
     );
     const downstreamIds = getCommonDownstreamIdsForGroup(workflow, groupId, memberIds);
@@ -1788,7 +1870,9 @@ export function useControlPlanePage() {
       setActionMessage(t("actionMessage.groupDeleteFailedNoWorkflow"));
       return;
     }
-    const targetGroup = materializeParallelGroups(workflow, workflow.nodes, workflow.edges, workflow.groups).find((group) => group.id === groupId);
+    const targetGroup = materializeParallelGroups(workflow, workflow.nodes, workflow.edges, workflow.groups).find(
+      (group) => group.id === groupId,
+    );
     if (!targetGroup) {
       setActionMessage(t("actionMessage.groupDeleteFailedNotFound", { groupId }));
       return;
@@ -1798,9 +1882,9 @@ export function useControlPlanePage() {
     const nextNodes = workflow.nodes.map((node) =>
       memberIds.has(node.id)
         ? {
-          ...node,
-          parallelGroupId: null,
-        }
+            ...node,
+            parallelGroupId: null,
+          }
         : node,
     );
     const nextEdges = workflow.edges.filter((edge) => {
@@ -1981,8 +2065,10 @@ export function useControlPlanePage() {
     isSavingNodeConfig,
     saveSelectedNodeConfig,
     saveSelectedNodeConfigOnBlur,
-    moveSelectedNodeUp: (nodeId = selectedNode?.id ?? "", pipelineId = activePipelineId) => moveNode(pipelineId, nodeId, "up"),
-    moveSelectedNodeDown: (nodeId = selectedNode?.id ?? "", pipelineId = activePipelineId) => moveNode(pipelineId, nodeId, "down"),
+    moveSelectedNodeUp: (nodeId = selectedNode?.id ?? "", pipelineId = activePipelineId) =>
+      moveNode(pipelineId, nodeId, "up"),
+    moveSelectedNodeDown: (nodeId = selectedNode?.id ?? "", pipelineId = activePipelineId) =>
+      moveNode(pipelineId, nodeId, "down"),
     reorderNode,
     draftCreateKind,
     setDraftCreateKind,
@@ -2016,7 +2102,9 @@ export function useControlPlanePage() {
       try {
         const result = await fetchAgents();
         setAgents(result);
-      } catch { /* best-effort refresh */ }
+      } catch {
+        /* best-effort refresh */
+      }
     },
   };
 }

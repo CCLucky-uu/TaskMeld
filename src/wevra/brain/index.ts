@@ -1,7 +1,7 @@
-import type { Message, ToolDefinition, LLMResponse, StreamEvent, RuntimeModelConfig, ThinkingConfig } from '../types'
-import { createLLMClient, type LLMClient, type DebugCallback } from './llm-client'
+import type { Message, ToolDefinition, LLMResponse, StreamEvent, RuntimeModelConfig, ThinkingConfig } from "../types"
+import { createLLMClient, type LLMClient, type DebugCallback } from "./llm-client"
 
-export { type DebugCallback } from './llm-client'
+export { type DebugCallback } from "./llm-client"
 
 export class Brain {
   private client: LLMClient
@@ -14,7 +14,7 @@ export class Brain {
     this.client.updateModel(model)
   }
 
-  setThinkingLevel(level: ThinkingConfig['level']): void {
+  setThinkingLevel(level: ThinkingConfig["level"]): void {
     this.client.setThinkingLevel(level)
   }
 
@@ -32,8 +32,12 @@ export class Brain {
 
   async summarize(messages: Message[]): Promise<string> {
     const response = await this.client.chat([
-      { role: 'system', content: 'You are a conversation summarizer. Compress the following conversation into a concise summary, preserving key information, decisions, and pending tasks. Reply in English.' },
-      { role: 'user', content: formatMessages(messages) },
+      {
+        role: "system",
+        content:
+          "You are a conversation summarizer. Compress the following conversation into a concise summary, preserving key information, decisions, and pending tasks. Reply in English.",
+      },
+      { role: "user", content: formatMessages(messages) },
     ])
     return response.content
   }
@@ -41,7 +45,7 @@ export class Brain {
 
 function formatMessages(messages: Message[]): string {
   return messages
-    .filter(m => m.role !== 'system')
-    .map(m => `[${m.role}] ${m.content}`)
-    .join('\n')
+    .filter((m) => m.role !== "system")
+    .map((m) => `[${m.role}] ${m.content}`)
+    .join("\n")
 }

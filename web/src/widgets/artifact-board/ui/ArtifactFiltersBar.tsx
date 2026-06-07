@@ -19,8 +19,7 @@ type ArtifactFiltersBarProps = {
 const monoClassName = "font-[JetBrains_Mono,monospace]";
 const quickButtonBaseClassName =
   "inline-flex h-7 items-center justify-center border px-2 text-xs transition-[background-color,color,border-color]";
-const quickButtonActiveClassName =
-  "border-[var(--live-25)] bg-[rgba(50,215,186,0.16)] text-[var(--live)]";
+const quickButtonActiveClassName = "border-[var(--live-25)] bg-[rgba(50,215,186,0.16)] text-[var(--live)]";
 const quickButtonInactiveClassName =
   "border-[var(--line)] bg-[rgba(15,23,29,0.55)] text-[var(--muted)] hover:bg-[rgba(24,39,47,0.72)] hover:text-[var(--text)]";
 const inputClassName = `${controlInputClassName} h-8 px-2 py-1 text-xs`;
@@ -28,8 +27,7 @@ const actionButtonClassName =
   "inline-flex h-8 items-center justify-center border border-[var(--line)] bg-[rgba(15,23,29,0.62)] px-3 text-xs text-[var(--text)] hover:bg-[rgba(19,34,43,0.82)] disabled:cursor-not-allowed disabled:opacity-50";
 
 const nodePickerClassName = "relative min-w-0";
-const nodePickerTriggerClassName =
-  `${controlInputMonoClassName} h-8 cursor-pointer overflow-hidden px-2 py-1 text-ellipsis whitespace-nowrap text-xs`;
+const nodePickerTriggerClassName = `${controlInputMonoClassName} h-8 cursor-pointer overflow-hidden px-2 py-1 text-ellipsis whitespace-nowrap text-xs`;
 const nodePickerTriggerOpenClassName = "border-[#3b5868] bg-[rgba(24,39,47,0.92)]";
 const nodeDropdownClassName =
   "absolute inset-x-0 top-[calc(100%+4px)] z-[4] grid max-h-[180px] overflow-y-auto overflow-x-hidden border border-[#29414f] bg-[rgba(18,31,38,0.98)] px-0 py-0 text-[var(--text)] shadow-none";
@@ -90,12 +88,14 @@ export function ArtifactFiltersBar({
     <section className="grid gap-2 border border-(--line) bg-[rgba(13,22,28,0.82)] px-3 py-2">
       <div className="grid gap-2 lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-start">
         <div className="flex flex-wrap items-center gap-1.5">
-          {([
-            { key: "today", label: t("common:time.today") },
-            { key: "7d", label: t("common:time.last7d") },
-            { key: "30d", label: t("common:time.last30d") },
-            { key: "custom", label: t("common:time.custom") },
-          ] as const).map((option) => (
+          {(
+            [
+              { key: "today", label: t("common:time.today") },
+              { key: "7d", label: t("common:time.last7d") },
+              { key: "30d", label: t("common:time.last30d") },
+              { key: "custom", label: t("common:time.custom") },
+            ] as const
+          ).map((option) => (
             <button
               key={option.key}
               type="button"
@@ -199,7 +199,9 @@ export function ArtifactFiltersBar({
             </div>
             {nodePickerOpen ? (
               <div className={nodeDropdownClassName}>
-                <label className={`${nodeOptionClassName} ${filters.nodeIds.length === 0 ? nodeOptionCheckedClassName : ""}`}>
+                <label
+                  className={`${nodeOptionClassName} ${filters.nodeIds.length === 0 ? nodeOptionCheckedClassName : ""}`}
+                >
                   <input
                     type="checkbox"
                     className={nodeCheckboxClassName}
@@ -213,7 +215,10 @@ export function ArtifactFiltersBar({
                 </label>
                 {nodeOptions.length ? (
                   nodeOptions.map((node) => (
-                    <label key={node.id} className={`${nodeOptionClassName} ${filters.nodeIds.includes(node.id) ? nodeOptionCheckedClassName : ""}`}>
+                    <label
+                      key={node.id}
+                      className={`${nodeOptionClassName} ${filters.nodeIds.includes(node.id) ? nodeOptionCheckedClassName : ""}`}
+                    >
                       <input
                         type="checkbox"
                         className={nodeCheckboxClassName}
@@ -246,8 +251,15 @@ export function ArtifactFiltersBar({
         </div>
       </div>
       <p className={`${monoClassName} m-0 text-xs text-(--muted)`}>
-        {t("timeRange")}：{filters.preset === "today" ? t("common:time.today") : filters.preset === "7d" ? t("recentDays", { count: 7 }) : filters.preset === "30d" ? t("recentDays", { count: 30 }) : t("common:time.custom")} |
-        {t("pipeline")}：{filters.pipelineId || t("common:common.all")} | {t("node")}：{selectedNodeLabel}
+        {t("timeRange")}：
+        {filters.preset === "today"
+          ? t("common:time.today")
+          : filters.preset === "7d"
+            ? t("recentDays", { count: 7 })
+            : filters.preset === "30d"
+              ? t("recentDays", { count: 30 })
+              : t("common:time.custom")}{" "}
+        |{t("pipeline")}：{filters.pipelineId || t("common:common.all")} | {t("node")}：{selectedNodeLabel}
       </p>
     </section>
   );

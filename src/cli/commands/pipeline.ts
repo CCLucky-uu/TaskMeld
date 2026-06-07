@@ -1,58 +1,58 @@
-import { CliError, assertRequiredArg } from "../errors";
-import { t } from "../i18n";
-import type { CliCommandHandler, CliRouteDefinition } from "../types";
-import { throwSelectorScopedError } from "./pipeline/errors";
-import { pipelineResultRoutes } from "./pipeline/result";
+import { CliError, assertRequiredArg } from "../errors"
+import { t } from "../i18n"
+import type { CliCommandHandler, CliRouteDefinition } from "../types"
+import { throwSelectorScopedError } from "./pipeline/errors"
+import { pipelineResultRoutes } from "./pipeline/result"
 import {
   describePipelineSelector,
   getPipelineStatusBySelector,
   pickOptionalStringFlag,
   readPipelineSelector,
   stopPipelineBySelector,
-} from "./pipeline/selector";
-import { watchPipelineUntilTerminal } from "./pipeline/watch";
+} from "./pipeline/selector"
+import { watchPipelineUntilTerminal } from "./pipeline/watch"
 
 export const pipelineListCommand: CliCommandHandler = async (_input, ctx) => {
-  return ctx.app.pipelineService.listPipelines();
-};
+  return ctx.app.pipelineService.listPipelines()
+}
 
 export const pipelineGetCommand: CliCommandHandler = async (input, ctx) => {
-  const pipelineId = assertRequiredArg(input.args[0], "pipelineId");
-  const detail = await ctx.app.pipelineService.getPipelineById(pipelineId);
+  const pipelineId = assertRequiredArg(input.args[0], "pipelineId")
+  const detail = await ctx.app.pipelineService.getPipelineById(pipelineId)
   if (!detail) {
     throw new CliError(`Pipeline not found: ${pipelineId}`, {
       code: "PIPELINE_NOT_FOUND",
       exitCode: 3,
       details: { pipelineId },
-    });
+    })
   }
-  return detail;
-};
+  return detail
+}
 
 export const pipelineStartCommand: CliCommandHandler = async (input, ctx) => {
-  const pipelineId = assertRequiredArg(input.args[0], "pipelineId");
-  const result = await ctx.app.pipelineService.startPipeline(pipelineId);
+  const pipelineId = assertRequiredArg(input.args[0], "pipelineId")
+  const result = await ctx.app.pipelineService.startPipeline(pipelineId)
   const data = result as {
-    ok?: boolean;
-    error?: string;
-    state?: unknown;
-    remoteUrl?: string;
-    status?: number;
-    detail?: string;
-  };
+    ok?: boolean
+    error?: string
+    state?: unknown
+    remoteUrl?: string
+    status?: number
+    detail?: string
+  }
   if (data.ok === false && data.error === "pipeline_not_found") {
     throw new CliError(`Pipeline not found: ${pipelineId}`, {
       code: "PIPELINE_NOT_FOUND",
       exitCode: 3,
       details: { pipelineId },
-    });
+    })
   }
   if (data.ok === false && data.error === "batch_run_in_progress") {
     throw new CliError(`Batch run already in progress: ${pipelineId}`, {
       code: "BATCH_RUN_IN_PROGRESS",
       exitCode: 4,
       details: { pipelineId, state: data.state ?? null },
-    });
+    })
   }
   if (data.ok === false) {
     throw new CliError(`Pipeline run failed: ${data.error ?? "unknown_error"}`, {
@@ -65,102 +65,111 @@ export const pipelineStartCommand: CliCommandHandler = async (input, ctx) => {
         status: data.status ?? null,
         detail: data.detail ?? null,
       },
-    });
+    })
   }
-  const shouldWatch = input.flags.watch === true || String(input.flags.watch ?? "").trim().toLowerCase() === "true";
+  const shouldWatch =
+    input.flags.watch === true ||
+    String(input.flags.watch ?? "")
+      .trim()
+      .toLowerCase() === "true"
   if (shouldWatch) {
-    const watchResult = await watchPipelineUntilTerminal(ctx, { pipelineId }, input.flags.timeout, input.flags.interval);
+    const watchResult = await watchPipelineUntilTerminal(ctx, { pipelineId }, input.flags.timeout, input.flags.interval)
     return {
       ...(result as Record<string, unknown>),
       watch: watchResult,
-    };
+    }
   }
-  return result;
-};
+  return result
+}
 
 export const pipelineStatusCommand: CliCommandHandler = async (input, ctx) => {
-  const selector = readPipelineSelector(input);
-  const result = await getPipelineStatusBySelector(ctx, selector);
+  const selector = readPipelineSelector(input)
+  const result = await getPipelineStatusBySelector(ctx, selector)
   if (result.ok === false) {
-    throwSelectorScopedError(result, selector);
+    throwSelectorScopedError(result, selector)
   }
-  return result;
-};
+  return result
+}
 
 export const pipelineWatchCommand: CliCommandHandler = async (input, ctx) => {
-  const selector = readPipelineSelector(input);
-  return watchPipelineUntilTerminal(ctx, selector, input.flags.timeout, input.flags.interval);
-};
+  const selector = readPipelineSelector(input)
+  return watchPipelineUntilTerminal(ctx, selector, input.flags.timeout, input.flags.interval)
+}
 
 export const pipelineStopCommand: CliCommandHandler = async (input, ctx) => {
-  const selector = readPipelineSelector(input);
-  const result = await stopPipelineBySelector(ctx, selector);
-  if (result.ok === false && (result.error === "pipeline_not_found" || result.error === "run_not_found" || result.error === "batch_run_not_found")) {
-    throwSelectorScopedError(result, selector);
+  const selector = readPipelineSelector(input)
+  const result = await stopPipelineBySelector(ctx, selector)
+  if (
+    result.ok === false &&
+    (result.error === "pipeline_not_found" ||
+      result.error === "run_not_found" ||
+      result.error === "batch_run_not_found")
+  ) {
+    throwSelectorScopedError(result, selector)
   }
   if (result.ok === false && result.error === "batch_run_not_running") {
     throw new CliError(`Batch run not running: ${describePipelineSelector(selector)}`, {
       code: "BATCH_RUN_NOT_RUNNING",
       exitCode: 4,
       details: { ...selector, status: result.status ?? null },
-    });
+    })
   }
-  return result;
-};
+  return result
+}
 
 export const pipelineRetryNodeCommand: CliCommandHandler = async (input, ctx) => {
-  const pipelineId = assertRequiredArg(input.args[0], "pipelineId");
-  const nodeId = assertRequiredArg(input.args[1], "nodeId");
-  const itemKey = pickOptionalStringFlag(input.flags.item);
-  const result = await ctx.app.pipelineService.retryNode({ pipelineId, nodeId, itemKey });
+  const pipelineId = assertRequiredArg(input.args[0], "pipelineId")
+  const nodeId = assertRequiredArg(input.args[1], "nodeId")
+  const itemKey = pickOptionalStringFlag(input.flags.item)
+  const result = await ctx.app.pipelineService.retryNode({ pipelineId, nodeId, itemKey })
   const data = result as {
-    ok?: boolean;
-    error?: string;
-    retry?: { ok?: boolean; error?: string };
-  };
+    ok?: boolean
+    error?: string
+    retry?: { ok?: boolean; error?: string }
+  }
   if (data.ok === false && data.error === "pipeline_not_found") {
     throw new CliError(`Pipeline not found: ${pipelineId}`, {
       code: "PIPELINE_NOT_FOUND",
       exitCode: 3,
       details: { pipelineId },
-    });
+    })
   }
   if (data.retry?.ok === false && data.retry.error === "node_not_found") {
     throw new CliError(`Node not found: ${nodeId}`, {
       code: "NODE_NOT_FOUND",
       exitCode: 3,
       details: { pipelineId, nodeId, itemKey: itemKey ?? null },
-    });
+    })
   }
   if (data.retry?.ok === false) {
     throw new CliError(`Retry node failed: ${data.retry.error ?? "unknown_error"}`, {
       code: "RETRY_NODE_FAILED",
       exitCode: 4,
       details: { pipelineId, nodeId, itemKey: itemKey ?? null, result },
-    });
+    })
   }
-  return result;
-};
+  return result
+}
 
 export const pipelineDiagnoseCommand: CliCommandHandler = async (input, ctx) => {
-  const pipelineId = assertRequiredArg(input.args[0], "pipelineId");
-  const nodeId = assertRequiredArg(input.args[1], "nodeId");
-  const itemKey = pickOptionalStringFlag(input.flags.item);
-  const result = await ctx.app.pipelineService.diagnoseNode({ pipelineId, nodeId, itemKey });
+  const pipelineId = assertRequiredArg(input.args[0], "pipelineId")
+  const nodeId = assertRequiredArg(input.args[1], "nodeId")
+  const itemKey = pickOptionalStringFlag(input.flags.item)
+  const result = await ctx.app.pipelineService.diagnoseNode({ pipelineId, nodeId, itemKey })
   const data = result as {
-    diagnostics?: unknown[];
-    itemKey?: string | null;
-    nodeId?: string;
-  };
+    diagnostics?: unknown[]
+    itemKey?: string | null
+    nodeId?: string
+  }
   if (!data.diagnostics || (Array.isArray(data.diagnostics) && data.diagnostics.length === 0)) {
     throw new CliError(`No diagnostics available for node: ${nodeId}`, {
       code: "DIAGNOSTICS_UNAVAILABLE",
       exitCode: 3,
       details: { pipelineId, nodeId, itemKey: itemKey ?? null },
-    });
+    })
   }
-  return result;
-};
+  return result
+}
 
 export const pipelineRoutes: CliRouteDefinition[] = [
   ...pipelineResultRoutes,
@@ -199,10 +208,7 @@ export const pipelineRoutes: CliRouteDefinition[] = [
         { flags: ["--timeout"], valueName: "ms", description: t("pipeline.start.optTimeout") },
         { flags: ["--interval"], valueName: "ms", description: t("pipeline.start.optInterval") },
       ],
-      notes: [
-        t("pipeline.start.noteOnlyStart"),
-        t("pipeline.start.noteWatch"),
-      ],
+      notes: [t("pipeline.start.noteOnlyStart"), t("pipeline.start.noteWatch")],
     },
   },
   {
@@ -223,10 +229,7 @@ export const pipelineRoutes: CliRouteDefinition[] = [
         "taskmeld pipeline status A --run-id run-123",
         "taskmeld pipeline status A --batch-run-id batch:A:2026-05-08T18:34:08.978Z",
       ],
-      notes: [
-        t("pipeline.status.noteNeedSelector"),
-        t("pipeline.status.noteDefaultQuery"),
-      ],
+      notes: [t("pipeline.status.noteNeedSelector"), t("pipeline.status.noteDefaultQuery")],
     },
   },
   {
@@ -236,7 +239,8 @@ export const pipelineRoutes: CliRouteDefinition[] = [
     handler: pipelineWatchCommand,
     bootstrap: { runtimeApiOnly: true, ensureServerReady: true },
     help: {
-      usage: "taskmeld pipeline watch [<pipelineId>] [--run-id <id>] [--batch-run-id <id>] [--timeout <ms>] [--interval <ms>] [--format <json|md>]",
+      usage:
+        "taskmeld pipeline watch [<pipelineId>] [--run-id <id>] [--batch-run-id <id>] [--timeout <ms>] [--interval <ms>] [--format <json|md>]",
       args: [{ name: "pipelineId", description: t("pipeline.watch.argPipelineId") }],
       options: [
         { flags: ["--run-id"], valueName: "id", description: t("pipeline.watch.optRunId") },
@@ -269,11 +273,7 @@ export const pipelineRoutes: CliRouteDefinition[] = [
         { flags: ["--run-id"], valueName: "id", description: t("pipeline.stop.optRunId") },
         { flags: ["--batch-run-id"], valueName: "id", description: t("pipeline.stop.optBatchRunId") },
       ],
-      notes: [
-        t("pipeline.stop.noteNeedSelector"),
-        t("pipeline.stop.noteBatchOnly"),
-        t("pipeline.stop.noteNonBatch"),
-      ],
+      notes: [t("pipeline.stop.noteNeedSelector"), t("pipeline.stop.noteBatchOnly"), t("pipeline.stop.noteNonBatch")],
     },
   },
   {
@@ -313,14 +313,14 @@ export const pipelineRoutes: CliRouteDefinition[] = [
     path: ["pipeline", "output"],
     description: t("pipeline.output.description"),
     handler: async (input, ctx) => {
-      const pipelineId = assertRequiredArg(input.args[0], "pipelineId");
-      const runId = pickOptionalStringFlag(input.flags.run);
-      const output = await ctx.app.pipelineService.getOutput(pipelineId, runId);
+      const pipelineId = assertRequiredArg(input.args[0], "pipelineId")
+      const runId = pickOptionalStringFlag(input.flags.run)
+      const output = await ctx.app.pipelineService.getOutput(pipelineId, runId)
       if (!output) {
-        return { ok: true, pipelineId, items: [] };
+        return { ok: true, pipelineId, items: [] }
       }
-      const outputs = runId ? [output] : await ctx.app.pipelineService.listOutputs(pipelineId);
-      return { ok: true, pipelineId, items: outputs };
+      const outputs = runId ? [output] : await ctx.app.pipelineService.listOutputs(pipelineId)
+      return { ok: true, pipelineId, items: outputs }
     },
     help: {
       usage: "taskmeld pipeline output <pipelineId> [--run <runId>]",
@@ -334,8 +334,8 @@ export const pipelineRoutes: CliRouteDefinition[] = [
     path: ["pipeline", "link", "list"],
     description: t("pipeline.linkList.description"),
     handler: async (_input, ctx) => {
-      const links = await ctx.app.pipelineService.listLinks();
-      return { ok: true, items: links };
+      const links = await ctx.app.pipelineService.listLinks()
+      return { ok: true, items: links }
     },
     help: {
       usage: "taskmeld pipeline link list",
@@ -347,9 +347,9 @@ export const pipelineRoutes: CliRouteDefinition[] = [
     path: ["pipeline", "queue"],
     description: t("pipeline.queue.description"),
     handler: async (input, ctx) => {
-      const pipelineId = assertRequiredArg(input.args[0], "pipelineId");
-      const items = ctx.app.pipelineService.getQueue(pipelineId);
-      return { ok: true, pipelineId, items };
+      const pipelineId = assertRequiredArg(input.args[0], "pipelineId")
+      const items = ctx.app.pipelineService.getQueue(pipelineId)
+      return { ok: true, pipelineId, items }
     },
     help: {
       usage: "taskmeld pipeline queue <pipelineId>",
@@ -357,4 +357,4 @@ export const pipelineRoutes: CliRouteDefinition[] = [
       summary: t("pipeline.queue.summary"),
     },
   },
-];
+]

@@ -6,10 +6,9 @@ import {
   detailPanelHeadClassName,
   detailPanelTitleClassName,
 } from "./detailPanelClasses";
-import { controlInputMonoClassName,controlInputClassName } from "../../../shared/ui/surfaceClassNames";
+import { controlInputMonoClassName, controlInputClassName } from "../../../shared/ui/surfaceClassNames";
 
-const groupCheckboxListClassName =
-  `${controlInputMonoClassName}  static max-h-[180px] overflow-y-auto overflow-x-hidden p-0`;
+const groupCheckboxListClassName = `${controlInputMonoClassName}  static max-h-[180px] overflow-y-auto overflow-x-hidden p-0`;
 const groupOptionClassName =
   "grid min-w-0 cursor-pointer grid-cols-[10px_minmax(0,1fr)] items-center gap-x-3 px-2 py-1.5 text-xs leading-[1.2] text-[var(--text)] transition-[background-color,color] hover:bg-[rgba(142,163,179,0.08)]";
 const groupOptionCheckedClassName = "bg-[rgba(50,215,186,0.2)]";
@@ -45,8 +44,21 @@ type GroupDetailPanelProps = {
     startedAt: string | null;
     finishedAt: string | null;
     lastError: string | null;
-    memberRuns: Array<{ id: string; title: string; status: string; executor: { agentId: string }; artifacts: Array<{ type: string; schemaVersion: number; path: string }> }>;
-    itemRuns: Array<{ itemKey: string; status: string; attempt: number; startedAt: string | null; finishedAt: string | null; lastError: string | null }>;
+    memberRuns: Array<{
+      id: string;
+      title: string;
+      status: string;
+      executor: { agentId: string };
+      artifacts: Array<{ type: string; schemaVersion: number; path: string }>;
+    }>;
+    itemRuns: Array<{
+      itemKey: string;
+      status: string;
+      attempt: number;
+      startedAt: string | null;
+      finishedAt: string | null;
+      lastError: string | null;
+    }>;
   } | null;
   groupMemberOptions: Array<{ id: string; title: string }>;
   groupUpstreamOptions: Array<{ id: string; title: string }>;
@@ -95,13 +107,19 @@ export function GroupDetailPanel({
     <aside className={detailPanelClassName}>
       <div className={detailPanelHeadClassName}>
         <h2 className={detailPanelTitleClassName}>{t("groupDetail")}</h2>
-        <span className={`${statusTagBaseClassName} ${statusTagToneClassName[(selectedGroup ? statusTone[selectedGroup.status] ?? "muted" : "muted") as keyof typeof statusTagToneClassName]}`}>
-          {selectedGroup ? statusLabel[selectedGroup.status] ?? selectedGroup.status : t('common:empty')}
+        <span
+          className={`${statusTagBaseClassName} ${statusTagToneClassName[(selectedGroup ? (statusTone[selectedGroup.status] ?? "muted") : "muted") as keyof typeof statusTagToneClassName]}`}
+        >
+          {selectedGroup ? (statusLabel[selectedGroup.status] ?? selectedGroup.status) : t("common:empty")}
         </span>
       </div>
       <div className={fieldClassName}>
         <label className={fieldLabelClassName}>{t("runtime")}</label>
-        <code className={fieldCodeClassName}>{selectedGroup ? `${selectedGroup.startedAt ?? t('common:empty')} -> ${selectedGroup.finishedAt ?? t('common:empty')}` : t('common:empty')}</code>
+        <code className={fieldCodeClassName}>
+          {selectedGroup
+            ? `${selectedGroup.startedAt ?? t("common:empty")} -> ${selectedGroup.finishedAt ?? t("common:empty")}`
+            : t("common:empty")}
+        </code>
       </div>
       <div className={fieldClassName}>
         <label className={fieldLabelClassName}>{t("groupId")}</label>
@@ -118,15 +136,25 @@ export function GroupDetailPanel({
         <div className={groupCheckboxListClassName}>
           {groupMemberOptions.length ? (
             groupMemberOptions.map((node) => (
-              <label key={node.id} className={`${groupOptionClassName} ${draftGroupMembers.includes(node.id) ? groupOptionCheckedClassName : ""}`}>
+              <label
+                key={node.id}
+                className={`${groupOptionClassName} ${draftGroupMembers.includes(node.id) ? groupOptionCheckedClassName : ""}`}
+              >
                 <input
                   className={groupCheckboxClassName}
                   type="checkbox"
                   checked={draftGroupMembers.includes(node.id)}
-                  onChange={(event) => toggleValue(draftGroupMembers, node.id, event.target.checked, onChangeDraftGroupMembers)}
+                  onChange={(event) =>
+                    toggleValue(draftGroupMembers, node.id, event.target.checked, onChangeDraftGroupMembers)
+                  }
                   disabled={!selectedGroup}
                 />
-                <span className="block min-w-0 overflow-hidden text-ellipsis whitespace-nowrap" title={`${node.id} - ${node.title}`}>{node.id} - {node.title}</span>
+                <span
+                  className="block min-w-0 overflow-hidden text-ellipsis whitespace-nowrap"
+                  title={`${node.id} - ${node.title}`}
+                >
+                  {node.id} - {node.title}
+                </span>
               </label>
             ))
           ) : (
@@ -140,15 +168,25 @@ export function GroupDetailPanel({
         <div className={groupCheckboxListClassName}>
           {groupUpstreamOptions.length ? (
             groupUpstreamOptions.map((item) => (
-              <label key={item.id} className={`${groupOptionClassName} ${draftGroupUpstreams.includes(item.id) ? groupOptionCheckedClassName : ""}`}>
+              <label
+                key={item.id}
+                className={`${groupOptionClassName} ${draftGroupUpstreams.includes(item.id) ? groupOptionCheckedClassName : ""}`}
+              >
                 <input
                   className={groupCheckboxClassName}
                   type="checkbox"
                   checked={draftGroupUpstreams.includes(item.id)}
-                  onChange={(event) => toggleValue(draftGroupUpstreams, item.id, event.target.checked, onChangeDraftGroupUpstreams)}
+                  onChange={(event) =>
+                    toggleValue(draftGroupUpstreams, item.id, event.target.checked, onChangeDraftGroupUpstreams)
+                  }
                   disabled={!selectedGroup}
                 />
-                <span className="block min-w-0 overflow-hidden text-ellipsis whitespace-nowrap" title={`${item.id} - ${item.title}`}>{item.id} - {item.title}</span>
+                <span
+                  className="block min-w-0 overflow-hidden text-ellipsis whitespace-nowrap"
+                  title={`${item.id} - ${item.title}`}
+                >
+                  {item.id} - {item.title}
+                </span>
               </label>
             ))
           ) : (
@@ -176,9 +214,12 @@ export function GroupDetailPanel({
         <code className={fieldCodeClassName}>
           {selectedGroup?.memberRuns.length
             ? selectedGroup.memberRuns
-                .map((member) => `${member.id} | ${member.title} | ${statusLabel[member.status] ?? member.status} | agent:${member.executor.agentId} | artifacts=${member.artifacts.length}`)
+                .map(
+                  (member) =>
+                    `${member.id} | ${member.title} | ${statusLabel[member.status] ?? member.status} | agent:${member.executor.agentId} | artifacts=${member.artifacts.length}`,
+                )
                 .join("\n")
-            : t('common:empty')}
+            : t("common:empty")}
         </code>
       </div>
       <div className={fieldClassName}>
@@ -186,9 +227,12 @@ export function GroupDetailPanel({
         <code className={fieldCodeClassName}>
           {selectedGroup?.itemRuns.length
             ? selectedGroup.itemRuns
-                .map((item) => `${item.itemKey} | ${statusLabel[item.status] ?? item.status} | attempt=${item.attempt} | ${item.startedAt ?? t('common:empty')} -> ${item.finishedAt ?? t('common:empty')}${item.lastError ? ` | error=${item.lastError}` : ""}`)
+                .map(
+                  (item) =>
+                    `${item.itemKey} | ${statusLabel[item.status] ?? item.status} | attempt=${item.attempt} | ${item.startedAt ?? t("common:empty")} -> ${item.finishedAt ?? t("common:empty")}${item.lastError ? ` | error=${item.lastError}` : ""}`,
+                )
                 .join("\n")
-            : t('common:empty')}
+            : t("common:empty")}
         </code>
       </div>
       <div className={fieldClassName}>
@@ -198,19 +242,31 @@ export function GroupDetailPanel({
             ? selectedGroup.artifacts
                 .map((artifact) => `${artifact.type}@v${artifact.schemaVersion} ${artifact.path} (${artifact.hash})`)
                 .join("\n")
-            : t('common:empty')}
+            : t("common:empty")}
         </code>
       </div>
       <div className={fieldClassName}>
         <label className={fieldLabelClassName}>{t("lastError")}</label>
-        <code className={fieldCodeClassName}>{selectedGroup?.lastError || t('common:empty')}</code>
+        <code className={fieldCodeClassName}>{selectedGroup?.lastError || t("common:empty")}</code>
       </div>
-      <small className={`${monoClassName} block text-xs text-(--muted)`}>{isSaving ? t("groupSaving") : t("groupSaveHint")}</small>
+      <small className={`${monoClassName} block text-xs text-(--muted)`}>
+        {isSaving ? t("groupSaving") : t("groupSaveHint")}
+      </small>
       <div className={detailPanelActionRowClassName}>
-        <button className={primaryActionButtonClassName} type="button" onClick={onSave} disabled={!selectedGroup || isSaving || isDeleting}>
+        <button
+          className={primaryActionButtonClassName}
+          type="button"
+          onClick={onSave}
+          disabled={!selectedGroup || isSaving || isDeleting}
+        >
           {t("saveGroupConfig")}
         </button>
-        <button className={dangerActionButtonClassName} type="button" onClick={onDelete} disabled={!selectedGroup || isSaving || isDeleting}>
+        <button
+          className={dangerActionButtonClassName}
+          type="button"
+          onClick={onDelete}
+          disabled={!selectedGroup || isSaving || isDeleting}
+        >
           {isDeleting ? t("deleting") : t("deleteGroup")}
         </button>
       </div>

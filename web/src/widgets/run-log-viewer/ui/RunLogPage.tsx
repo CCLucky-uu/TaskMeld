@@ -33,7 +33,8 @@ type PositionedLogRow = {
 };
 
 const runLogLevelGroupClassName = "flex flex-wrap gap-2";
-const runLogLevelLabelBaseClassName = "inline-flex cursor-pointer items-center gap-1.5 rounded-none px-2 py-[2px] text-xs uppercase";
+const runLogLevelLabelBaseClassName =
+  "inline-flex cursor-pointer items-center gap-1.5 rounded-none px-2 py-[2px] text-xs uppercase";
 const runLogLevelLabelToneClassName: Record<"info" | "warn" | "error", string> = {
   info: "bg-[rgba(142,163,179,0.2)] text-[#a5b9c8]",
   warn: "bg-[rgba(255,184,77,0.16)] text-[var(--warn)]",
@@ -125,7 +126,9 @@ export function RunLogPage({ currentRunId }: RunLogPageProps) {
               {t(levelKey[item.level])}
             </span>
           </div>
-          <p className="m-0 wrap-break-word whitespace-pre-wrap font-[JetBrains_Mono,monospace] text-[13px] leading-normal">{item.text}</p>
+          <p className="m-0 wrap-break-word whitespace-pre-wrap font-[JetBrains_Mono,monospace] text-[13px] leading-normal">
+            {item.text}
+          </p>
         </button>
       ),
     }));
@@ -182,10 +185,7 @@ export function RunLogPage({ currentRunId }: RunLogPageProps) {
     };
   }, [virtualRows, measureVersion, listScrollTop, listViewportHeight]);
 
-  const visibleRowSignature = useMemo(
-    () => visibleRows.map((row) => row.key).join("|"),
-    [visibleRows],
-  );
+  const visibleRowSignature = useMemo(() => visibleRows.map((row) => row.key).join("|"), [visibleRows]);
 
   useLayoutEffect(() => {
     const canvas = listCanvasRef.current;
@@ -197,17 +197,16 @@ export function RunLogPage({ currentRunId }: RunLogPageProps) {
   }, [visibleRowSignature]);
 
   return (
-    <section data-center-card data-run-log-page className="grid h-full min-h-0 min-w-0 flex-1 grid-rows-[auto_minmax(0,1fr)] gap-3 overflow-hidden">
+    <section
+      data-center-card
+      data-run-log-page
+      className="grid h-full min-h-0 min-w-0 flex-1 grid-rows-[auto_minmax(0,1fr)] gap-3 overflow-hidden"
+    >
       <div className={panelHeaderClassName}>
         <div>
           <h2>{t("logCenter")}</h2>
         </div>
-        <a
-          className={ghostActionButtonClassName}
-          href={vm.rawUrl}
-          target="_blank"
-          rel="noreferrer"
-        >
+        <a className={ghostActionButtonClassName} href={vm.rawUrl} target="_blank" rel="noreferrer">
           {t("rawNdjson")}
         </a>
       </div>
@@ -256,7 +255,10 @@ export function RunLogPage({ currentRunId }: RunLogPageProps) {
             />
             <div className={runLogLevelGroupClassName}>
               {(["info", "warn", "error"] as const).map((level) => (
-                <label key={level} className={`${runLogLevelLabelBaseClassName} ${runLogLevelLabelToneClassName[level]}`}>
+                <label
+                  key={level}
+                  className={`${runLogLevelLabelBaseClassName} ${runLogLevelLabelToneClassName[level]}`}
+                >
                   <input
                     type="checkbox"
                     checked={vm.selectedLevels.includes(level)}
@@ -284,8 +286,20 @@ export function RunLogPage({ currentRunId }: RunLogPageProps) {
               setListWidth(Math.max(260, node.clientWidth - 34));
             }}
           >
-            {vm.error ? <div className={`${monoClassName} grid min-h-45 place-items-center p-6 text-center text-xs text-(--muted)`}>{t("loadFailed", { error: vm.error })}</div> : null}
-            {!vm.error && vm.items.length === 0 && !vm.loading ? <div className={`${monoClassName} grid min-h-45 place-items-center p-6 text-center text-xs text-(--muted)`}>{t("noMatch")}</div> : null}
+            {vm.error ? (
+              <div
+                className={`${monoClassName} grid min-h-45 place-items-center p-6 text-center text-xs text-(--muted)`}
+              >
+                {t("loadFailed", { error: vm.error })}
+              </div>
+            ) : null}
+            {!vm.error && vm.items.length === 0 && !vm.loading ? (
+              <div
+                className={`${monoClassName} grid min-h-45 place-items-center p-6 text-center text-xs text-(--muted)`}
+              >
+                {t("noMatch")}
+              </div>
+            ) : null}
             {!vm.error && vm.items.length > 0 ? (
               <div ref={listCanvasRef} className="relative w-full" style={{ height: `${Math.max(totalHeight, 0)}px` }}>
                 {visibleRows.map((row) => (
@@ -307,13 +321,17 @@ export function RunLogPage({ currentRunId }: RunLogPageProps) {
                   <button
                     type="button"
                     disabled={vm.loadingMore}
-                    onClick={() => { void vm.loadMore(); }}
+                    onClick={() => {
+                      void vm.loadMore();
+                    }}
                     className={`${monoClassName} cursor-pointer border border-[var(--live-25)] bg-[rgba(7,12,16,0.84)] px-2 py-0.75 text-xs leading-[1.2] text-[var(--live)] hover:bg-[rgba(50,215,186,0.12)] disabled:opacity-50 disabled:cursor-wait`}
                   >
                     {vm.loadingMore ? t("loadingMore") : t("loadMore")}
                   </button>
                 ) : null}
-                <div className={`${monoClassName} w-fit border border-[rgba(142,163,179,0.28)] bg-[rgba(7,12,16,0.84)] px-1.5 py-0.75 text-xs leading-[1.2] text-[#9ab1c2]`}>
+                <div
+                  className={`${monoClassName} w-fit border border-[rgba(142,163,179,0.28)] bg-[rgba(7,12,16,0.84)] px-1.5 py-0.75 text-xs leading-[1.2] text-[#9ab1c2]`}
+                >
                   {t("renderedStatus", { rendered: visibleRows.length, loaded: virtualRows.length, total: vm.total })}
                 </div>
               </div>
@@ -340,11 +358,15 @@ export function RunLogPage({ currentRunId }: RunLogPageProps) {
                 </div>
               </div>
               <div className="min-h-0 overflow-auto" style={{ minHeight: `${detailHeight}px` }}>
-                <pre className="m-0 p-3 font-[JetBrains_Mono,monospace] text-[13px] leading-normal wrap-break-word whitespace-pre-wrap text-(--text)">{detailText}</pre>
+                <pre className="m-0 p-3 font-[JetBrains_Mono,monospace] text-[13px] leading-normal wrap-break-word whitespace-pre-wrap text-(--text)">
+                  {detailText}
+                </pre>
               </div>
             </>
           ) : (
-            <div className={`${monoClassName} grid min-h-45 place-items-center p-6 text-center text-xs text-(--muted)`}>{t("selectToViewDetailCenter")}</div>
+            <div className={`${monoClassName} grid min-h-45 place-items-center p-6 text-center text-xs text-(--muted)`}>
+              {t("selectToViewDetailCenter")}
+            </div>
           )}
         </aside>
       </div>

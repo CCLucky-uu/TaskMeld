@@ -1,4 +1,4 @@
-import type { Tool, ToolDefinition } from '../types'
+import type { Tool, ToolDefinition } from "../types"
 
 export class ToolRegistry {
   private tools = new Map<string, Tool>()
@@ -16,7 +16,7 @@ export class ToolRegistry {
   }
 
   toToolDefinitions(): ToolDefinition[] {
-    return Array.from(this.tools.values()).map(t => ({
+    return Array.from(this.tools.values()).map((t) => ({
       name: t.name,
       description: t.description,
       parameters: t.parameters,
@@ -26,10 +26,8 @@ export class ToolRegistry {
   }
 
   byCategories(categories: string[]): ToolDefinition[] {
-    const prefix = categories.map(c => c + '.')
-    return this.toToolDefinitions().filter(t =>
-      prefix.some(p => t.name.startsWith(p)),
-    )
+    const prefix = categories.map((c) => c + ".")
+    return this.toToolDefinitions().filter((t) => prefix.some((p) => t.name.startsWith(p)))
   }
 
   get size(): number {

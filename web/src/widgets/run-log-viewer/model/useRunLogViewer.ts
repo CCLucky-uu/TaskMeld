@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { fetchRunTimelineLogs, getRunTimelineRawUrl, type RunLogEntry, type RunLogLevel } from "../../../entities/run-log";
+import {
+  fetchRunTimelineLogs,
+  getRunTimelineRawUrl,
+  type RunLogEntry,
+  type RunLogLevel,
+} from "../../../entities/run-log";
 
 export const useRunLogViewer = (open: boolean, runId: string) => {
   const [items, setItems] = useState<RunLogEntry[]>([]);

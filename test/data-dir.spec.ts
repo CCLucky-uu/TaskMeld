@@ -1,10 +1,10 @@
-import assert from "node:assert/strict";
-import { join } from "node:path";
-import { getTaskMeldDataDir } from "../src/app/data-dir";
+import assert from "node:assert/strict"
+import { join } from "node:path"
+import { getTaskMeldDataDir } from "../src/app/data-dir"
 
 const run = () => {
-  const cwd = join("E:", "workspace", "taskmeld");
-  const homeDir = join("C:", "Users", "a");
+  const cwd = join("E:", "workspace", "taskmeld")
+  const homeDir = join("C:", "Users", "a")
 
   assert.equal(
     getTaskMeldDataDir({
@@ -15,7 +15,7 @@ const run = () => {
     }),
     join(homeDir, ".taskmeld"),
     "发布态默认应使用用户目录 ~/.taskmeld",
-  );
+  )
 
   assert.equal(
     getTaskMeldDataDir({
@@ -26,7 +26,7 @@ const run = () => {
     }),
     join(cwd, ".data"),
     "测试态应使用当前工作区 .data",
-  );
+  )
 
   assert.equal(
     getTaskMeldDataDir({
@@ -37,7 +37,7 @@ const run = () => {
     }),
     join(cwd, ".data"),
     "tsx 开发态应使用当前工作区 .data",
-  );
+  )
 
   assert.equal(
     getTaskMeldDataDir({
@@ -48,9 +48,9 @@ const run = () => {
     }),
     join("D:", "taskmeld-data"),
     "显式数据目录应优先于默认规则",
-  );
+  )
 
-  console.log("data-dir tests passed");
-};
+  console.log("data-dir tests passed")
+}
 
-run();
+run()

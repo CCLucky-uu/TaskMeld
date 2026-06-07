@@ -1,5 +1,5 @@
-import type { NodeRunStatus } from "./runtime-model";
-import type { StateTransitionCommand } from "./state/types";
+import type { NodeRunStatus } from "./runtime-model"
+import type { StateTransitionCommand } from "./state/types"
 
 /**
  * Legal state transitions for pipeline node/item/group status.
@@ -22,7 +22,7 @@ import type { StateTransitionCommand } from "./state/types";
  * - Normal execute path: queued -> running -> success|failed|rejected
  */
 
-type TransitionRules = Record<NodeRunStatus, Partial<Record<StateTransitionCommand, NodeRunStatus[]>>>;
+type TransitionRules = Record<NodeRunStatus, Partial<Record<StateTransitionCommand, NodeRunStatus[]>>>
 
 export const VALID_TRANSITIONS: TransitionRules = {
   queued: {
@@ -95,20 +95,20 @@ export const VALID_TRANSITIONS: TransitionRules = {
     retry_reset: ["queued", "blocked", "skipped"],
     reject_reset: ["queued", "blocked", "skipped"],
   },
-};
+}
 
 export class IllegalStateTransitionError extends Error {
-  public readonly current: NodeRunStatus;
-  public readonly next: NodeRunStatus;
-  public readonly command?: StateTransitionCommand;
+  public readonly current: NodeRunStatus
+  public readonly next: NodeRunStatus
+  public readonly command?: StateTransitionCommand
 
   constructor(current: NodeRunStatus, next: NodeRunStatus, command?: StateTransitionCommand) {
-    const cmdInfo = command ? ` (command: ${command})` : "";
-    super(`Illegal state transition: "${current}" -> "${next}"${cmdInfo}`);
-    this.name = "IllegalStateTransitionError";
-    this.current = current;
-    this.next = next;
-    this.command = command;
+    const cmdInfo = command ? ` (command: ${command})` : ""
+    super(`Illegal state transition: "${current}" -> "${next}"${cmdInfo}`)
+    this.name = "IllegalStateTransitionError"
+    this.current = current
+    this.next = next
+    this.command = command
   }
 }
 
@@ -117,20 +117,15 @@ export const transitionStatus = (
   next: NodeRunStatus,
   command?: StateTransitionCommand,
 ): NodeRunStatus => {
-  if (current === next) return current;
-  const allowedByCommand = VALID_TRANSITIONS[current];
+  if (current === next) return current
+  const allowedByCommand = VALID_TRANSITIONS[current]
   // When no command is specified, only execute + dependency permissions are allowed (safe default),
   // special permissions (route_backfill/retry_reset/reject_reset/sleep/group_aggregate) require an explicit command.
   const allowed = command
     ? (allowedByCommand[command] ?? [])
-    : [
-        ...new Set([
-          ...(allowedByCommand["execute"] ?? []),
-          ...(allowedByCommand["dependency"] ?? []),
-        ]),
-      ];
+    : [...new Set([...(allowedByCommand["execute"] ?? []), ...(allowedByCommand["dependency"] ?? [])])]
   if (!allowed.includes(next)) {
-    throw new IllegalStateTransitionError(current, next, command);
+    throw new IllegalStateTransitionError(current, next, command)
   }
-  return next;
-};
+  return next
+}

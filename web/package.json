@@ -8,7 +8,9 @@
     "build": "tsc --noEmit && vite build",
     "prebuild": "npx tsx src/shared/i18n/generate-types.ts",
     "generate-i18n-types": "npx tsx src/shared/i18n/generate-types.ts",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "format": "prettier --write \"src/**/*.{ts,tsx}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx}\""
   },
   "dependencies": {
     "@chenglou/pretext": "^0.0.5",

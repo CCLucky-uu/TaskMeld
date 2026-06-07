@@ -1,21 +1,36 @@
-import type { RenderSpecMap } from "../engine/types";
+import type { RenderSpecMap } from "../engine/types"
 
-import { readRecord } from "../engine/utils";
+import { readRecord } from "../engine/utils"
 
 const kv = (payload: Record<string, unknown>, field: string, key: string) => ({
   field,
   value: payload[key] ?? "-",
-});
+})
 
 const ensureRows = (data: unknown) => {
-  const p = readRecord(data);
-  return [kv(p, "OK", "ok"), kv(p, "Action", "action"), kv(p, "Endpoint", "endpoint"), kv(p, "Reused", "reused"), kv(p, "PID", "pid"), kv(p, "Started At", "startedAt")];
-};
+  const p = readRecord(data)
+  return [
+    kv(p, "OK", "ok"),
+    kv(p, "Action", "action"),
+    kv(p, "Endpoint", "endpoint"),
+    kv(p, "Reused", "reused"),
+    kv(p, "PID", "pid"),
+    kv(p, "Started At", "startedAt"),
+  ]
+}
 
 const statusRows = (data: unknown) => {
-  const p = readRecord(data);
-  return [kv(p, "OK", "ok"), kv(p, "Endpoint", "endpoint"), kv(p, "Ready", "ready"), kv(p, "Metadata Present", "metadataPresent"), kv(p, "PID", "pid"), kv(p, "PID Running", "pidRunning"), kv(p, "Started At", "startedAt")];
-};
+  const p = readRecord(data)
+  return [
+    kv(p, "OK", "ok"),
+    kv(p, "Endpoint", "endpoint"),
+    kv(p, "Ready", "ready"),
+    kv(p, "Metadata Present", "metadataPresent"),
+    kv(p, "PID", "pid"),
+    kv(p, "PID Running", "pidRunning"),
+    kv(p, "Started At", "startedAt"),
+  ]
+}
 
 export const serverRenderSpecs: RenderSpecMap = {
   "server.ensure": {
@@ -38,4 +53,4 @@ export const serverRenderSpecs: RenderSpecMap = {
     title: "Server Stop",
     sections: [{ title: "Summary", kind: "key-value", rows: ensureRows }],
   },
-};
+}

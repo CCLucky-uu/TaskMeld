@@ -31,47 +31,56 @@ export function restoreMessages(msgs: RawMessage[]): WevraChatMessage[] {
     const id = `hist-${i}`;
 
     switch (m.role) {
-      case 'system': {
+      case "system": {
         // System messages are internal markers, not displayed in UI
         break;
       }
-      case 'assistant': {
+      case "assistant": {
         const toolName = m.toolCalls?.[0]?.name;
         if (m.reasoningContent) {
-          mapped.push(toChatMsg(`${id}-thinking`, 'thinking', m.reasoningContent));
+          mapped.push(toChatMsg(`${id}-thinking`, "thinking", m.reasoningContent));
         }
         // Skip empty-content assistant messages that only have toolCalls (tool results rendered separately)
         if (m.content || !toolName) {
-          mapped.push(toolName
-            ? { ...toChatMsg(`${id}-assistant`, 'assistant', m.content), toolName }
-            : toChatMsg(`${id}-assistant`, 'assistant', m.content));
+          mapped.push(
+            toolName
+              ? { ...toChatMsg(`${id}-assistant`, "assistant", m.content), toolName }
+              : toChatMsg(`${id}-assistant`, "assistant", m.content),
+          );
         }
         break;
       }
-      case 'tool': {
+      case "tool": {
         const info = m.toolCallId ? toolCallIndex.get(m.toolCallId) : undefined;
         mapped.push({
-          ...toChatMsg(`${id}-tool`, 'tool', m.content, m.isError),
+          ...toChatMsg(`${id}-tool`, "tool", m.content, m.isError),
           toolName: info?.name ?? lastAssistantToolName(mapped),
           toolArgs: info?.args,
         });
         break;
       }
       default:
-        mapped.push(toChatMsg(id, m.role as WevraChatMessage['role'], m.content, m.isError));
+        mapped.push(toChatMsg(id, m.role as WevraChatMessage["role"], m.content, m.isError));
     }
   }
 
   return mapped;
 }
 
-function toChatMsg(id: string, role: WevraChatMessage['role'], content: string, isError?: boolean): WevraChatMessage {
-  return { id, role, content: content ?? '', timestamp: Date.now(), isStreaming: false, ...(isError ? { isError } : {}) };
+function toChatMsg(id: string, role: WevraChatMessage["role"], content: string, isError?: boolean): WevraChatMessage {
+  return {
+    id,
+    role,
+    content: content ?? "",
+    timestamp: Date.now(),
+    isStreaming: false,
+    ...(isError ? { isError } : {}),
+  };
 }
 
 function lastAssistantToolName(mapped: WevraChatMessage[]): string | undefined {
   for (let i = mapped.length - 1; i >= 0; i--) {
-    if (mapped[i].role === 'assistant') return mapped[i].toolName;
+    if (mapped[i].role === "assistant") return mapped[i].toolName;
   }
   return undefined;
 }
@@ -79,7 +88,7 @@ function lastAssistantToolName(mapped: WevraChatMessage[]): string | undefined {
 function buildToolCallIndex(msgs: RawMessage[]): Map<string, { name: string; args: string }> {
   const index = new Map<string, { name: string; args: string }>();
   for (const m of msgs) {
-    if (m.role === 'assistant' && m.toolCalls) {
+    if (m.role === "assistant" && m.toolCalls) {
       for (const tc of m.toolCalls) {
         index.set(tc.id, { name: tc.name, args: JSON.stringify(tc.arguments, null, 2) });
       }

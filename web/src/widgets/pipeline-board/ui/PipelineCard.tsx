@@ -12,10 +12,7 @@ import SaveIcon from "@iconify-react/lucide/save";
 import LoaderCircleIcon from "@iconify-react/lucide/loader-circle";
 import SquareIcon from "@iconify-react/lucide/square";
 import Trash2Icon from "@iconify-react/lucide/trash-2";
-import {
-  PipelineNode,
-  WorkflowRemoteBatchPlugin,
-} from "../../../entities/pipeline";
+import { PipelineNode, WorkflowRemoteBatchPlugin } from "../../../entities/pipeline";
 import { actionRowEndClassName } from "../../../shared/ui/panelClasses";
 import { RemoteBatchPanel } from "./RemoteBatchPanel";
 import { SchedulerCard } from "../../../widgets/scheduler-card";
@@ -65,24 +62,12 @@ type PipelineCardProps = {
   onRequestDeleteNode: (pipelineId: string, nodeId: string) => void;
   onRequestDeleteGroup: (pipelineId: string, groupId: string) => void;
   onRequestCreateNode: () => void;
-  onMoveNode: (
-    pipelineId: string,
-    nodeId: string,
-    direction: "up" | "down",
-  ) => void;
-  onReorderNode: (
-    pipelineId: string,
-    nodeId: string,
-    targetNodeId: string,
-    position: "before" | "after",
-  ) => void;
+  onMoveNode: (pipelineId: string, nodeId: string, direction: "up" | "down") => void;
+  onReorderNode: (pipelineId: string, nodeId: string, targetNodeId: string, position: "before" | "after") => void;
   onChangeBatchStartBatch: (pipelineId: string, value: string) => void;
   onStartRemoteKeywordBatchRun: (pipelineId: string) => void;
   onToggleScheduler: (pipelineId: string, enabled: boolean) => void;
-  onSwitchSchedulerMode: (
-    pipelineId: string,
-    mode: "auto" | "manual",
-  ) => void;
+  onSwitchSchedulerMode: (pipelineId: string, mode: "auto" | "manual") => void;
   onManualTick: (pipelineId: string) => void;
   statusTone: Record<string, string>;
   statusLabel: Record<string, string>;
@@ -97,12 +82,10 @@ const pipelineGridClassName =
 const pipelineFrameGridTileClassName =
   "bg-[rgba(9,15,21,0.1)] [background-image:repeating-linear-gradient(-45deg,rgba(150,170,190,0.07)_0,rgba(150,170,190,0.07)_2px,transparent_2px,transparent_8px)]";
 // Top and bottom center bands must match the pipeline card width and include left/right borders.
-const pipelineFrameHorizontalBandClassName =
-  `border-x border-[#29414f]`;
+const pipelineFrameHorizontalBandClassName = `border-x border-[#29414f]`;
 // Left/right rails must match the pipeline container height and add top/bottom borders to close the outer frame.
 const pipelineFrameVerticalRailClassName = pipelineFrameGridTileClassName;
-const pipelineFrameVerticalRailBorderedClassName =
-  ` border-y border-[#29414f]`;
+const pipelineFrameVerticalRailBorderedClassName = ` border-y border-[#29414f]`;
 // Title, branch labels, and empty state consistently reuse the main left/right padding — no extra grid tracks for indentation.
 const pipelineInsetRowClassName = "px-3";
 const pipelineInsetContentClassName = "min-w-0";
@@ -180,9 +163,7 @@ export function PipelineCard({
   const { t } = useTranslation("pipeline");
   const [draggedNodeKey, setDraggedNodeKey] = useState("");
   const [dragOverNodeId, setDragOverNodeId] = useState("");
-  const [dragOverPosition, setDragOverPosition] = useState<"before" | "after">(
-    "before",
-  );
+  const [dragOverPosition, setDragOverPosition] = useState<"before" | "after">("before");
   // Each pipeline maintains its own collapsed state; collapsed means only the top bar remains visible.
   const [collapsedByPipelineId, setCollapsedByPipelineId] = useState<Record<string, boolean>>({});
   // Title inline-edit state: double-click the title to enter input mode; no extra "rename" button needed.
@@ -195,21 +176,14 @@ export function PipelineCard({
     setDragOverPosition("before");
   };
 
-  const resolveDropPosition = (
-    sourceNodeId: string,
-    targetElement: HTMLDivElement,
-  ): "before" | "after" => {
+  const resolveDropPosition = (sourceNodeId: string, targetElement: HTMLDivElement): "before" | "after" => {
     const sourceElement = sourceNodeId
-      ? document.querySelector<HTMLElement>(
-          `[data-pipeline-node-id="${sourceNodeId}"]`,
-        )
+      ? document.querySelector<HTMLElement>(`[data-pipeline-node-id="${sourceNodeId}"]`)
       : null;
     if (!sourceElement) return "before";
     const relation = targetElement.compareDocumentPosition(sourceElement);
     // When source comes before target, dragging onto target defaults to "place after target".
-    return (relation & Node.DOCUMENT_POSITION_PRECEDING) !== 0
-      ? "after"
-      : "before";
+    return (relation & Node.DOCUMENT_POSITION_PRECEDING) !== 0 ? "after" : "before";
   };
 
   const handleNodeDragStart = (
@@ -233,21 +207,12 @@ export function PipelineCard({
     nodeId: string,
   ) => {
     const currentDragKey = `${pipelineId}:${nodeId}`;
-    if (
-      !isEditing ||
-      savingNodeOrder ||
-      !draggedNodeKey ||
-      draggedNodeKey === currentDragKey
-    )
-      return;
+    if (!isEditing || savingNodeOrder || !draggedNodeKey || draggedNodeKey === currentDragKey) return;
     event.preventDefault();
     event.dataTransfer.dropEffect = "move";
     const [, sourceNodeId] = draggedNodeKey.split(":");
     // Dragging onto a later card defaults to "place after"; dragging onto an earlier card defaults to "place before".
-    const nextDragOverPosition = resolveDropPosition(
-      sourceNodeId ?? "",
-      event.currentTarget,
-    );
+    const nextDragOverPosition = resolveDropPosition(sourceNodeId ?? "", event.currentTarget);
     if (dragOverNodeId !== nodeId) {
       setDragOverNodeId(nodeId);
     }
@@ -256,40 +221,23 @@ export function PipelineCard({
     }
   };
 
-  const handleNodeDrop = (
-    event: DragEvent<HTMLDivElement>,
-    pipelineId: string,
-    isEditing: boolean,
-    nodeId: string,
-  ) => {
+  const handleNodeDrop = (event: DragEvent<HTMLDivElement>, pipelineId: string, isEditing: boolean, nodeId: string) => {
     if (!isEditing || savingNodeOrder) return;
     event.preventDefault();
-    const sourceNodeId =
-      event.dataTransfer.getData("text/plain") || draggedNodeKey;
+    const sourceNodeId = event.dataTransfer.getData("text/plain") || draggedNodeKey;
     resetDragState();
     if (!sourceNodeId || sourceNodeId === nodeId) return;
     const [sourcePipelineId, pureNodeId] = sourceNodeId.split(":");
-    if (sourcePipelineId !== pipelineId || !pureNodeId || pureNodeId === nodeId)
-      return;
+    if (sourcePipelineId !== pipelineId || !pureNodeId || pureNodeId === nodeId) return;
     const dropPosition = resolveDropPosition(pureNodeId, event.currentTarget);
     onReorderNode(pipelineId, pureNodeId, nodeId, dropPosition);
   };
 
-  const renderNode = (
-    pipelineId: string,
-    node: PipelineNode,
-    isEditing: boolean,
-    hasPipelineExecution: boolean,
-  ) => {
-    const displayStatus = resolveDisplayStatus(
-      node.status,
-      hasPipelineExecution,
-    );
+  const renderNode = (pipelineId: string, node: PipelineNode, isEditing: boolean, hasPipelineExecution: boolean) => {
+    const displayStatus = resolveDisplayStatus(node.status, hasPipelineExecution);
     const pipelineNodeClassName = [
       pipelineNodeBaseClassName,
-      selectedNodeId === node.id && activePipelineId === pipelineId
-        ? "border-[#32d7ba]"
-        : "",
+      selectedNodeId === node.id && activePipelineId === pipelineId ? "border-[#32d7ba]" : "",
       isEditing ? "cursor-grab active:cursor-grabbing" : "",
       savingNodeOrder ? "cursor-wait opacity-70" : "",
       dragOverNodeId === node.id
@@ -307,18 +255,12 @@ export function PipelineCard({
           onSelectNode(pipelineId, node.id);
         }}
         onKeyDown={(event) => handleNodeKeyDown(event, pipelineId, node.id)}
-        onDragStart={(event) =>
-          handleNodeDragStart(event, pipelineId, isEditing, node.id)
-        }
-        onDragOver={(event) =>
-          handleNodeDragOver(event, pipelineId, isEditing, node.id)
-        }
+        onDragStart={(event) => handleNodeDragStart(event, pipelineId, isEditing, node.id)}
+        onDragOver={(event) => handleNodeDragOver(event, pipelineId, isEditing, node.id)}
         onDragLeave={() => {
           if (dragOverNodeId === node.id) setDragOverNodeId("");
         }}
-        onDrop={(event) =>
-          handleNodeDrop(event, pipelineId, isEditing, node.id)
-        }
+        onDrop={(event) => handleNodeDrop(event, pipelineId, isEditing, node.id)}
         onDragEnd={resetDragState}
         role="button"
         tabIndex={0}
@@ -397,19 +339,10 @@ export function PipelineCard({
     );
   };
 
-  const resolveDisplayStatus = (
-    status: PipelineNode["status"],
-    hasPipelineExecution: boolean,
-  ) =>
-    !hasPipelineExecution && (status === "queued" || status === "blocked")
-      ? "ready"
-      : status;
+  const resolveDisplayStatus = (status: PipelineNode["status"], hasPipelineExecution: boolean) =>
+    !hasPipelineExecution && (status === "queued" || status === "blocked") ? "ready" : status;
 
-  const handleNodeKeyDown = (
-    event: KeyboardEvent<HTMLDivElement>,
-    pipelineId: string,
-    nodeId: string,
-  ) => {
+  const handleNodeKeyDown = (event: KeyboardEvent<HTMLDivElement>, pipelineId: string, nodeId: string) => {
     if (event.key !== "Enter" && event.key !== " ") return;
     event.preventDefault();
     onSelectNode(pipelineId, nodeId);
@@ -423,9 +356,7 @@ export function PipelineCard({
     },
   ) => (
     <div className={`${pipelineInsetRowClassName} ${options?.wrapperClassName ?? ""}`.trim()}>
-      <div className={`${pipelineInsetContentClassName} ${options?.contentClassName ?? ""}`.trim()}>
-        {content}
-      </div>
+      <div className={`${pipelineInsetContentClassName} ${options?.contentClassName ?? ""}`.trim()}>{content}</div>
     </div>
   );
 
@@ -468,22 +399,16 @@ export function PipelineCard({
         groupIdByMemberId.set(memberId, group.id);
       }
     }
-    const workflowOrderIndexById = new Map(
-      workflowNodeOrder.map((nodeId, index) => [nodeId, index]),
-    );
+    const workflowOrderIndexById = new Map(workflowNodeOrder.map((nodeId, index) => [nodeId, index]));
     // Runtime node order may lag behind the persisted workflow order;
     // the DAG panel prefers workflow order so "added then runs" doesn't appear mispositioned at the bottom.
     const orderedNodes = [...nodes].sort((left, right) => {
-      const leftIndex =
-        workflowOrderIndexById.get(left.id) ?? Number.MAX_SAFE_INTEGER;
-      const rightIndex =
-        workflowOrderIndexById.get(right.id) ?? Number.MAX_SAFE_INTEGER;
+      const leftIndex = workflowOrderIndexById.get(left.id) ?? Number.MAX_SAFE_INTEGER;
+      const rightIndex = workflowOrderIndexById.get(right.id) ?? Number.MAX_SAFE_INTEGER;
       if (leftIndex !== rightIndex) return leftIndex - rightIndex;
       return left.id.localeCompare(right.id);
     });
-    const orderedBlocks: Array<
-      { type: "node"; node: PipelineNode } | { type: "group"; groupId: string }
-    > = [];
+    const orderedBlocks: Array<{ type: "node"; node: PipelineNode } | { type: "group"; groupId: string }> = [];
     const renderedGroupIds = new Set<string>();
     for (const node of orderedNodes) {
       const groupId = groupIdByMemberId.get(node.id)?.trim();
@@ -506,67 +431,56 @@ export function PipelineCard({
     return (
       <div className={pipelineGridShellClassName}>
         <div className={`${pipelineGridClassName} ${laneClassName}`}>
-        {orderedBlocks.map((block) =>
-          block.type === "node" ? (
-            renderNode(pipelineId, block.node, isEditing, hasPipelineExecution)
-          ) : (
-            <div
-              className={`${pipelineParallelGroupBaseClassName} ${selectedGroupId === block.groupId && activePipelineId === pipelineId ? "border-[#32d7ba]" : ""}`}
-              key={block.groupId}
-              data-pipeline-group-id={block.groupId}
-              onClick={() => onSelectGroup(pipelineId, block.groupId)}
-              onKeyDown={(event) => {
-                if (event.key !== "Enter" && event.key !== " ") return;
-                event.preventDefault();
-                onSelectGroup(pipelineId, block.groupId);
-              }}
-              role="button"
-              tabIndex={0}
-            >
-              {isEditing ? (
-                <button
-                  className={`${pipelineNodeActionButtonClassName}`}
-                  type="button"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onRequestDeleteGroup(pipelineId, block.groupId);
-                  }}
-                  disabled={deletingEntity}
-                >
-                  {t("deleteGroup")}
-                </button>
-              ) : null}
-              <div className={`${monoClassName} text-xs text-[#95b4c8]`}>
-                {t("parallelGroup", { groupId: block.groupId })}
+          {orderedBlocks.map((block) =>
+            block.type === "node" ? (
+              renderNode(pipelineId, block.node, isEditing, hasPipelineExecution)
+            ) : (
+              <div
+                className={`${pipelineParallelGroupBaseClassName} ${selectedGroupId === block.groupId && activePipelineId === pipelineId ? "border-[#32d7ba]" : ""}`}
+                key={block.groupId}
+                data-pipeline-group-id={block.groupId}
+                onClick={() => onSelectGroup(pipelineId, block.groupId)}
+                onKeyDown={(event) => {
+                  if (event.key !== "Enter" && event.key !== " ") return;
+                  event.preventDefault();
+                  onSelectGroup(pipelineId, block.groupId);
+                }}
+                role="button"
+                tabIndex={0}
+              >
+                {isEditing ? (
+                  <button
+                    className={`${pipelineNodeActionButtonClassName}`}
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onRequestDeleteGroup(pipelineId, block.groupId);
+                    }}
+                    disabled={deletingEntity}
+                  >
+                    {t("deleteGroup")}
+                  </button>
+                ) : null}
+                <div className={`${monoClassName} text-xs text-[#95b4c8]`}>
+                  {t("parallelGroup", { groupId: block.groupId })}
+                </div>
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(210px,1fr))] gap-3">
+                  {(groupById.get(block.groupId)?.members ?? [])
+                    .map((memberId) => nodeById.get(memberId))
+                    .filter((member): member is PipelineNode => Boolean(member))
+                    .map((member) => renderNode(pipelineId, member, isEditing, hasPipelineExecution))}
+                </div>
               </div>
-              <div className="grid grid-cols-[repeat(auto-fill,minmax(210px,1fr))] gap-3">
-                {(groupById.get(block.groupId)?.members ?? [])
-                  .map((memberId) => nodeById.get(memberId))
-                  .filter((member): member is PipelineNode => Boolean(member))
-                  .map((member) =>
-                    renderNode(
-                      pipelineId,
-                      member,
-                      isEditing,
-                      hasPipelineExecution,
-                    ),
-                  )}
-              </div>
-            </div>
-          ),
-        )}
-        {showCreateEntry ? (
-          <button
-            className={pipelineCreateEntryClassName}
-            type="button"
-            onClick={onRequestCreateNode}
-          >
-            {/* "Add node" entry follows the pipeline grid of the currently-editing pipeline, so it doesn't always land at the very bottom of the page. */}
-            <span className={`${monoClassName} text-[18px]`}>+</span>
-            <strong>{t("addObject")}</strong>
-            <small>{t("addObjectHint")}</small>
-          </button>
-        ) : null}
+            ),
+          )}
+          {showCreateEntry ? (
+            <button className={pipelineCreateEntryClassName} type="button" onClick={onRequestCreateNode}>
+              {/* "Add node" entry follows the pipeline grid of the currently-editing pipeline, so it doesn't always land at the very bottom of the page. */}
+              <span className={`${monoClassName} text-[18px]`}>+</span>
+              <strong>{t("addObject")}</strong>
+              <small>{t("addObjectHint")}</small>
+            </button>
+          ) : null}
         </div>
       </div>
     );
@@ -634,11 +548,7 @@ export function PipelineCard({
     collapsed?: boolean;
   }) => {
     const resolvedSectionClassName =
-      tone === "primary"
-        ? "border-[#29414f]"
-        : tone === "secondary"
-          ? "border-[#29414f]"
-          : "";
+      tone === "primary" ? "border-[#29414f]" : tone === "secondary" ? "border-[#29414f]" : "";
     const batchStatusText =
       batchRunStatus !== undefined
         ? `status=${batchRunStatus} | ${batchRunProcessedItems ?? 0}/${batchRunTotalItems ?? 0} | batch ${batchRunProcessedBatches ?? 0}/${batchRunTotalBatches ?? 0} | size=${
@@ -693,237 +603,218 @@ export function PipelineCard({
           </>
         ) : null}
         <div className={`${pipelineFrameVerticalRailBorderedClassName} ${sectionRowClassName}`} aria-hidden="true" />
-        <section
-          className={`${pipelineStageBaseClassName} ${resolvedSectionClassName} ${sectionRowClassName}`.trim()}
-        >
-        <div className={`${pipelineInsetRowClassName} ${isCollapsed ? "border-b-0 mb-0" : "border-b border-(--line) mb-3"} bg-transparent`}>
-          <div className={`${pipelineInsetContentClassName} flex items-center justify-between gap-3 max-[760px]:flex-col`}>
-          <div>
-            {/* Title row height snugs to the actual text height, rendered in italic as requested. */}
-            {isEditingTitle ? (
-              <input
-                className={`${monoClassName} h-8 w-[min(420px,58vw)] border border-(--line) bg-[rgba(15,23,29,0.82)] px-2 text-sm italic text-(--text) outline-none focus:border-(--live)`}
-                value={editingTitleValue}
-                onChange={(event) => setEditingTitleValue(event.target.value)}
-                onBlur={() => {
-                  void commitInlineTitleRename();
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    event.preventDefault();
-                    void commitInlineTitleRename();
-                    return;
-                  }
-                  if (event.key === "Escape") {
-                    event.preventDefault();
-                    setEditingTitleValue(title);
-                    setEditingTitlePipelineId(null);
-                  }
-                }}
-                autoFocus
-              />
-            ) : (
-              <p
-                className="m-0 cursor-text whitespace-nowrap text-base font-medium italic leading-none"
-                title={t("doubleClickTitle")}
-                onDoubleClick={() => {
-                  setEditingTitlePipelineId(pipelineId);
-                  setEditingTitleValue(title);
-                }}
-              >
-                {title}
-              </p>
-            )}
-          </div>
-          {showActions ? (
-            <div className="flex w-full min-w-0 flex-wrap gap-2  ml-auto justify-end">
-              <button
-                className={actionIconButtonClassName}
-                onClick={() =>
-                  setCollapsedByPipelineId((prev) => ({
-                    ...prev,
-                    [pipelineId]: !isCollapsed,
-                  }))
-                }
-                aria-label={isCollapsed ? t("expandPipeline") : t("collapsePipeline")}
-                title={isCollapsed ? t("expandPipeline") : t("collapsePipeline")}
-              >
-                {isCollapsed ? (
-                  <ChevronRightIcon className="h-4 w-4" />
+        <section className={`${pipelineStageBaseClassName} ${resolvedSectionClassName} ${sectionRowClassName}`.trim()}>
+          <div
+            className={`${pipelineInsetRowClassName} ${isCollapsed ? "border-b-0 mb-0" : "border-b border-(--line) mb-3"} bg-transparent`}
+          >
+            <div
+              className={`${pipelineInsetContentClassName} flex items-center justify-between gap-3 max-[760px]:flex-col`}
+            >
+              <div>
+                {/* Title row height snugs to the actual text height, rendered in italic as requested. */}
+                {isEditingTitle ? (
+                  <input
+                    className={`${monoClassName} h-8 w-[min(420px,58vw)] border border-(--line) bg-[rgba(15,23,29,0.82)] px-2 text-sm italic text-(--text) outline-none focus:border-(--live)`}
+                    value={editingTitleValue}
+                    onChange={(event) => setEditingTitleValue(event.target.value)}
+                    onBlur={() => {
+                      void commitInlineTitleRename();
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        void commitInlineTitleRename();
+                        return;
+                      }
+                      if (event.key === "Escape") {
+                        event.preventDefault();
+                        setEditingTitleValue(title);
+                        setEditingTitlePipelineId(null);
+                      }
+                    }}
+                    autoFocus
+                  />
                 ) : (
-                  <ChevronDownIcon className="h-4 w-4" />
+                  <p
+                    className="m-0 cursor-text whitespace-nowrap text-base font-medium italic leading-none"
+                    title={t("doubleClickTitle")}
+                    onDoubleClick={() => {
+                      setEditingTitlePipelineId(pipelineId);
+                      setEditingTitleValue(title);
+                    }}
+                  >
+                    {title}
+                  </p>
                 )}
-              </button>
-              <button
-                className={`${actionIconButtonClassName} ${canStopPipeline ? "border-[rgba(255,107,107,0.35)] text-(--bad) hover:bg-[rgba(255,107,107,0.1)]" : "border-(--line) text-(--muted)"}`}
-                onClick={() => onStop(pipelineId)}
-                disabled={!canStopPipeline || Boolean(isBatchOperating)}
-                aria-label={canStopPipeline ? t("stopPipeline") : t("pipelineNotRunning")}
-                title={canStopPipeline ? t("stopPipeline") : t("pipelineNotRunning")}
-              >
-                <SquareIcon className="h-3.5 w-3.5" />
-              </button>
-              <button
-                className={actionIconButtonClassName}
-                onClick={() => {
-                  if (isRemoteBatchEnabled) {
-                    onStartRemoteKeywordBatchRun(pipelineId);
-                    return;
-                  }
-                  onRun(pipelineId);
-                }}
-                disabled={isPrimaryActionBusy}
-                aria-label={
-                  isRemoteBatchEnabled
-                    ? isPrimaryActionBusy
-                      ? t("remoteBatchRunning")
-                      : t("startRemoteBatch")
-                    : isRunning
-                      ? t("runStarting")
-                      : t("startRun")
-                }
-                title={
-                  isRemoteBatchEnabled
-                    ? isPrimaryActionBusy
-                      ? t("remoteBatchRunning")
-                      : t("startRemoteBatch")
-                    : isRunning
-                      ? t("runStarting")
-                      : t("startRun")
-                }
-              >
-                {isPrimaryActionBusy ? (
-                  <LoaderCircleIcon className="h-4 w-4 animate-spin" />
-                ) : (
-                  <PlayIcon className="h-4 w-4" />
-                )}
-              </button>
-              <button
-                className={actionIconButtonClassName}
-                onClick={() => onOpenPlugins(pipelineId)}
-                aria-label={t("pluginConfig")}
-                title={t("pluginConfig")}
-              >
-                <PlugIcon className="h-4 w-4" />
-              </button>
-              <button
-                className={actionIconButtonClassName}
-                onClick={() => onOpenWorkflowJson(pipelineId)}
-                aria-label={t("viewWorkflowJson")}
-                title={t("viewWorkflowJson")}
-              >
-                <BracesIcon className="h-4 w-4" />
-              </button>
-              <button
-                className={`${actionIconButtonClassName} ${isEditing ? "border-(--warn) text-(--warn) hover:bg-[rgba(255,184,77,0.12)]" : ""}`}
-                onClick={() => onToggleEditing(pipelineId, !isEditing)}
-                aria-label={isEditing ? t("saveEdit") : t("enterEdit")}
-                title={isEditing ? t("saveEdit") : t("enterEdit")}
-              >
-                {isEditing ? (
-                  <SaveIcon className="h-4 w-4" />
-                ) : (
-                  <PencilIcon className="h-4 w-4" />
-                )}
-              </button>
-              <button
-                className={actionIconButtonClassName}
-                onClick={() => onRequestDeletePipeline(pipelineId)}
-                disabled={!canDelete || deletingPipeline}
-                aria-label={t("deletePipeline")}
-                title={!canDelete ? t("keepAtLeastOne") : t("deletePipeline")}
-              >
-                <Trash2Icon className="h-4 w-4" />
-              </button>
-            </div>
-          ) : null}
-          </div>
-        </div>
-        {!isCollapsed && schedulerPluginEnabled ? (
-          <SchedulerCard
-            pipelineId={pipelineId}
-            schedulerMode={schedulerMode}
-            schedulerEnabled={schedulerEnabled}
-            onToggleScheduler={() =>
-              onToggleScheduler(pipelineId, !schedulerEnabled)
-            }
-            onSwitchSchedulerMode={() =>
-              onSwitchSchedulerMode(
-                pipelineId,
-                schedulerMode === "manual" ? "auto" : "manual",
-              )
-            }
-            onManualTick={() => onManualTick(pipelineId)}
-            embedded
-          />
-        ) : null}
-        {!isCollapsed && pluginState.enabled ? (
-          <RemoteBatchPanel
-            title={t("remoteBatchTitle", { pipelineId })}
-            statusText={batchStatusText}
-            startBatch={batchStartBatch ?? "1"}
-            isOperating={Boolean(isBatchOperating)}
-            onChangeStartBatch={(value) =>
-              onChangeBatchStartBatch(pipelineId, value)
-            }
-          />
-        ) : null}
-        {!isCollapsed && nodes.length > 0 ? (
-          renderLane(
-            pipelineId,
-            nodes,
-            workflowNodeOrder,
-            parallelGroups,
-            "max-h-none",
-            isEditing,
-            hasPipelineExecution,
-            isEditing,
-          )
-        ) : !isCollapsed ? (
-          <div className={pipelineGridShellClassName}>
-            <div className={`${pipelineGridClassName} max-h-none`}>
-              {renderEmptyState(emptyMessage ?? t("noNodes"), {
-                wrapperClassName: "px-0",
-              })}
-              {isEditing ? (
-                <button
-                  className={pipelineCreateEntryClassName}
-                  type="button"
-                  onClick={onRequestCreateNode}
-                >
-                  {/* Even an empty pipeline places "add node" inside its own DAG block to keep interaction placement consistent. */}
-                  <span className={`${monoClassName} text-[18px]`}>+</span>
-                  <strong>{t("addObject")}</strong>
-                  <small>{t("addObjectHint")}</small>
-                </button>
+              </div>
+              {showActions ? (
+                <div className="flex w-full min-w-0 flex-wrap gap-2  ml-auto justify-end">
+                  <button
+                    className={actionIconButtonClassName}
+                    onClick={() =>
+                      setCollapsedByPipelineId((prev) => ({
+                        ...prev,
+                        [pipelineId]: !isCollapsed,
+                      }))
+                    }
+                    aria-label={isCollapsed ? t("expandPipeline") : t("collapsePipeline")}
+                    title={isCollapsed ? t("expandPipeline") : t("collapsePipeline")}
+                  >
+                    {isCollapsed ? <ChevronRightIcon className="h-4 w-4" /> : <ChevronDownIcon className="h-4 w-4" />}
+                  </button>
+                  <button
+                    className={`${actionIconButtonClassName} ${canStopPipeline ? "border-[rgba(255,107,107,0.35)] text-(--bad) hover:bg-[rgba(255,107,107,0.1)]" : "border-(--line) text-(--muted)"}`}
+                    onClick={() => onStop(pipelineId)}
+                    disabled={!canStopPipeline || Boolean(isBatchOperating)}
+                    aria-label={canStopPipeline ? t("stopPipeline") : t("pipelineNotRunning")}
+                    title={canStopPipeline ? t("stopPipeline") : t("pipelineNotRunning")}
+                  >
+                    <SquareIcon className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    className={actionIconButtonClassName}
+                    onClick={() => {
+                      if (isRemoteBatchEnabled) {
+                        onStartRemoteKeywordBatchRun(pipelineId);
+                        return;
+                      }
+                      onRun(pipelineId);
+                    }}
+                    disabled={isPrimaryActionBusy}
+                    aria-label={
+                      isRemoteBatchEnabled
+                        ? isPrimaryActionBusy
+                          ? t("remoteBatchRunning")
+                          : t("startRemoteBatch")
+                        : isRunning
+                          ? t("runStarting")
+                          : t("startRun")
+                    }
+                    title={
+                      isRemoteBatchEnabled
+                        ? isPrimaryActionBusy
+                          ? t("remoteBatchRunning")
+                          : t("startRemoteBatch")
+                        : isRunning
+                          ? t("runStarting")
+                          : t("startRun")
+                    }
+                  >
+                    {isPrimaryActionBusy ? (
+                      <LoaderCircleIcon className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <PlayIcon className="h-4 w-4" />
+                    )}
+                  </button>
+                  <button
+                    className={actionIconButtonClassName}
+                    onClick={() => onOpenPlugins(pipelineId)}
+                    aria-label={t("pluginConfig")}
+                    title={t("pluginConfig")}
+                  >
+                    <PlugIcon className="h-4 w-4" />
+                  </button>
+                  <button
+                    className={actionIconButtonClassName}
+                    onClick={() => onOpenWorkflowJson(pipelineId)}
+                    aria-label={t("viewWorkflowJson")}
+                    title={t("viewWorkflowJson")}
+                  >
+                    <BracesIcon className="h-4 w-4" />
+                  </button>
+                  <button
+                    className={`${actionIconButtonClassName} ${isEditing ? "border-(--warn) text-(--warn) hover:bg-[rgba(255,184,77,0.12)]" : ""}`}
+                    onClick={() => onToggleEditing(pipelineId, !isEditing)}
+                    aria-label={isEditing ? t("saveEdit") : t("enterEdit")}
+                    title={isEditing ? t("saveEdit") : t("enterEdit")}
+                  >
+                    {isEditing ? <SaveIcon className="h-4 w-4" /> : <PencilIcon className="h-4 w-4" />}
+                  </button>
+                  <button
+                    className={actionIconButtonClassName}
+                    onClick={() => onRequestDeletePipeline(pipelineId)}
+                    disabled={!canDelete || deletingPipeline}
+                    aria-label={t("deletePipeline")}
+                    title={!canDelete ? t("keepAtLeastOne") : t("deletePipeline")}
+                  >
+                    <Trash2Icon className="h-4 w-4" />
+                  </button>
+                </div>
               ) : null}
             </div>
           </div>
-        ) : null}
-        {!isCollapsed && branchNodes ? (
-          <div>
-            {renderInsetBlock(t("branchNodes"), {
-              contentClassName: `${monoClassName} mb-2 text-xs text-[#8da2b3]`,
-            })}
-            {branchNodes.length > 0 ? (
-              renderLane(
-                pipelineId,
-                branchNodes,
-                workflowNodeOrder,
-                parallelGroups,
-                "max-h-none",
-                isEditing,
-                hasPipelineExecution,
-                false,
-              )
-            ) : (
-              renderEmptyState(t("noBranchNodes"), {
-                wrapperClassName: "mb-3",
-                contentClassName: "p-2.5",
-              })
-            )}
-          </div>
-        ) : null}
+          {!isCollapsed && schedulerPluginEnabled ? (
+            <SchedulerCard
+              pipelineId={pipelineId}
+              schedulerMode={schedulerMode}
+              schedulerEnabled={schedulerEnabled}
+              onToggleScheduler={() => onToggleScheduler(pipelineId, !schedulerEnabled)}
+              onSwitchSchedulerMode={() =>
+                onSwitchSchedulerMode(pipelineId, schedulerMode === "manual" ? "auto" : "manual")
+              }
+              onManualTick={() => onManualTick(pipelineId)}
+              embedded
+            />
+          ) : null}
+          {!isCollapsed && pluginState.enabled ? (
+            <RemoteBatchPanel
+              title={t("remoteBatchTitle", { pipelineId })}
+              statusText={batchStatusText}
+              startBatch={batchStartBatch ?? "1"}
+              isOperating={Boolean(isBatchOperating)}
+              onChangeStartBatch={(value) => onChangeBatchStartBatch(pipelineId, value)}
+            />
+          ) : null}
+          {!isCollapsed && nodes.length > 0 ? (
+            renderLane(
+              pipelineId,
+              nodes,
+              workflowNodeOrder,
+              parallelGroups,
+              "max-h-none",
+              isEditing,
+              hasPipelineExecution,
+              isEditing,
+            )
+          ) : !isCollapsed ? (
+            <div className={pipelineGridShellClassName}>
+              <div className={`${pipelineGridClassName} max-h-none`}>
+                {renderEmptyState(emptyMessage ?? t("noNodes"), {
+                  wrapperClassName: "px-0",
+                })}
+                {isEditing ? (
+                  <button className={pipelineCreateEntryClassName} type="button" onClick={onRequestCreateNode}>
+                    {/* Even an empty pipeline places "add node" inside its own DAG block to keep interaction placement consistent. */}
+                    <span className={`${monoClassName} text-[18px]`}>+</span>
+                    <strong>{t("addObject")}</strong>
+                    <small>{t("addObjectHint")}</small>
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+          {!isCollapsed && branchNodes ? (
+            <div>
+              {renderInsetBlock(t("branchNodes"), {
+                contentClassName: `${monoClassName} mb-2 text-xs text-[#8da2b3]`,
+              })}
+              {branchNodes.length > 0
+                ? renderLane(
+                    pipelineId,
+                    branchNodes,
+                    workflowNodeOrder,
+                    parallelGroups,
+                    "max-h-none",
+                    isEditing,
+                    hasPipelineExecution,
+                    false,
+                  )
+                : renderEmptyState(t("noBranchNodes"), {
+                    wrapperClassName: "mb-3",
+                    contentClassName: "p-2.5",
+                  })}
+            </div>
+          ) : null}
         </section>
         <div className={`${pipelineFrameVerticalRailBorderedClassName} ${sectionRowClassName}`} aria-hidden="true" />
         {showBottomBand ? (
@@ -941,12 +832,8 @@ export function PipelineCard({
     <section data-center-card data-pipeline-card className="min-w-0">
       {sections.map((section, index) => {
         const isSectionCollapsed = collapsedByPipelineId[section.pipelineId] === true;
-        const mainlineNodes = section.pipeline.filter(
-          (node) => node.lane !== "branch",
-        );
-        const branchNodes = section.pipeline.filter(
-          (node) => node.lane === "branch",
-        );
+        const mainlineNodes = section.pipeline.filter((node) => node.lane !== "branch");
+        const branchNodes = section.pipeline.filter((node) => node.lane === "branch");
         const sectionNode = renderPipelineSection({
           pipelineId: section.pipelineId,
           title: section.title,
