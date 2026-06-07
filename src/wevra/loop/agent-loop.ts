@@ -98,6 +98,7 @@ export class WevraLoop {
         content: assistantContent,
         toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
         reasoningContent: reasoningContent || undefined,
+        timestamp: Date.now(),
       }
       fullHistory.push(assistantMsg)
       await callbacks?.onMessage?.(assistantMsg)
@@ -163,6 +164,7 @@ export class WevraLoop {
           toolCallId: toolCalls[i].id,
           content: result.output,
           isError: result.isError,
+          timestamp: Date.now(),
         }
         fullHistory.push(toolMsg)
         await callbacks?.onMessage?.(toolMsg)

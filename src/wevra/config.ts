@@ -1,6 +1,6 @@
 import type { LLMConfig, ThinkingConfig, ProviderProfile, RuntimeModelConfig, ModelsJson, ModelProfile } from "./types"
-import { readFileSync, existsSync } from "node:fs"
-import { join } from "node:path"
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs"
+import { join, dirname } from "node:path"
 import { resolveTaskMeldDataPath } from "../app/data-dir"
 
 // ── Data dir — reuse global path rules ──
@@ -373,9 +373,10 @@ function loadModels(): { models: RuntimeModelConfig[]; defaultModel: string } {
   // Build enabledModels list
   const enabledSet: string[] = userConfig?.enabledModels ?? []
 
-  // If enabledModels is empty, enable all built-in models + env by default
+  // If enabledModels is empty, only enable models from providers that have an API key
   if (enabledSet.length === 0) {
     for (const [providerId, p] of providerMap) {
+      if (!p.apiKey) continue // Skip providers without API key
       for (const m of p.models) {
         enabledSet.push(`${providerId}/${m.id}`)
       }
@@ -450,4 +451,174 @@ function resolveDefault(enabledModels: string[], defaultId: string): string {
     console.warn(`[wevra] Default model "${defaultId}" is disabled, falling back to "${fallback}"`)
   }
   return fallback
+}
+
+// ── Models.json persistence ──
+
+function getModelsJsonPath(): string {
+  return join(getDataDir(), "models.json")
+}
+
+function readModelsJson(): ModelsJson {
+  const path = getModelsJsonPath()
+  if (!existsSync(path)) return { version: 1, providers: {} }
+  try {
+    return JSON.parse(readFileSync(path, "utf-8")) as ModelsJson
+  } catch {
+    return { version: 1, providers: {} }
+  }
+}
+
+function writeModelsJson(config: ModelsJson): void {
+  const path = getModelsJsonPath()
+  mkdirSync(dirname(path), { recursive: true })
+  writeFileSync(path, JSON.stringify(config, null, 2), "utf-8")
+  invalidateModelsCache()
+}
+
+// ── Provider management ──
+
+export function addProvider(
+  providerId: string,
+  baseUrl: string,
+  apiKey: string,
+  models?: Array<{ id: string; name: string; contextWindow?: number; maxTokens?: number }>,
+): { ok: true } | { ok: false; error: string } {
+  if (!providerId.trim()) return { ok: false, error: "providerId is required" }
+  if (!baseUrl.trim()) return { ok: false, error: "baseUrl is required" }
+  if (!apiKey.trim()) return { ok: false, error: "apiKey is required" }
+  const id = providerId.trim().toLowerCase()
+  if (BUILTIN_PROVIDERS[id] && !readModelsJson().providers[id]) {
+    // Overriding a built-in provider is allowed (user provides their own API key)
+  }
+  const config = readModelsJson()
+  const providerModels = (models ?? []).map((m) => ({
+    id: m.id,
+    name: m.name ?? m.id,
+    contextWindow: m.contextWindow ?? 128_000,
+    maxTokens: m.maxTokens ?? 16_384,
+    reasoning: false,
+    compat: defaultCompat(),
+  }))
+  // If no models specified, inherit from built-in provider if it exists
+  const finalModels =
+    providerModels.length > 0
+      ? providerModels
+      : (BUILTIN_PROVIDERS[id]?.models ?? [
+          {
+            id: "default",
+            name: "Default",
+            contextWindow: 128_000,
+            maxTokens: 16_384,
+            reasoning: false,
+            compat: defaultCompat(),
+          },
+        ])
+  config.providers[id] = {
+    baseUrl: baseUrl.trim(),
+    api: "openai-completions",
+    apiKey: apiKey.trim(),
+    models: finalModels,
+  }
+  // Auto-enable all models from this provider
+  if (!config.enabledModels) config.enabledModels = []
+  for (const m of finalModels) {
+    const key = `${id}/${m.id}`
+    if (!config.enabledModels.includes(key)) config.enabledModels.push(key)
+  }
+  writeModelsJson(config)
+  return { ok: true }
+}
+
+export function updateProvider(
+  providerId: string,
+  patch: { baseUrl?: string; apiKey?: string },
+): { ok: true } | { ok: false; error: string } {
+  const id = providerId.trim().toLowerCase()
+  const config = readModelsJson()
+  const provider = config.providers[id]
+  if (!provider) return { ok: false, error: `Provider "${id}" not found` }
+  if (patch.baseUrl !== undefined) provider.baseUrl = patch.baseUrl.trim()
+  if (patch.apiKey !== undefined) provider.apiKey = patch.apiKey.trim()
+  writeModelsJson(config)
+  return { ok: true }
+}
+
+export function removeProvider(providerId: string): { ok: true } | { ok: false; error: string } {
+  const id = providerId.trim().toLowerCase()
+  const config = readModelsJson()
+  if (!config.providers[id]) return { ok: false, error: `Provider "${id}" not found` }
+  delete config.providers[id]
+  // Remove enabled models from this provider
+  if (config.enabledModels) {
+    config.enabledModels = config.enabledModels.filter((k) => !k.startsWith(`${id}/`))
+  }
+  // Clear default if it was from this provider
+  if (config.default?.provider === id) {
+    config.default = undefined
+  }
+  writeModelsJson(config)
+  return { ok: true }
+}
+
+export function setDefaultModel(providerId: string, modelId: string): { ok: true } | { ok: false; error: string } {
+  const key = `${providerId}/${modelId}`
+  const models = getAvailableModels()
+  if (!models.find((m) => `${m.providerId}/${m.modelId}` === key)) {
+    return { ok: false, error: `Model "${key}" not found or not enabled` }
+  }
+  const config = readModelsJson()
+  config.default = { provider: providerId, model: modelId }
+  writeModelsJson(config)
+  return { ok: true }
+}
+
+export function getModelsConfigPublic(): {
+  models: Array<{ providerId: string; modelId: string; label: string; contextWindow: number; readonly: boolean }>
+  default: string
+  thinkingLevels: readonly string[]
+  providers: Array<{
+    id: string
+    name: string
+    baseUrl: string
+    hasApiKey: boolean
+    modelCount: number
+    readonly: boolean
+  }>
+} {
+  const models = getAvailableModelsPublic()
+  const config = readModelsJson()
+  const providers = Object.entries(config.providers).map(([id, p]) => ({
+    id,
+    name: BUILTIN_PROVIDERS[id]?.name ?? id,
+    baseUrl: p.baseUrl,
+    hasApiKey: Boolean(p.apiKey),
+    modelCount: p.models.length,
+    readonly: false,
+  }))
+  // Add built-in providers that aren't in user config (no API key yet)
+  for (const [id, p] of Object.entries(BUILTIN_PROVIDERS)) {
+    if (!config.providers[id]) {
+      providers.push({
+        id,
+        name: p.name,
+        baseUrl: p.baseUrl,
+        hasApiKey: false,
+        modelCount: p.models.length,
+        readonly: true,
+      })
+    }
+  }
+  return {
+    models: models.map((m) => ({
+      providerId: m.providerId,
+      modelId: m.modelId,
+      label: m.label ?? m.modelId,
+      contextWindow: m.contextWindow,
+      readonly: m.readonly ?? false,
+    })),
+    default: getDefaultModelId(),
+    thinkingLevels: THINKING_LEVELS,
+    providers,
+  }
 }

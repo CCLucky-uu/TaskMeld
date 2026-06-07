@@ -3,6 +3,12 @@ import type { ReadonlyServices } from "../../../services/read-services"
 import { APP_VERSION } from "../../../version"
 import { readFileSync } from "node:fs"
 
+const pad = (n: number) => String(n).padStart(2, "0")
+const formatLocalTime = () => {
+  const d = new Date()
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+}
+
 function getPlatform(): string {
   const p = process.platform
   if (p === "win32") return "Windows"
@@ -22,6 +28,32 @@ function getPlatform(): string {
 
 export function createSystemTools(services?: ReadonlyServices | null): Tool[] {
   return [
+    {
+      name: "system_time",
+      description:
+        "Get the current local date and time. Use this when you need to know what time it is, check deadlines, or timestamp actions.",
+      parameters: { type: "object", properties: {}, required: [] },
+      annotations: { readOnly: true, destructive: false, requiresConfirmation: false, idempotent: true },
+      permission: "auto",
+      async execute() {
+        const d = new Date()
+        const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+        return {
+          output: JSON.stringify(
+            {
+              localTime: formatLocalTime(),
+              dayOfWeek: days[d.getDay()],
+              timestamp: d.getTime(),
+              timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+              utcOffset: `UTC${d.getTimezoneOffset() > 0 ? "-" : "+"}${pad(Math.abs(d.getTimezoneOffset()) / 60)}:${pad(Math.abs(d.getTimezoneOffset()) % 60)}`,
+            },
+            null,
+            2,
+          ),
+          isError: false,
+        }
+      },
+    },
     {
       name: "system_status",
       description: "Get TaskMeld server status including uptime, version, and resource usage.",
@@ -50,7 +82,7 @@ export function createSystemTools(services?: ReadonlyServices | null): Tool[] {
               status: "running",
               version: APP_VERSION,
               platform: getPlatform(),
-              currentTime: new Date().toISOString().replace("T", " ").slice(0, 19),
+              currentTime: formatLocalTime(),
               uptime: process.uptime(),
               memory: process.memoryUsage(),
               gateway,

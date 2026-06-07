@@ -130,7 +130,7 @@ export class WevraAgent {
     // Apply conversation thinking level to active brain
     brain.setThinkingLevel(thinkingLevel)
 
-    const userMsg = { role: "user" as const, content: message }
+    const userMsg = { role: "user" as const, content: message, timestamp: Date.now() }
     await this.conversations.appendMessage(conversationId, userMsg)
     const fullHistory = await this.conversations.getFullMessages(conversationId)
 

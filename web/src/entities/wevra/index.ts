@@ -22,3 +22,27 @@ export type WevraChatMessage = {
   isError?: boolean;
   isStreaming?: boolean;
 };
+
+export type WevraModelInfo = {
+  providerId: string;
+  modelId: string;
+  label?: string;
+  contextWindow?: number;
+  readonly?: boolean;
+};
+
+export type WevraModelProvider = {
+  id: string;
+  name: string;
+  baseUrl: string;
+  hasApiKey: boolean;
+  modelCount: number;
+  readonly: boolean;
+};
+
+export type WevraConfigResponse = {
+  models: WevraModelInfo[];
+  default: string;
+  thinkingLevels: string[];
+  providers: WevraModelProvider[];
+};

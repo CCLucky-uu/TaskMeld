@@ -1,6 +1,12 @@
 import type { SkillDef } from "../types"
 import type { MemoryEntry } from "../types"
 
+const pad = (n: number) => String(n).padStart(2, "0")
+const formatLocalTime = () => {
+  const d = new Date()
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+}
+
 interface GlobalPromptContext {
   memories: MemoryEntry[]
   alwaysSkills: SkillDef[]
@@ -39,7 +45,7 @@ You are Wevra, an Agent developed by the TaskMeld team, running within the TaskM
 - Create a pipeline: confirm name, nodes, and trigger conditions with the user first → pipeline_create → present the result`)
 
   sections.push(`## Environment
-- Session started at: ${new Date().toISOString().replace("T", " ").slice(0, 19)}`)
+- Session started at: ${formatLocalTime()}`)
 
   if (ctx.memories.length > 0) {
     const memoryLines = ctx.memories.map((m) => `- ${m.content} (importance: ${m.importance})`).join("\n")
@@ -77,7 +83,7 @@ You may only operate on this pipeline. Accessing other pipelines requires user a
 ${ctx.nodes.map((n) => `  - ${n.id} "${n.name}": ${n.description}`).join("\n")}`)
 
   sections.push(`## Environment
-- Session started at: ${new Date().toISOString().replace("T", " ").slice(0, 19)}`)
+- Session started at: ${formatLocalTime()}`)
 
   if (ctx.memories.length > 0) {
     const memoryLines = ctx.memories.map((m) => `- ${m.content} (importance: ${m.importance})`).join("\n")

@@ -1,9 +1,10 @@
 import { memo, useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { wsRequest, onWsEvent } from "../../../shared/ws-client";
-import type { WevraStreamPayload, WevraChatMessage } from "../../../entities/wevra";
+import type { WevraStreamPayload, WevraChatMessage, WevraModelInfo } from "../../../entities/wevra";
 import { restoreMessages, type RawMessage, type ConvMeta } from "../model/history-restore";
 import { DebugPanel } from "./DebugPanel";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { ModelConfigModal } from "./ModelConfigModal";
 import { debugBus } from "../lib/debug-bus";
 import { CloseIcon, MarkdownViewer, PlusIcon } from "../../../shared/ui";
 import MessageCircleIcon from "@iconify-react/lucide/message-circle";
@@ -149,6 +150,10 @@ export function WevraChatPanel({ open: extOpen, onClose: extClose }: { open?: bo
   const [thinkingLevels, setThinkingLevels] = useState<string[]>([]);
   const [thinkingLevel, setThinkingLevel] = useState("medium");
   const [showThinkingLevels, setShowThinkingLevels] = useState(false);
+  const [models, setModels] = useState<WevraModelInfo[]>([]);
+  const [defaultModel, setDefaultModel] = useState("");
+  const [showModelDropdown, setShowModelDropdown] = useState(false);
+  const [configModalOpen, setConfigModalOpen] = useState(false);
   const [busyConvs, setBusyConvs] = useState<Record<string, boolean>>({});
   const scrollBtnRef = useRef<HTMLButtonElement>(null);
   const [thinkCollapsed, setThinkCollapsed] = useState<Record<string, boolean>>({});
@@ -173,6 +178,7 @@ export function WevraChatPanel({ open: extOpen, onClose: extClose }: { open?: bo
   const streamConvRef = useRef<string>("");
   const contextRef = useRef<HTMLDivElement>(null);
   const thinkingLevelRef = useRef<HTMLDivElement>(null);
+  const modelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!showContextDetail) return;
@@ -195,6 +201,17 @@ export function WevraChatPanel({ open: extOpen, onClose: extClose }: { open?: bo
     document.addEventListener("mousedown", onDocClick);
     return () => document.removeEventListener("mousedown", onDocClick);
   }, [showThinkingLevels]);
+
+  useEffect(() => {
+    if (!showModelDropdown) return;
+    const onDocClick = (e: MouseEvent) => {
+      if (modelRef.current && !modelRef.current.contains(e.target as Node)) {
+        setShowModelDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, [showModelDropdown]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -242,11 +259,13 @@ export function WevraChatPanel({ open: extOpen, onClose: extClose }: { open?: bo
       }
       try {
         const modelsRes = (await wsRequest("wevra.models", {})) as {
-          models?: { providerId?: string; modelId?: string; contextWindow?: number }[];
+          models?: WevraModelInfo[];
           default?: string;
           thinkingLevels?: string[];
           thinkingLevel?: string;
         };
+        if (modelsRes?.models) setModels(modelsRes.models);
+        if (modelsRes?.default) setDefaultModel(modelsRes.default);
         const model =
           modelsRes?.models?.find((m) => `${m.providerId}/${m.modelId}` === modelsRes?.default) ??
           modelsRes?.models?.[0];
@@ -842,6 +861,58 @@ export function WevraChatPanel({ open: extOpen, onClose: extClose }: { open?: bo
                         >
                           {execMode}
                         </button>
+                        {models.length > 0 && (
+                          <div ref={modelRef} className="relative flex items-center">
+                            <span className="mx-1 h-3.5 w-px bg-[rgba(142,163,179,0.2)]" />
+                            <button
+                              type="button"
+                              className="h-6 px-1 text-sm rounded cursor-pointer transition-colors border-none bg-transparent text-(--muted) hover:bg-[rgba(142,163,179,0.1)] truncate max-w-[160px]"
+                              onClick={() => setShowModelDropdown((v) => !v)}
+                              title={defaultModel || "Select model"}
+                            >
+                              {defaultModel ? defaultModel.split("/").pop() : "model"}
+                            </button>
+                            {showModelDropdown && (
+                              <div className="absolute bottom-full left-0 mb-2 w-max max-w-[280px] rounded border border-(--line) bg-[#141c24] py-0.5 shadow-lg z-50">
+                                {models.map((m) => {
+                                  const key = `${m.providerId}/${m.modelId}`;
+                                  return (
+                                    <button
+                                      key={key}
+                                      type="button"
+                                      className={`block w-full px-3 py-1 text-left text-xs border-none cursor-pointer transition-colors truncate ${
+                                        key === defaultModel
+                                          ? "bg-[rgba(50,215,186,0.12)] text-(--live)"
+                                          : "text-(--muted) bg-transparent hover:bg-[rgba(142,163,179,0.08)] hover:text-(--text)"
+                                      }`}
+                                      onClick={async () => {
+                                        setDefaultModel(key);
+                                        setShowModelDropdown(false);
+                                        await wsRequest("wevra.models.set-default", {
+                                          providerId: m.providerId,
+                                          modelId: m.modelId,
+                                        }).catch(() => {});
+                                      }}
+                                    >
+                                      {m.label || m.modelId}
+                                    </button>
+                                  );
+                                })}
+                                <div className="border-t border-(--line) my-0.5" />
+                                <button
+                                  type="button"
+                                  className="block w-full px-3 py-1 text-left text-xs border-none cursor-pointer text-(--live) bg-transparent hover:bg-[rgba(50,215,186,0.08)]"
+                                  onClick={() => {
+                                    setShowModelDropdown(false);
+                                    setConfigModalOpen(true);
+                                  }}
+                                >
+                                  + Add model
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
                         {thinkingLevels.length > 0 && (
                           <div ref={thinkingLevelRef} className="relative flex items-center">
                             <span className="mx-1 h-3.5 w-px bg-[rgba(142,163,179,0.2)]" />
@@ -983,6 +1054,15 @@ export function WevraChatPanel({ open: extOpen, onClose: extClose }: { open?: bo
         toolName={confirmTool.name}
         toolArgs={confirmTool.args}
         onDecision={handleConfirmDecision}
+      />
+      <ModelConfigModal
+        open={configModalOpen}
+        onClose={() => setConfigModalOpen(false)}
+        onConfigUpdate={(c) => {
+          setModels(c.models);
+          if (c.default) setDefaultModel(c.default);
+          if (c.thinkingLevels) setThinkingLevels(c.thinkingLevels);
+        }}
       />
     </>
   );

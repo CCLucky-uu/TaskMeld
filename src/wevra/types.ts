@@ -101,6 +101,8 @@ export interface Message {
   isError?: boolean
   /** DeepSeek: turns with tool calls must pass back reasoning_content in all subsequent requests */
   reasoningContent?: string
+  /** Unix timestamp (ms) when this message was created. Used for display only, not sent to LLM. */
+  timestamp?: number
 }
 
 export interface LLMResponse {

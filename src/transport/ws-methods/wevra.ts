@@ -3,7 +3,16 @@ import type { WsBroker } from "../ws-broker"
 import type { WevraAgent } from "../../wevra"
 import type { StreamEvent } from "../../wevra/types"
 import { formatError } from "./utils"
-import { invalidateModelsCache, getAvailableModelsPublic, THINKING_LEVELS } from "../../wevra/config"
+import {
+  invalidateModelsCache,
+  getAvailableModelsPublic,
+  THINKING_LEVELS,
+  addProvider,
+  updateProvider,
+  removeProvider,
+  setDefaultModel,
+  getModelsConfigPublic,
+} from "../../wevra/config"
 import { saveUserPreferences } from "../../wevra/preferences"
 
 let wevraInstance: WevraAgent | null = null
@@ -114,6 +123,68 @@ export const registerWevraWsMethods = (registry: WsMethodRegistry): void => {
       wevraInstance.setThinkingLevel(validLevel)
       invalidateModelsCache()
       return { ok: true, payload: { level: validLevel } }
+    } catch (error) {
+      return { ok: false, error: formatError(error) }
+    }
+  })
+
+  // ── Model config management ──
+
+  registry.register("wevra.config.get", async () => {
+    try {
+      const config = getModelsConfigPublic()
+      return { ok: true, payload: config }
+    } catch (error) {
+      return { ok: false, error: formatError(error) }
+    }
+  })
+
+  registry.register("wevra.models.add-provider", async (params) => {
+    try {
+      const providerId = typeof params.providerId === "string" ? params.providerId.trim() : ""
+      const baseUrl = typeof params.baseUrl === "string" ? params.baseUrl.trim() : ""
+      const apiKey = typeof params.apiKey === "string" ? params.apiKey.trim() : ""
+      const models = Array.isArray(params.models) ? (params.models as Array<{ id: string; name: string }>) : undefined
+      const result = addProvider(providerId, baseUrl, apiKey, models)
+      if (!result.ok) return { ok: false, error: result.error }
+      return { ok: true, payload: getModelsConfigPublic() }
+    } catch (error) {
+      return { ok: false, error: formatError(error) }
+    }
+  })
+
+  registry.register("wevra.models.update-provider", async (params) => {
+    try {
+      const providerId = typeof params.providerId === "string" ? params.providerId.trim() : ""
+      const patch: { baseUrl?: string; apiKey?: string } = {}
+      if (typeof params.baseUrl === "string") patch.baseUrl = params.baseUrl
+      if (typeof params.apiKey === "string") patch.apiKey = params.apiKey
+      const result = updateProvider(providerId, patch)
+      if (!result.ok) return { ok: false, error: result.error }
+      return { ok: true, payload: getModelsConfigPublic() }
+    } catch (error) {
+      return { ok: false, error: formatError(error) }
+    }
+  })
+
+  registry.register("wevra.models.remove-provider", async (params) => {
+    try {
+      const providerId = typeof params.providerId === "string" ? params.providerId.trim() : ""
+      const result = removeProvider(providerId)
+      if (!result.ok) return { ok: false, error: result.error }
+      return { ok: true, payload: getModelsConfigPublic() }
+    } catch (error) {
+      return { ok: false, error: formatError(error) }
+    }
+  })
+
+  registry.register("wevra.models.set-default", async (params) => {
+    try {
+      const providerId = typeof params.providerId === "string" ? params.providerId.trim() : ""
+      const modelId = typeof params.modelId === "string" ? params.modelId.trim() : ""
+      const result = setDefaultModel(providerId, modelId)
+      if (!result.ok) return { ok: false, error: result.error }
+      return { ok: true, payload: getModelsConfigPublic() }
     } catch (error) {
       return { ok: false, error: formatError(error) }
     }

@@ -7,6 +7,7 @@ export interface RawMessage {
   toolCalls?: Array<{ id: string; name: string; arguments: Record<string, unknown> }>;
   reasoningContent?: string;
   isError?: boolean;
+  timestamp?: number;
 }
 
 export interface ConvMeta {
@@ -32,20 +33,18 @@ export function restoreMessages(msgs: RawMessage[]): WevraChatMessage[] {
 
     switch (m.role) {
       case "system": {
-        // System messages are internal markers, not displayed in UI
         break;
       }
       case "assistant": {
         const toolName = m.toolCalls?.[0]?.name;
         if (m.reasoningContent) {
-          mapped.push(toChatMsg(`${id}-thinking`, "thinking", m.reasoningContent));
+          mapped.push(toChatMsg(`${id}-thinking`, "thinking", m.reasoningContent, undefined, m.timestamp));
         }
-        // Skip empty-content assistant messages that only have toolCalls (tool results rendered separately)
         if (m.content || !toolName) {
           mapped.push(
             toolName
-              ? { ...toChatMsg(`${id}-assistant`, "assistant", m.content), toolName }
-              : toChatMsg(`${id}-assistant`, "assistant", m.content),
+              ? { ...toChatMsg(`${id}-assistant`, "assistant", m.content, undefined, m.timestamp), toolName }
+              : toChatMsg(`${id}-assistant`, "assistant", m.content, undefined, m.timestamp),
           );
         }
         break;
@@ -53,26 +52,26 @@ export function restoreMessages(msgs: RawMessage[]): WevraChatMessage[] {
       case "tool": {
         const info = m.toolCallId ? toolCallIndex.get(m.toolCallId) : undefined;
         mapped.push({
-          ...toChatMsg(`${id}-tool`, "tool", m.content, m.isError),
+          ...toChatMsg(`${id}-tool`, "tool", m.content, m.isError, m.timestamp),
           toolName: info?.name ?? lastAssistantToolName(mapped),
           toolArgs: info?.args,
         });
         break;
       }
       default:
-        mapped.push(toChatMsg(id, m.role as WevraChatMessage["role"], m.content, m.isError));
+        mapped.push(toChatMsg(id, m.role as WevraChatMessage["role"], m.content, m.isError, m.timestamp));
     }
   }
 
   return mapped;
 }
 
-function toChatMsg(id: string, role: WevraChatMessage["role"], content: string, isError?: boolean): WevraChatMessage {
+function toChatMsg(id: string, role: WevraChatMessage["role"], content: string, isError?: boolean, timestamp?: number): WevraChatMessage {
   return {
     id,
     role,
     content: content ?? "",
-    timestamp: Date.now(),
+    timestamp: timestamp ?? Date.now(),
     isStreaming: false,
     ...(isError ? { isError } : {}),
   };

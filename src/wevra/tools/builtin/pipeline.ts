@@ -280,7 +280,11 @@ export function createPipelineTools(
 
         if (errors.length === 0) {
           return {
-            output: JSON.stringify({ pipelineId, valid: true, nodeCount: workflow.nodes.length, edgeCount: workflow.edges.length }, null, 2),
+            output: JSON.stringify(
+              { pipelineId, valid: true, nodeCount: workflow.nodes.length, edgeCount: workflow.edges.length },
+              null,
+              2,
+            ),
             isError: false,
           }
         }
@@ -538,24 +542,27 @@ export function createPipelineNodeTool(app?: PipelineRegistry | null): Tool[] {
       description: `Manage nodes and edges within a pipeline workflow.
 
 Actions:
-- add: Add a new node to the pipeline (requires nodeId, instruction, agentId)
-- update: Update an existing node's properties (only provided fields are changed)
-- delete: Remove a node and all its connected edges
-- connect: Add a dependency edge between two nodes (upstream must complete before downstream starts)
+- add: Add a NEW node to the pipeline (requires nodeId, instruction, agentId). Only use when creating a node that does not exist yet.
+- update: Modify an existing node's properties. Supports: name, instruction, agentId, sessionId, role, enabled, allowReject, maxRejectCount, lane, routePolicy, retryPolicy, dependsOn. Only provided fields are changed; omitted fields are kept.
+- delete: Remove a node and all its connected edges. Use sparingly.
+- connect: Add a single dependency or route edge between two existing nodes.
+
+CRITICAL RULES:
+1. When the user asks to change, fix, reconfigure, or adjust an existing node, ALWAYS use "update". NEVER delete and recreate a node to modify it — this would lose execution history and break downstream references.
+2. To change a node's upstream dependencies, use "update" with dependsOn (full replacement of all upstreams). To add a single dependency without replacing others, use "connect" instead.
+3. Before adding a node, call agent_list to discover available agents and use their ID for agentId.
+4. Normal connect creates a dependency edge. Only use the route parameter when connecting FROM a router node to a specific branch target.
 
 Node types: "task" (default), "router" (for branching with routePolicy)
-Executor roles: "planner", "coder", "tester", "reviewer", "operator"
-
-IMPORTANT: Before adding a node, call agent_list to discover available agents and use their ID for agentId.
-Normal connect creates a dependency edge. Only use the route parameter when connecting FROM a router node to a specific branch target.
-When connecting a route edge, provide the route value (e.g. "no") that triggers this edge.`,
+Executor roles: "planner", "coder", "tester", "reviewer", "operator"`,
       parameters: {
         type: "object",
         properties: {
           action: {
             type: "string",
             enum: ["add", "update", "delete", "connect"],
-            description: "The action to perform",
+            description:
+              "Action: 'add' (create new node), 'update' (modify existing node — preferred for any change to an existing node), 'delete' (remove node), 'connect' (add single edge)",
           },
           pipelineId: { type: "string", description: "The pipeline ID" },
           nodeId: { type: "string", description: "The node ID (for add/update/delete)" },
@@ -577,18 +584,27 @@ When connecting a route edge, provide the route value (e.g. "no") that triggers 
           routePolicy: {
             type: "array",
             items: { type: "string" },
-            description: 'Route values for router nodes (for add: e.g. ["yes", "no"]; for update: set to null to remove routing)',
+            description:
+              'Route values for router nodes (for add: e.g. ["yes", "no"]; for update: set to null to remove routing)',
           },
           dependsOn: {
             type: "array",
             items: { type: "string" },
-            description: "Upstream node IDs. For add: creates dependency edges. For update: replaces all upstream dependencies (full rewrite, not incremental).",
+            description:
+              "Upstream node IDs. For add: creates dependency edges. For update: replaces all upstream dependencies (full rewrite, not incremental).",
           },
           enabled: { type: "boolean", description: "Enable/disable node (for update)" },
           allowReject: { type: "boolean", description: "Allow agent to reject (for update)" },
           maxRejectCount: { type: "number", description: "Max reject attempts (for update)" },
-          sessionId: { type: "string", description: "Session binding ID (for update, e.g. agent:codex:main). Omit to keep current." },
-          lane: { type: "string", enum: ["main", "branch"], description: "Node lane (for update): main = primary execution path, branch = conditional path." },
+          sessionId: {
+            type: "string",
+            description: "Session binding ID (for update, e.g. agent:codex:main). Omit to keep current.",
+          },
+          lane: {
+            type: "string",
+            enum: ["main", "branch"],
+            description: "Node lane (for update): main = primary execution path, branch = conditional path.",
+          },
           retryPolicy: {
             type: "object",
             properties: {
@@ -733,14 +749,38 @@ When connecting a route edge, provide the route value (e.g. "no") that triggers 
             const updated = { ...existing }
             const changes: string[] = []
 
-            if (a.name !== undefined) { updated.name = a.name; changes.push("name") }
-            if (a.instruction !== undefined) { updated.instruction = a.instruction; changes.push("instruction") }
-            if (a.enabled !== undefined) { updated.enabled = a.enabled; changes.push("enabled") }
-            if (a.allowReject !== undefined) { updated.allowReject = a.allowReject; changes.push("allowReject") }
-            if (a.maxRejectCount !== undefined) { updated.maxRejectCount = a.maxRejectCount; changes.push("maxRejectCount") }
-            if (a.role !== undefined) { updated.executor = { ...updated.executor, role: a.role }; changes.push("role") }
-            if (a.agentId !== undefined) { updated.executor = { ...updated.executor, agentId: a.agentId }; changes.push("agentId") }
-            if (a.sessionId !== undefined) { updated.executor = { ...updated.executor, sessionId: a.sessionId }; changes.push("sessionId") }
+            if (a.name !== undefined) {
+              updated.name = a.name
+              changes.push("name")
+            }
+            if (a.instruction !== undefined) {
+              updated.instruction = a.instruction
+              changes.push("instruction")
+            }
+            if (a.enabled !== undefined) {
+              updated.enabled = a.enabled
+              changes.push("enabled")
+            }
+            if (a.allowReject !== undefined) {
+              updated.allowReject = a.allowReject
+              changes.push("allowReject")
+            }
+            if (a.maxRejectCount !== undefined) {
+              updated.maxRejectCount = a.maxRejectCount
+              changes.push("maxRejectCount")
+            }
+            if (a.role !== undefined) {
+              updated.executor = { ...updated.executor, role: a.role }
+              changes.push("role")
+            }
+            if (a.agentId !== undefined) {
+              updated.executor = { ...updated.executor, agentId: a.agentId }
+              changes.push("agentId")
+            }
+            if (a.sessionId !== undefined) {
+              updated.executor = { ...updated.executor, sessionId: a.sessionId }
+              changes.push("sessionId")
+            }
             if (a.lane !== undefined) {
               const lane = a.lane === "branch" ? "branch" : "main"
               updated.lane = lane
@@ -769,7 +809,8 @@ When connecting a route edge, provide the route value (e.g. "no") that triggers 
               const newDeps = (a.dependsOn as string[]).map((d: string) => d.trim()).filter(Boolean)
               const validIds = new Set(workflow.nodes.map((n) => n.id))
               const invalidDep = newDeps.find((d: string) => !validIds.has(d) || d === nodeId)
-              if (invalidDep) return { output: `Dependency "${invalidDep}" not found or is self-referencing.`, isError: true }
+              if (invalidDep)
+                return { output: `Dependency "${invalidDep}" not found or is self-referencing.`, isError: true }
 
               // Remove old dependency edges for this node, add new ones
               nextEdges = [
