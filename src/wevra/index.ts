@@ -25,13 +25,13 @@ import { createMemoryTools } from "./tools/builtin/memory"
 import { createSkillTools } from "./tools/builtin/skill"
 
 export class WevraAgent {
-  readonly brain: Brain | null
+  brain: Brain | null
   readonly toolRegistry: ToolRegistry
   readonly toolExecutor: ToolExecutor
   readonly conversations: ConversationManager
   readonly memory: WevraMemory
   readonly skills: SkillRegistry
-  readonly loop: WevraLoop
+  loop: WevraLoop
   readonly config: WevraConfig
   private currentModelId: string
   private currentModel: RuntimeModelConfig
@@ -74,16 +74,21 @@ export class WevraAgent {
       this.brain = new Brain(defaultModel, this.config.llmTimeoutMs)
     }
 
-    this.conversations = new ConversationManager(this.config.dataDir, this.toolRegistry, {
-      buildGlobalPrompt: (scope) =>
-        buildGlobalPrompt({
-          memories: this.memory.getEntries("global"),
-          alwaysSkills: this.skills.getAlwaysActive(),
-          skillIndex: this.skills.list(),
-          pipelines: [],
-          scope,
-        }),
-    })
+    this.conversations = new ConversationManager(
+      this.config.dataDir,
+      this.toolRegistry,
+      {
+        buildGlobalPrompt: (scope) =>
+          buildGlobalPrompt({
+            memories: this.memory.getEntries("global"),
+            alwaysSkills: this.skills.getAlwaysActive(),
+            skillIndex: this.skills.list(),
+            pipelines: [],
+            scope,
+          }),
+      },
+      this.currentThinkingLevel,
+    )
 
     this.toolExecutor = new ToolExecutor(this.toolRegistry, this.config)
     this.loop = new WevraLoop(this.brain, this.toolExecutor, this.toolRegistry, this.skills, this.memory, this.config)
@@ -99,13 +104,26 @@ export class WevraAgent {
     conversationId: string,
     callbacks?: LoopCallbacks & { providerId?: string; modelId?: string },
   ): Promise<LoopResult & { conversationId: string }> {
-    if (!this.brain) return { type: "error", content: "No LLM model configured", iterations: 0, conversationId }
-
     const conv = this.conversations.getConversation(conversationId)
     if (!conv) return { type: "error", content: "Conversation not found", iterations: 0, conversationId }
 
     // Resolve thinking level: per-conversation → global fallback
     const thinkingLevel = conv.thinkingLevel ?? this.currentThinkingLevel
+
+    // Lazy brain init: on first use after models are configured via UI
+    if (!this.brain) {
+      const pid = callbacks?.providerId
+      const mid = callbacks?.modelId
+      if (!pid || !mid) return { type: "error", content: "No LLM model configured", iterations: 0, conversationId }
+      const model = resolveModel(pid, mid)
+      if (!model || !model.apiKey)
+        return { type: "error", content: `Model "${pid}/${mid}" not available`, iterations: 0, conversationId }
+      if (model.reasoning) model.thinking = { level: thinkingLevel }
+      this.currentModel = model
+      this.currentModelId = `${model.providerId}/${model.modelId}`
+      this.brain = new Brain(model, this.config.llmTimeoutMs)
+      this.loop = new WevraLoop(this.brain, this.toolExecutor, this.toolRegistry, this.skills, this.memory, this.config)
+    }
 
     let brain = this.brain
     let loop = this.loop
@@ -122,8 +140,12 @@ export class WevraAgent {
       const newModelId = `${newModel.providerId}/${newModel.modelId}`
       if (newModelId !== this.currentModelId) {
         if (newModel.reasoning) newModel.thinking = { level: thinkingLevel }
+        this.currentModel = newModel
+        this.currentModelId = newModelId
         brain = new Brain(newModel, this.config.llmTimeoutMs)
+        this.brain = brain
         loop = new WevraLoop(brain, this.toolExecutor, this.toolRegistry, this.skills, this.memory, this.config)
+        this.loop = loop
       }
     }
 

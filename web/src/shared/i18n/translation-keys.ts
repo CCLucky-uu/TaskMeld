@@ -158,6 +158,11 @@ export type commonKey =
   | "actionMessage.batchStopNodeRequested"
   | "actionMessage.stopPipelineFailed"
   | "actionMessage.runStartFailed"
+  | "actionMessage.cannotRunSaveFailed"
+  | "actionMessage.cannotRunValidationFailed"
+  | "actionMessage.cycleDetected"
+  | "actionMessage.cycleDetectedDetail"
+  | "actionMessage.cycleResolved"
   | "actionMessage.workflowJsonEmpty"
   | "actionMessage.workflowJsonInvalid"
   | "actionMessage.workflowJsonSaveFailed"
@@ -716,6 +721,11 @@ export type TranslationKey =
   | "common:actionMessage.batchStopNodeRequested"
   | "common:actionMessage.stopPipelineFailed"
   | "common:actionMessage.runStartFailed"
+  | "common:actionMessage.cannotRunSaveFailed"
+  | "common:actionMessage.cannotRunValidationFailed"
+  | "common:actionMessage.cycleDetected"
+  | "common:actionMessage.cycleDetectedDetail"
+  | "common:actionMessage.cycleResolved"
   | "common:actionMessage.workflowJsonEmpty"
   | "common:actionMessage.workflowJsonInvalid"
   | "common:actionMessage.workflowJsonSaveFailed"
@@ -1104,16 +1114,16 @@ export type TranslationKey =
 
 /** Maps each namespace to its bare key type (for useTranslation-scoped t() calls). */
 export interface TranslationKeyMap {
-  agent: agentKey;
-  artifact: artifactKey;
-  common: commonKey;
-  dispatch: dispatchKey;
-  log: logKey;
-  modal: modalKey;
-  nav: navKey;
+  "agent": agentKey;
+  "artifact": artifactKey;
+  "common": commonKey;
+  "dispatch": dispatchKey;
+  "log": logKey;
+  "modal": modalKey;
+  "nav": navKey;
   "node-detail": node_detailKey;
-  overview: overviewKey;
-  pipeline: pipelineKey;
-  session: sessionKey;
-  timeline: timelineKey;
+  "overview": overviewKey;
+  "pipeline": pipelineKey;
+  "session": sessionKey;
+  "timeline": timelineKey;
 }

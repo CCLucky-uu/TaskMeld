@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.1] - 2026-06-08
+
+### Fixed
+
+- **Wevra model switching not working**: model selection now persists per-conversation and is correctly passed to the LLM on each request
+- **Lazy brain initialization**: server no longer returns "No LLM model configured" after adding providers via UI without restart
+- **Stale closure in send()**: selecting a different model immediately takes effect on the next message
+- **Thinking level race condition**: eliminated concurrent state overwrite when opening the panel
+- **Thinking level initial state**: default `"high"` matches backend default instead of `"medium"`
+- **Context window not updating**: switching models now updates the context usage ring
+- **New conversation model display**: shows the configured default model name instead of placeholder "model"
+
+### Changed
+
+- **Per-conversation model persistence**: each conversation stores its selected model in `index.json`, restored on switch
+- **Model management modal redesign**: "Add Provider" tab first with DeepSeek pre-selected; "Models" tab shows all configured models grouped by provider with radio-button default selection and toggle-slider enable/disable
+- **Model enable/disable API**: new `wevra.models.enable` / `wevra.models.disable` WebSocket methods; disabling the default model auto-switches to the next available
+- **Auto-open model config**: modal pops up automatically when no models are configured on first launch
+- **`getModelsConfigPublic` returns all models**: includes disabled models with `enabled` field for UI rendering
+- **ConversationManager default thinking level**: new conversations initialize with `thinkingLevel: "high"` instead of undefined
+
 ## [0.2.0] - 2026-06-08
 
 ### Added
@@ -97,6 +118,7 @@ All notable changes to this project will be documented in this file.
 - OpenClaw Gateway WebSocket client integration
 - MIT License
 
+[0.2.1]: https://github.com/CCLucky-uu/TaskMeld/releases/tag/v0.2.1
 [0.2.0]: https://github.com/CCLucky-uu/TaskMeld/releases/tag/v0.2.0
 [0.1.50]: https://github.com/CCLucky-uu/TaskMeld/releases/tag/v0.1.50
 [0.1.41]: https://github.com/CCLucky-uu/TaskMeld/releases/tag/v0.1.41

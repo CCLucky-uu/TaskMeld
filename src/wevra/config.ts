@@ -526,6 +526,10 @@ export function addProvider(
     const key = `${id}/${m.id}`
     if (!config.enabledModels.includes(key)) config.enabledModels.push(key)
   }
+  // Auto-set default model if none configured yet
+  if (!config.default) {
+    config.default = { provider: id, model: finalModels[0].id }
+  }
   writeModelsJson(config)
   return { ok: true }
 }
@@ -573,8 +577,48 @@ export function setDefaultModel(providerId: string, modelId: string): { ok: true
   return { ok: true }
 }
 
+export function enableModel(providerId: string, modelId: string): { ok: true } | { ok: false; error: string } {
+  const key = `${providerId}/${modelId}`
+  const config = readModelsJson()
+  if (!config.enabledModels) config.enabledModels = []
+  if (!config.enabledModels.includes(key)) config.enabledModels.push(key)
+  writeModelsJson(config)
+  return { ok: true }
+}
+
+export function disableModel(
+  providerId: string,
+  modelId: string,
+): { ok: true; newDefault?: string } | { ok: false; error: string } {
+  const key = `${providerId}/${modelId}`
+  const config = readModelsJson()
+  if (!config.enabledModels?.includes(key)) return { ok: false, error: `Model "${key}" is not enabled` }
+  config.enabledModels = config.enabledModels.filter((k) => k !== key)
+  let newDefault: string | undefined
+  // Auto-switch default if disabling the current default
+  if (config.default?.provider === providerId && config.default?.model === modelId) {
+    const next = config.enabledModels[0]
+    if (next) {
+      const slashIdx = next.indexOf("/")
+      config.default = { provider: next.slice(0, slashIdx), model: next.slice(slashIdx + 1) }
+      newDefault = next
+    } else {
+      config.default = undefined
+    }
+  }
+  writeModelsJson(config)
+  return { ok: true, newDefault }
+}
+
 export function getModelsConfigPublic(): {
-  models: Array<{ providerId: string; modelId: string; label: string; contextWindow: number; readonly: boolean }>
+  models: Array<{
+    providerId: string
+    modelId: string
+    label: string
+    contextWindow: number
+    readonly: boolean
+    enabled: boolean
+  }>
   default: string
   thinkingLevels: readonly string[]
   providers: Array<{
@@ -586,37 +630,100 @@ export function getModelsConfigPublic(): {
     readonly: boolean
   }>
 } {
-  const models = getAvailableModelsPublic()
   const config = readModelsJson()
-  const providers = Object.entries(config.providers).map(([id, p]) => ({
-    id,
-    name: BUILTIN_PROVIDERS[id]?.name ?? id,
-    baseUrl: p.baseUrl,
-    hasApiKey: Boolean(p.apiKey),
-    modelCount: p.models.length,
-    readonly: false,
-  }))
-  // Add built-in providers that aren't in user config (no API key yet)
+  const enabledSet = new Set(config.enabledModels ?? [])
+
+  // Build provider map (built-in + user config)
+  const providerMap = new Map<
+    string,
+    {
+      name: string
+      baseUrl: string
+      apiKey: string
+      models: (typeof BUILTIN_PROVIDERS)[string]["models"]
+      readonly: boolean
+    }
+  >()
   for (const [id, p] of Object.entries(BUILTIN_PROVIDERS)) {
-    if (!config.providers[id]) {
-      providers.push({
-        id,
-        name: p.name,
-        baseUrl: p.baseUrl,
-        hasApiKey: false,
-        modelCount: p.models.length,
-        readonly: true,
+    providerMap.set(id, { name: p.name, baseUrl: p.baseUrl, apiKey: "", models: p.models, readonly: true })
+  }
+  for (const [id, p] of Object.entries(config.providers)) {
+    const builtin = providerMap.get(id)
+    providerMap.set(id, {
+      name: builtin?.name ?? id,
+      baseUrl: p.baseUrl,
+      apiKey: p.apiKey,
+      models: p.models.length ? p.models : (builtin?.models ?? []),
+      readonly: false,
+    })
+  }
+
+  // Add env provider if API key present
+  if (process.env.WEVRA_LLM_API_KEY) {
+    const envModelId = process.env.WEVRA_LLM_MODEL ?? ""
+    const envBaseUrl = process.env.WEVRA_LLM_BASE_URL ?? "https://api.openai.com/v1"
+    const builtinMatch = findModelInProviders(envModelId)
+    providerMap.set("env", {
+      name: "Environment",
+      baseUrl: envBaseUrl,
+      apiKey: process.env.WEVRA_LLM_API_KEY,
+      models: builtinMatch
+        ? [builtinMatch]
+        : [
+            {
+              id: envModelId,
+              name: envModelId,
+              contextWindow: 128_000,
+              maxTokens: 16_384,
+              reasoning: false,
+              compat: defaultCompat(),
+            },
+          ],
+      readonly: true,
+    })
+  }
+
+  const models: Array<{
+    providerId: string
+    modelId: string
+    label: string
+    contextWindow: number
+    readonly: boolean
+    enabled: boolean
+  }> = []
+  const providers: Array<{
+    id: string
+    name: string
+    baseUrl: string
+    hasApiKey: boolean
+    modelCount: number
+    readonly: boolean
+  }> = []
+
+  for (const [pid, p] of providerMap) {
+    providers.push({
+      id: pid,
+      name: p.name,
+      baseUrl: p.baseUrl,
+      hasApiKey: Boolean(p.apiKey),
+      modelCount: p.models.length,
+      readonly: p.readonly,
+    })
+    for (const m of p.models) {
+      const key = `${pid}/${m.id}`
+      models.push({
+        providerId: pid,
+        modelId: m.id,
+        label: `${p.name} · ${m.name}`,
+        contextWindow: m.contextWindow,
+        readonly: pid === "env",
+        enabled: enabledSet.has(key),
       })
     }
   }
+
   return {
-    models: models.map((m) => ({
-      providerId: m.providerId,
-      modelId: m.modelId,
-      label: m.label ?? m.modelId,
-      contextWindow: m.contextWindow,
-      readonly: m.readonly ?? false,
-    })),
+    models,
     default: getDefaultModelId(),
     thinkingLevels: THINKING_LEVELS,
     providers,
