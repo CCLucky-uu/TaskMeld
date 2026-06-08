@@ -14,6 +14,8 @@ export interface ConversationMeta {
   id: string
   title: string
   scope: ConversationScope
+  /** Per-conversation model key, e.g. "deepseek/deepseek-v4-flash". Empty = use global default. */
+  model?: string
   messageCount: number
   createdAt: number
   lastActiveAt: number
@@ -55,6 +57,7 @@ export class ConversationManager {
     private dataDir: string,
     private registry: ToolRegistry,
     private promptBuilder: { buildGlobalPrompt(scope?: ConversationScope): string },
+    private defaultThinkingLevel: ThinkingConfig["level"] = "high",
   ) {}
 
   // ── Paths ──
@@ -94,6 +97,7 @@ export class ConversationManager {
             frozenTools: this.registry.toToolDefinitions().map((t) => t.name),
             mode: "normal",
             modeVersion: 0,
+            thinkingLevel: this.defaultThinkingLevel,
           },
         ],
       }
@@ -265,6 +269,7 @@ export class ConversationManager {
       frozenTools: this.registry.toToolDefinitions().map((t) => t.name),
       mode: "normal",
       modeVersion: 0,
+      thinkingLevel: this.defaultThinkingLevel,
     }
     index.conversations.push(conv)
     await writeFile(this.getConvPath(conv.id), "")
@@ -333,6 +338,15 @@ export class ConversationManager {
     const conv = index.conversations.find((c) => c.id === id)
     if (!conv) return
     conv.thinkingLevel = level
+    this.saveIndex()
+    await this.flushIndex()
+  }
+
+  async setConversationModel(id: string, model: string): Promise<void> {
+    const index = await this.loadIndex()
+    const conv = index.conversations.find((c) => c.id === id)
+    if (!conv) return
+    conv.model = model
     this.saveIndex()
     await this.flushIndex()
   }

@@ -11,6 +11,8 @@ import {
   updateProvider,
   removeProvider,
   setDefaultModel,
+  enableModel,
+  disableModel,
   getModelsConfigPublic,
 } from "../../wevra/config"
 import { saveUserPreferences } from "../../wevra/preferences"
@@ -190,6 +192,48 @@ export const registerWevraWsMethods = (registry: WsMethodRegistry): void => {
     }
   })
 
+  registry.register("wevra.models.set-conversation-model", async (params) => {
+    if (!wevraInstance) return { ok: false, error: "wevra_not_initialized" }
+    try {
+      const conversationId = typeof params.conversationId === "string" ? params.conversationId.trim() : ""
+      const providerId = typeof params.providerId === "string" ? params.providerId.trim() : ""
+      const modelId = typeof params.modelId === "string" ? params.modelId.trim() : ""
+      if (!conversationId || !providerId || !modelId) return { ok: false, error: "params_required" }
+      await wevraInstance.conversations.setConversationModel(conversationId, `${providerId}/${modelId}`)
+      return { ok: true, payload: {} }
+    } catch (error) {
+      return { ok: false, error: formatError(error) }
+    }
+  })
+
+  registry.register("wevra.models.enable", async (params) => {
+    try {
+      const providerId = typeof params.providerId === "string" ? params.providerId.trim() : ""
+      const modelId = typeof params.modelId === "string" ? params.modelId.trim() : ""
+      if (!providerId || !modelId) return { ok: false, error: "params_required" }
+      const result = enableModel(providerId, modelId)
+      if (!result.ok) return { ok: false, error: result.error }
+      invalidateModelsCache()
+      return { ok: true, payload: getModelsConfigPublic() }
+    } catch (error) {
+      return { ok: false, error: formatError(error) }
+    }
+  })
+
+  registry.register("wevra.models.disable", async (params) => {
+    try {
+      const providerId = typeof params.providerId === "string" ? params.providerId.trim() : ""
+      const modelId = typeof params.modelId === "string" ? params.modelId.trim() : ""
+      if (!providerId || !modelId) return { ok: false, error: "params_required" }
+      const result = disableModel(providerId, modelId)
+      if (!result.ok) return { ok: false, error: result.error }
+      invalidateModelsCache()
+      return { ok: true, payload: { ...getModelsConfigPublic(), newDefault: result.newDefault } }
+    } catch (error) {
+      return { ok: false, error: formatError(error) }
+    }
+  })
+
   // ── 对话列表 ──
 
   registry.register("wevra.conversations.list", async () => {
@@ -216,6 +260,7 @@ export const registerWevraWsMethods = (registry: WsMethodRegistry): void => {
           lastCompletionTokens: conv?.lastCompletionTokens ?? 0,
           thinkingLevel: conv?.thinkingLevel ?? wevraInstance.getThinkingLevel(),
           mode: conv?.mode ?? "normal",
+          model: conv?.model ?? "",
         },
       }
     } catch (error) {
@@ -279,8 +324,20 @@ export const registerWevraWsMethods = (registry: WsMethodRegistry): void => {
       if (!message) return { ok: false, error: "message_required" }
       const conversationId = typeof params.conversationId === "string" ? params.conversationId.trim() : ""
       if (!conversationId) return { ok: false, error: "conversation_id_required" }
-      const providerId = typeof params.provider === "string" ? params.provider.trim() : undefined
-      const modelId = typeof params.model === "string" ? params.model.trim() : undefined
+      let providerId = typeof params.provider === "string" ? params.provider.trim() : undefined
+      let modelId = typeof params.model === "string" ? params.model.trim() : undefined
+
+      // Fallback to per-conversation model
+      if (!providerId && !modelId) {
+        const convMetaForModel = wevraInstance.getConversations().find((c) => c.id === conversationId)
+        if (convMetaForModel?.model) {
+          const slashIdx = convMetaForModel.model.indexOf("/")
+          if (slashIdx > 0) {
+            providerId = convMetaForModel.model.slice(0, slashIdx)
+            modelId = convMetaForModel.model.slice(slashIdx + 1)
+          }
+        }
+      }
 
       // Insert mode marker if mode changed since last saved marker
       const convMeta = wevraInstance.getConversations().find((c) => c.id === conversationId)

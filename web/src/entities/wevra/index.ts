@@ -29,6 +29,7 @@ export type WevraModelInfo = {
   label?: string;
   contextWindow?: number;
   readonly?: boolean;
+  enabled?: boolean;
 };
 
 export type WevraModelProvider = {

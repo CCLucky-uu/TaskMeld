@@ -148,7 +148,7 @@ export function WevraChatPanel({ open: extOpen, onClose: extClose }: { open?: bo
   const [fullscreen, setFullscreen] = useState(false);
   const [execMode, setExecMode] = useState<"plan" | "normal" | "auto">("normal");
   const [thinkingLevels, setThinkingLevels] = useState<string[]>([]);
-  const [thinkingLevel, setThinkingLevel] = useState("medium");
+  const [thinkingLevel, setThinkingLevel] = useState("high");
   const [showThinkingLevels, setShowThinkingLevels] = useState(false);
   const [models, setModels] = useState<WevraModelInfo[]>([]);
   const [defaultModel, setDefaultModel] = useState("");
@@ -176,6 +176,7 @@ export function WevraChatPanel({ open: extOpen, onClose: extClose }: { open?: bo
   const formRef = useRef<HTMLFormElement>(null);
   const thinkTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const streamConvRef = useRef<string>("");
+  const globalDefaultRef = useRef<string>("");
   const contextRef = useRef<HTMLDivElement>(null);
   const thinkingLevelRef = useRef<HTMLDivElement>(null);
   const modelRef = useRef<HTMLDivElement>(null);
@@ -265,13 +266,18 @@ export function WevraChatPanel({ open: extOpen, onClose: extClose }: { open?: bo
           thinkingLevel?: string;
         };
         if (modelsRes?.models) setModels(modelsRes.models);
-        if (modelsRes?.default) setDefaultModel(modelsRes.default);
+        if (modelsRes?.default) {
+          setDefaultModel(modelsRes.default);
+          globalDefaultRef.current = modelsRes.default;
+        }
         const model =
           modelsRes?.models?.find((m) => `${m.providerId}/${m.modelId}` === modelsRes?.default) ??
           modelsRes?.models?.[0];
         if (model?.contextWindow) setContextMax(model.contextWindow);
         if (modelsRes?.thinkingLevels) setThinkingLevels(modelsRes.thinkingLevels);
-        if (modelsRes?.thinkingLevel) setThinkingLevel(modelsRes.thinkingLevel);
+        // thinkingLevel is restored per-conversation in loadConv to avoid race condition
+        // Auto-open model config when no models are configured
+        if (!modelsRes?.models?.length) setConfigModalOpen(true);
       } catch {
         /* */
       }
@@ -295,11 +301,12 @@ export function WevraChatPanel({ open: extOpen, onClose: extClose }: { open?: bo
     try {
       const r = (await wsRequest("wevra.conversations.view", {
         conversationId: id,
-      })) as { messages?: RawMessage[]; lastPromptTokens?: number; thinkingLevel?: string; mode?: string };
+      })) as { messages?: RawMessage[]; lastPromptTokens?: number; thinkingLevel?: string; mode?: string; model?: string };
       dispatch({ type: "reset", msgs: restoreMessages(r?.messages ?? []) });
       setContextUsed(r?.lastPromptTokens ?? 0);
       if (r?.mode) setExecMode(r.mode as "plan" | "normal" | "auto");
       if (r?.thinkingLevel) setThinkingLevel(r.thinkingLevel);
+      setDefaultModel(r?.model || globalDefaultRef.current || "");
     } catch {
       dispatch({ type: "reset", msgs: [] });
       setContextUsed(0);
@@ -489,9 +496,12 @@ export function WevraChatPanel({ open: extOpen, onClose: extClose }: { open?: bo
       });
       setInput("");
       streamConvRef.current = activeId;
+      const [sendProv, sendMdl] = defaultModel.split("/");
       wsRequest("wevra.chat", {
         message: text,
         conversationId: activeId,
+        provider: sendProv,
+        model: sendMdl,
       }).catch((err: Error) => {
         streamConvRef.current = "";
         dispatch({
@@ -506,7 +516,7 @@ export function WevraChatPanel({ open: extOpen, onClose: extClose }: { open?: bo
         });
       });
     },
-    [input, isBusy, activeId],
+    [input, isBusy, activeId, defaultModel],
   );
 
   const keyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -523,6 +533,7 @@ export function WevraChatPanel({ open: extOpen, onClose: extClose }: { open?: bo
       if (r?.conversation) {
         setConvs((prev) => [r.conversation!, ...prev]);
         setActiveId(r.conversation.id);
+        if (globalDefaultRef.current) setDefaultModel(globalDefaultRef.current);
         dispatch({ type: "reset", msgs: [] });
         setContextUsed(0);
       }
@@ -861,7 +872,7 @@ export function WevraChatPanel({ open: extOpen, onClose: extClose }: { open?: bo
                         >
                           {execMode}
                         </button>
-                        {models.length > 0 && (
+                        {models.some((m) => m.enabled !== false) ? (
                           <div ref={modelRef} className="relative flex items-center">
                             <span className="mx-1 h-3.5 w-px bg-[rgba(142,163,179,0.2)]" />
                             <button
@@ -874,7 +885,7 @@ export function WevraChatPanel({ open: extOpen, onClose: extClose }: { open?: bo
                             </button>
                             {showModelDropdown && (
                               <div className="absolute bottom-full left-0 mb-2 w-max max-w-[280px] rounded border border-(--line) bg-[#141c24] py-0.5 shadow-lg z-50">
-                                {models.map((m) => {
+                                {models.filter((m) => m.enabled !== false).map((m) => {
                                   const key = `${m.providerId}/${m.modelId}`;
                                   return (
                                     <button
@@ -887,7 +898,15 @@ export function WevraChatPanel({ open: extOpen, onClose: extClose }: { open?: bo
                                       }`}
                                       onClick={async () => {
                                         setDefaultModel(key);
+                                        if (m.contextWindow) setContextMax(m.contextWindow);
                                         setShowModelDropdown(false);
+                                        if (activeId) {
+                                          await wsRequest("wevra.models.set-conversation-model", {
+                                            conversationId: activeId,
+                                            providerId: m.providerId,
+                                            modelId: m.modelId,
+                                          }).catch(() => {});
+                                        }
                                         await wsRequest("wevra.models.set-default", {
                                           providerId: m.providerId,
                                           modelId: m.modelId,
@@ -911,6 +930,18 @@ export function WevraChatPanel({ open: extOpen, onClose: extClose }: { open?: bo
                                 </button>
                               </div>
                             )}
+                          </div>
+                        ) : (
+                          <div className="flex items-center">
+                            <span className="mx-1 h-3.5 w-px bg-[rgba(142,163,179,0.2)]" />
+                            <button
+                              type="button"
+                              className="h-6 px-1 text-sm rounded cursor-pointer transition-colors border-none bg-transparent text-(--live) hover:bg-[rgba(50,215,186,0.08)]"
+                              onClick={() => setConfigModalOpen(true)}
+                              title="Add a model to get started"
+                            >
+                              + Add model
+                            </button>
                           </div>
                         )}
                         {thinkingLevels.length > 0 && (
@@ -1060,8 +1091,22 @@ export function WevraChatPanel({ open: extOpen, onClose: extClose }: { open?: bo
         onClose={() => setConfigModalOpen(false)}
         onConfigUpdate={(c) => {
           setModels(c.models);
-          if (c.default) setDefaultModel(c.default);
+          if (c.default) {
+            setDefaultModel(c.default);
+            globalDefaultRef.current = c.default;
+          }
           if (c.thinkingLevels) setThinkingLevels(c.thinkingLevels);
+          // Auto-save model to active conversation when first configured (conversation has no model yet)
+          if (c.default && activeId && !defaultModel) {
+            const [p, m] = c.default.split("/");
+            if (p && m) {
+              wsRequest("wevra.models.set-conversation-model", {
+                conversationId: activeId,
+                providerId: p,
+                modelId: m,
+              }).catch(() => {});
+            }
+          }
         }}
       />
     </>

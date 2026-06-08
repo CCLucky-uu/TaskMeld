@@ -16,6 +16,7 @@ export interface ConvMeta {
   scope?: string;
   archived: boolean;
   mode?: "plan" | "normal" | "auto";
+  model?: string;
   messageCount?: number;
   createdAt?: number;
   lastActiveAt?: number;
