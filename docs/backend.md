@@ -407,7 +407,314 @@ The read-only / writable separation ensures that CLI read-only commands cannot a
 
 ---
 
-### 2.4 transport Module — WebSocket Transport
+### 2.4 wevra Module — Agent
+
+**Path**: `src/wevra/`
+
+Wevra is TaskMeld's built-in Agent that provides natural language interface to pipeline management and system operations.
+
+#### Architecture Overview
+
+```
+WevraAgent (Facade)
+├── brain: Brain              // LLM reasoning layer
+├── toolRegistry: ToolRegistry
+├── toolExecutor: ToolExecutor
+├── conversations: ConversationManager
+├── memory: WevraMemory
+├── skills: SkillRegistry
+├── loop: WevraLoop
+├── config: WevraConfig
+├── services: ReadonlyServices | null
+├── app: PipelineRegistry | null
+├── pluginRegistry: PluginRegistry | null
+└── userGlobalPrefs: ToolPreferences
+```
+
+#### 2.4.1 Core Components
+
+**WevraAgent** (`index.ts`)
+- Facade class that assembles all subsystems
+- Single entry point for all Agent operations
+- Manages model configuration, thinking levels, and active chats
+
+**Brain** (`brain/index.ts`)
+- LLM reasoning engine wrapping OpenAICompatClient
+- Supports synchronous and SSE streaming chat
+- Multi-provider compatibility (DeepSeek, OpenAI, Xiaomi MiMo)
+- DeepSeek `reasoning_content` passthrough
+- Safe JSON parsing for incomplete tool calls
+- Timeout and abort protection (120s default)
+
+**WevraLoop** (`loop/agent-loop.ts`)
+- ReAct (Reasoning + Acting) pattern implementation
+- Multi-turn reasoning loop: think → call tools → observe → continue
+- Maximum 25 iterations per conversation turn
+- Mode injection (plan/normal/auto)
+- Confirmation flow for write operations
+
+**ToolRegistry** (`tools/registry.ts`)
+- Map-based tool registry
+- 28 built-in tools across 8 categories
+- Tool definitions exported to LLM for function calling
+
+**ToolExecutor** (`tools/executor.ts`)
+- 5-step execution lifecycle: Lookup → Validate → Permission → Execute → Truncate
+- Parallel execution via `Promise.all()`
+- Permission checking based on tool annotations and user preferences
+- 30s timeout per tool execution
+- Output truncation at 30K characters
+
+#### 2.4.2 Tool System
+
+**Tool Categories:**
+
+| Category | Count | Tools | Status |
+|----------|-------|-------|--------|
+| Pipeline | 12 | pipeline_list, pipeline_get, pipeline_create, pipeline_update, pipeline_delete, pipeline_status, pipeline_diagnose, pipeline_run, pipeline_stop, pipeline_plugin, pipeline_node, pipeline_validate | ✅ Connected |
+| Agent | 6 | agent_list, agent_get, agent_create, agent_update, agent_delete, agent_send | ✅ Connected |
+| System | 3 | system_status, system_gateway, system_time | ✅ Connected |
+| Memory | 2 | memory_recall, memory_remember | ✅ Connected |
+| Skill | 1 | skill_load | ✅ Connected |
+| Artifact | 2 | artifact_list, artifact_get | ✅ Connected |
+| Session | 3 | session_list, session_get, session_history | ✅ Connected |
+| Web | 2 | web_search, web_fetch | ✅ Connected |
+
+**Tool Annotations:**
+```typescript
+interface ToolAnnotations {
+  readOnly: boolean              // Read-only operation
+  destructive: boolean           // Destructive operation
+  requiresConfirmation: boolean  // Requires user confirmation
+  idempotent: boolean            // Idempotent operation
+}
+```
+
+**Permission Decision Matrix (normal mode):**
+- `readOnly=true` → allow
+- `destructive=true` → confirm
+- `requiresConfirmation=true` → confirm
+- In `alwaysDeny` list → deny
+- In `alwaysAllow` list → allow
+- Otherwise → allow
+
+#### 2.4.3 Agent Tools (New!)
+
+Complete agent lifecycle management through natural language:
+
+**CRUD Operations:**
+- `agent_list` — List all registered agents with activity filtering
+- `agent_get` — Get detailed agent info with optional session inclusion
+- `agent_create` — Create new agent (requires confirmation)
+- `agent_update` — Update agent name/workspace (requires confirmation)
+- `agent_delete` — Delete agent permanently (requires confirmation, destructive)
+
+**Communication:**
+- `agent_send` — Send message to agent and wait for reply
+  - Synchronous communication (waits for reply)
+  - Custom session ID support for parallel conversations
+  - Configurable timeout (10s - 5min)
+  - Automatic execution (no confirmation needed)
+
+**Session ID Format:**
+```
+agent:{sessionId}:{agentId}
+Example: agent:main:agent-123
+```
+
+**Implementation:**
+- Uses `AgentService` for CRUD operations (gateway RPC: agents.create, agents.update, agents.delete)
+- Uses `SessionService.sendMessageAndWaitForReply()` for agent_send (gateway RPC: chat.send or sessions.send)
+- All write operations require user confirmation
+- Clear error messages with timeout distinction
+
+#### 2.4.4 Conversation Manager
+
+**Path**: `src/wevra/conversation/`
+
+Persistent conversation management:
+
+- **JSONL Storage** — One file per conversation, append-only
+- **Message Cache** — In-memory cache for fast access
+- **Crash Recovery** — Automatic repair of interrupted tool chains
+- **Auto-archive** — Conversations inactive >24 hours auto-archived
+- **Mode Tracking** — Per-conversation mode (plan/normal/auto)
+- **Token Tracking** — Per-conversation token usage
+
+**Storage Structure:**
+```
+{dataDir}/wevra/conversations/
+├── index.json              ← All conversation metadata
+├── {convId-1}.jsonl        ← Conversation 1 messages
+├── {convId-2}.jsonl        ← Conversation 2 messages
+└── ...
+```
+
+#### 2.4.5 Skill System
+
+**Path**: `src/wevra/skills/`
+
+Skills are behavior guidelines, not tools:
+
+**Invocation Types:**
+- `always` — Injected into every System Prompt
+- `auto` — LLM loads via `skill_load` tool when needed
+- `user` — User manually triggers
+- `model` — LLM decides when to load
+
+**Built-in Skills:**
+1. **core-behavior** (always) — Basic behavior guidelines
+2. **pipeline-management** (auto) — Pipeline creation workflow
+3. **failure-diagnosis** (auto) — Failure analysis workflow
+
+#### 2.4.6 Memory System
+
+**Path**: `src/wevra/memory/`
+
+Cross-session knowledge accumulation:
+
+- **In-memory Storage** — Map-based, grouped by scope (global/pipeline)
+- **Keyword Recall** — Simple substring matching with importance weighting
+- **Auto-extraction** — (Stub) LLM automatically extracts memories from conversations
+- **Tool Integration** — `memory_remember` and `memory_recall` tools
+
+**Memory Entry Structure:**
+```typescript
+interface MemoryEntry {
+  content: string
+  type: 'fact' | 'preference' | 'event' | 'summary'
+  scope: 'global' | 'pipeline'
+  scopeRef?: string
+  importance: number  // 0-1
+  tags: string[]
+  source: string
+  createdAt: string
+}
+```
+
+#### 2.4.7 Permission System
+
+**Path**: `src/wevra/preferences.ts`
+
+Three execution modes:
+
+| Mode | Description | Available Tools |
+|------|-------------|-----------------|
+| `plan` | Read-only | Only `readOnly=true` tools |
+| `normal` | Default | Read-only free, write/destructive need confirmation |
+| `auto` | Automatic | All tools execute without confirmation |
+
+**Preferences:**
+- Per-conversation preferences
+- Global user preferences
+- Merged at runtime (conversation overrides global)
+- Persisted to `{dataDir}/wevra/tool-preferences.json`
+
+#### 2.4.8 Prompt Builder
+
+**Path**: `src/wevra/loop/prompt-builder.ts`
+
+System Prompt construction:
+
+- **buildGlobalPrompt()** — Global conversation prompt with:
+  - Identity section
+  - Guidelines
+  - Common workflows
+  - Environment info
+  - Global memory
+  - Available skills index
+
+- **buildPipelinePrompt()** — Pipeline-scoped prompt (Phase 4, not yet integrated)
+
+- **Frozen Prompt** — System Prompt frozen at conversation creation for cache efficiency
+
+#### 2.4.9 WebSocket Integration
+
+**19 WS Methods:**
+
+| Category | Methods |
+|----------|---------|
+| Core | wevra.chat, wevra.status, wevra.debug |
+| Conversations | wevra.conversations.create/rename/archive/delete/list/view |
+| Models | wevra.models, wevra.models.reload, wevra.models.set-thinking-level |
+| Config | wevra.config.get, wevra.models.add-provider/update-provider/remove-provider/set-default |
+| Preferences | wevra.tool-preferences.get/set-mode/always-allow/revoke/save-global |
+| Confirmation | wevra.confirm |
+
+**Stream Events:**
+- thinking_start/delta/end
+- text_start/delta/end
+- tool_start/result
+- step_finish
+- confirm_request
+- error
+
+#### 2.4.10 Data Flow
+
+```
+User Input → Frontend → wsRequest("wevra.chat")
+  → Transport layer injects mode marker
+  → WevraAgent.chat()
+    → ConversationManager appends user message, loads full history
+    → WevraLoop.run()
+      → Builds request: frozenPrompt + expandedHistory
+      → Brain.streamChat() → SSE streaming reasoning
+      → If tool_calls → ToolExecutor parallel execution
+        → Permission check (resolvePermission)
+        → Needs confirmation → onConfirm callback → Frontend dialog
+        → Tool results appended to history → Back to Brain
+      → No tool_calls → Returns text result
+    → Messages persisted to JSONL via onMessage callback
+  → Stream events broadcast to frontend via wevra.stream
+```
+
+#### 2.4.11 Multi-Provider Configuration
+
+**Built-in Providers:**
+- **DeepSeek** — V4 Flash/Pro (1M context, reasoning)
+- **OpenAI** — GPT-5.4/5.5 (1M context, reasoning)
+- **Xiaomi** — MiMo V2/V2.5 (up to 1M context)
+
+**Custom Providers:**
+```json
+{
+  "version": 1,
+  "default": { "provider": "deepseek", "model": "deepseek-v4-flash" },
+  "providers": {
+    "custom-provider": {
+      "baseUrl": "https://my-api.com/v1",
+      "apiKey": "sk-xxx",
+      "models": [{ "id": "my-model", "name": "My Model", "contextWindow": 128000 }]
+    }
+  }
+}
+```
+
+#### 2.4.12 Development Status
+
+**Phase 1 — Foundation ✅**
+- Core framework, Brain, Loop, 28 tools, Conversation, Permission, Skills, Memory
+
+**Phase 2 — Reliability 🔶 In Progress**
+- Mode versioning, thinking persistence, abort support ✅
+- Token management, loop detection, memory persistence ❌
+
+**Phase 3 — Real Tool Integration ✅ Complete**
+- All Pipeline tools (12) connected ✅
+- All Agent tools (6) connected ✅
+- All read-only tools connected ✅
+
+**Phase 4 — Pipeline Scoping ❌ Not Started**
+- Pipeline-scoped conversations
+- Cross-pipeline access control
+
+**Phase 5 — UX Polish ❌ Not Started**
+- Frontend mode restore
+- Global settings page
+
+---
+
+### 2.5 transport Module — WebSocket Transport
 
 **Path**: `src/transport/`
 
@@ -463,7 +770,7 @@ All business API endpoints are now WebSocket RPC methods:
 
 ---
 
-### 2.5 gateway Module — External Communication Client
+### 2.6 gateway Module — External Communication Client
 
 **Path**: `src/gateway/`
 
@@ -517,7 +824,7 @@ idle → connecting → ws_open → challenged → connect_sent → ready
 
 ---
 
-### 2.6 app Module — Application Assembly Layer
+### 2.7 app Module — Application Assembly Layer
 
 **Path**: `src/app/`
 
@@ -646,7 +953,7 @@ type AppContext = {
 
 ---
 
-### 2.7 artifacts Module — Artifact Storage
+### 2.8 artifacts Module — Artifact Storage
 
 **Path**: `src/artifacts/storage-service.ts`
 
@@ -687,7 +994,7 @@ artifacts/
 
 ---
 
-### 2.8 logs Module — Runtime Logs
+### 2.9 logs Module — Runtime Logs
 
 **Path**: `src/logs/`
 

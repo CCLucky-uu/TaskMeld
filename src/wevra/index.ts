@@ -233,7 +233,7 @@ export class WevraAgent {
       ...createPipelineTools(s?.pipeline, this.app, this.pluginRegistry),
       ...createPipelinePluginTool(this.app, this.pluginRegistry),
       ...createPipelineNodeTool(this.app),
-      ...createAgentTools(s?.agent),
+      ...createAgentTools(s?.agent, s?.session),
       ...createArtifactTools(s?.artifact),
       ...createSessionTools(s?.session),
       ...createSystemTools(s),
