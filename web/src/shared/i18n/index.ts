@@ -25,14 +25,10 @@ type Namespace = (typeof namespaceNames)[number];
 // Build-time: Vite resolves import.meta.glob to a map of lazy chunks, one per file.
 // At runtime only the locale in use is loaded — the other 12 JSON files stay as
 // separate chunks and never enter the main bundle.
-const localeModules = import.meta.glob<Record<string, unknown>>(
-  "./locales/*/*.json",
-);
+const localeModules = import.meta.glob<Record<string, unknown>>("./locales/*/*.json");
 
 /** Load a single locale's full set of namespace resources on demand. */
-const loadLocaleResources = async (
-  locale: string,
-): Promise<Record<Namespace, Record<string, unknown>>> => {
+const loadLocaleResources = async (locale: string): Promise<Record<Namespace, Record<string, unknown>>> => {
   const resources = {} as Record<Namespace, Record<string, unknown>>;
   await Promise.all(
     namespaceNames.map(async (ns) => {
@@ -83,13 +79,15 @@ i18n
 
 // Once the initial locale's resources are loaded, inject them into i18next.
 // Exported as a promise so main.tsx can block React rendering until ready.
-export const i18nReady = resourcePromise.then((resources) => {
-  for (const ns of namespaceNames) {
-    i18n.addResourceBundle(initialLocale, ns, resources[ns], true, true);
-  }
-}).catch((err) => {
-  console.error("Failed to load initial locale resources:", err);
-});
+export const i18nReady = resourcePromise
+  .then((resources) => {
+    for (const ns of namespaceNames) {
+      i18n.addResourceBundle(initialLocale, ns, resources[ns], true, true);
+    }
+  })
+  .catch((err) => {
+    console.error("Failed to load initial locale resources:", err);
+  });
 
 // When the user switches language, load the new locale on demand.
 i18n.on("languageChanged", async (newLocale: string) => {

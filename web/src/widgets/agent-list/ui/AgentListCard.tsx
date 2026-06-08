@@ -35,11 +35,18 @@ type AgentListCardProps = {
   onDeleteAgent: (agentId: string) => void;
 };
 
-export function AgentListCard({ agents, onOpenAgentSession, onOpenAgentOutput, onCreateAgent, onEditAgent, onDeleteAgent }: AgentListCardProps) {
+export function AgentListCard({
+  agents,
+  onOpenAgentSession,
+  onOpenAgentOutput,
+  onCreateAgent,
+  onEditAgent,
+  onDeleteAgent,
+}: AgentListCardProps) {
   const [searchKeyword, setSearchKeyword] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "busy" | "idle">("all");
   const [viewMode, setViewMode] = useState<"card" | "list">("card");
-  const { t } = useTranslation('agent');
+  const { t } = useTranslation("agent");
 
   const filteredAgents = useMemo(() => {
     const searched = filterAgentCards(agents, searchKeyword);
@@ -48,48 +55,48 @@ export function AgentListCard({ agents, onOpenAgentSession, onOpenAgentOutput, o
   }, [agents, searchKeyword, statusFilter]);
 
   return (
-    <section data-center-card data-agent-card className="grid min-h-0 min-w-0 flex-1 grid-rows-[auto_minmax(0,1fr)] overflow-hidden">
+    <section
+      data-center-card
+      data-agent-card
+      className="grid min-h-0 min-w-0 flex-1 grid-rows-[auto_minmax(0,1fr)] overflow-hidden"
+    >
       {/* Top area only keeps search and filter tools — low-value stats that waste space are removed. */}
       <div className={`flex h-[66px] items-center border-b border-(--line) ${gridTileClassName}`}>
         <div className="flex w-full items-center gap-0 overflow-hidden px-8">
-          <button
-            className={primaryActionButtonClassName}
-            type="button"
-            onClick={onCreateAgent}
-          >
-            + {t('createAgent')}
+          <button className={primaryActionButtonClassName} type="button" onClick={onCreateAgent}>
+            + {t("createAgent")}
           </button>
           <span className={`${gridTileClassName} h-8 w-3 shrink-0`} aria-hidden="true" />
           <input
             className={`${controlInputClassName} m-0 h-8 min-w-[260px] flex-[1_1_420px] py-0 leading-none`}
             value={searchKeyword}
             onChange={(event) => setSearchKeyword(event.target.value)}
-            placeholder={t('searchPlaceholder')}
-            aria-label={t('searchLabel')}
+            placeholder={t("searchPlaceholder")}
+            aria-label={t("searchLabel")}
           />
           <span className={`${gridTileClassName} h-8 w-4 shrink-0`} aria-hidden="true" />
           {/* Status filter only affects display, never changes business behavior. */}
-          <div className={filterGroupShellClassName} role="group" aria-label={t('statusFilter')}>
+          <div className={filterGroupShellClassName} role="group" aria-label={t("statusFilter")}>
             <button
               type="button"
               className={`${filterGroupButtonClassName} ${statusFilter === "all" ? filterGroupButtonActiveClassName : ""}`}
               onClick={() => setStatusFilter("all")}
             >
-              {t('all')}
+              {t("all")}
             </button>
             <button
               type="button"
               className={`${filterGroupButtonClassName} ${statusFilter === "busy" ? filterGroupButtonActiveClassName : ""}`}
               onClick={() => setStatusFilter("busy")}
             >
-              {t('busy')}
+              {t("busy")}
             </button>
             <button
               type="button"
               className={`${filterGroupButtonClassName} ${statusFilter === "idle" ? filterGroupButtonActiveClassName : ""}`}
               onClick={() => setStatusFilter("idle")}
             >
-              {t('idle')}
+              {t("idle")}
             </button>
           </div>
           <span className={`${gridTileClassName} h-8 w-4 shrink-0`} aria-hidden="true" />
@@ -98,8 +105,8 @@ export function AgentListCard({ agents, onOpenAgentSession, onOpenAgentOutput, o
             type="button"
             className={viewToggleButtonClassName}
             onClick={() => setViewMode((current) => (current === "card" ? "list" : "card"))}
-            aria-label={viewMode === "card" ? t('switchToList') : t('switchToCard')}
-            title={viewMode === "card" ? t('switchToList') : t('switchToCard')}
+            aria-label={viewMode === "card" ? t("switchToList") : t("switchToCard")}
+            title={viewMode === "card" ? t("switchToList") : t("switchToCard")}
           >
             {viewMode === "card" ? <ListIcon className="h-4 w-4" /> : <LayoutGridIcon className="h-4 w-4" />}
           </button>
@@ -126,81 +133,85 @@ export function AgentListCard({ agents, onOpenAgentSession, onOpenAgentOutput, o
                     }
                   }}
                 >
-                <div className="flex items-center justify-between gap-2">
-                  <strong className="truncate text-sm">{agent.id}</strong>
-                  <span className={`${statusTagBaseClassName} ${statusTagToneClassName[agent.workStatus === "busy" ? "busy" : "idle"]}`}>
-                    {agent.workStatus === "busy" ? t('busy') : t('idle')}
-                  </span>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="border border-(--line) bg-[rgba(10,18,24,0.65)] px-2 py-1.5">
-                    <p className="m-0 text-[10px] text-(--muted)">{t('role')}</p>
-                    <p className={`${monoClassName} m-0 mt-0.5 truncate text-xs text-(--text)`}>{agent.role}</p>
+                  <div className="flex items-center justify-between gap-2">
+                    <strong className="truncate text-sm">{agent.id}</strong>
+                    <span
+                      className={`${statusTagBaseClassName} ${statusTagToneClassName[agent.workStatus === "busy" ? "busy" : "idle"]}`}
+                    >
+                      {agent.workStatus === "busy" ? t("busy") : t("idle")}
+                    </span>
                   </div>
-                  <div className="border border-(--line) bg-[rgba(10,18,24,0.65)] px-2 py-1.5">
-                    <p className="m-0 text-[10px] text-(--muted)">{t('recentNode')}</p>
-                    <p className={`${monoClassName} m-0 mt-0.5 truncate text-xs text-(--text)`}>
-                      {agent.lastExecution?.nodeId ?? "-"}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="border border-(--line) bg-[rgba(10,18,24,0.65)] px-2 py-1.5">
+                      <p className="m-0 text-[10px] text-(--muted)">{t("role")}</p>
+                      <p className={`${monoClassName} m-0 mt-0.5 truncate text-xs text-(--text)`}>{agent.role}</p>
+                    </div>
+                    <div className="border border-(--line) bg-[rgba(10,18,24,0.65)] px-2 py-1.5">
+                      <p className="m-0 text-[10px] text-(--muted)">{t("recentNode")}</p>
+                      <p className={`${monoClassName} m-0 mt-0.5 truncate text-xs text-(--text)`}>
+                        {agent.lastExecution?.nodeId ?? "-"}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="grid content-start gap-1 border border-(--line) bg-[rgba(10,18,24,0.65)] p-2">
+                    <small className={`${monoClassName} text-xs text-(--muted)`}>{t("outputPreview")}</small>
+                    <p className="m-0 min-h-[calc(1.35em*2)] overflow-hidden text-xs leading-[1.35] text-[var(--muted)] [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] break-words">
+                      {agent.outputPreview || t("noOutput")}
+                    </p>
+                    <small className={`${monoClassName} text-xs text-(--muted)`}>{t("eventPreview")}</small>
+                    <p className="m-0 min-h-[calc(1.35em*2)] overflow-hidden text-xs leading-[1.35] text-[var(--muted)] [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] break-words">
+                      {agent.eventPreview || t("noEvent")}
                     </p>
                   </div>
-                </div>
-                <div className="grid content-start gap-1 border border-(--line) bg-[rgba(10,18,24,0.65)] p-2">
-                  <small className={`${monoClassName} text-xs text-(--muted)`}>{t('outputPreview')}</small>
-                  <p className="m-0 min-h-[calc(1.35em*2)] overflow-hidden text-xs leading-[1.35] text-[var(--muted)] [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] break-words">
-                    {agent.outputPreview || t('noOutput')}
-                  </p>
-                  <small className={`${monoClassName} text-xs text-(--muted)`}>{t('eventPreview')}</small>
-                  <p className="m-0 min-h-[calc(1.35em*2)] overflow-hidden text-xs leading-[1.35] text-[var(--muted)] [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] break-words">
-                    {agent.eventPreview || t('noEvent')}
-                  </p>
-                </div>
-                <div className="mt-auto grid gap-2 border-t border-(--line) pt-2">
-                  <small className={`${monoClassName} self-end text-xs leading-[1.2] text-[var(--muted)]`}>
-                  {agent.lastActiveAt ? new Date(agent.lastActiveAt).toLocaleString(undefined, { hour12: false }) : "-"}
-                  </small>
-                  <div className="flex items-center justify-end gap-2">
-                    <button
-                      className={actionButtonClassName}
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        onEditAgent(agent.id);
-                      }}
-                    >
-                      {t('editAgent')}
-                    </button>
-                    <button
-                      className={actionButtonClassName}
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        onDeleteAgent(agent.id);
-                      }}
-                    >
-                      {t('deleteAgent')}
-                    </button>
-                    <button
-                      className={actionButtonClassName}
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        onOpenAgentOutput(agent.id);
-                      }}
-                    >
-                      {t('viewOutput')}
-                    </button>
-                    <button
-                      className={primaryActionButtonClassName}
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        onOpenAgentSession(agent.id);
-                      }}
-                    >
-                      {t('openSession')}
-                    </button>
+                  <div className="mt-auto grid gap-2 border-t border-(--line) pt-2">
+                    <small className={`${monoClassName} self-end text-xs leading-[1.2] text-[var(--muted)]`}>
+                      {agent.lastActiveAt
+                        ? new Date(agent.lastActiveAt).toLocaleString(undefined, { hour12: false })
+                        : "-"}
+                    </small>
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        className={actionButtonClassName}
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onEditAgent(agent.id);
+                        }}
+                      >
+                        {t("editAgent")}
+                      </button>
+                      <button
+                        className={actionButtonClassName}
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onDeleteAgent(agent.id);
+                        }}
+                      >
+                        {t("deleteAgent")}
+                      </button>
+                      <button
+                        className={actionButtonClassName}
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onOpenAgentOutput(agent.id);
+                        }}
+                      >
+                        {t("viewOutput")}
+                      </button>
+                      <button
+                        className={primaryActionButtonClassName}
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onOpenAgentSession(agent.id);
+                        }}
+                      >
+                        {t("openSession")}
+                      </button>
+                    </div>
                   </div>
-                </div>
                 </div>
               </li>
             ))}
@@ -226,13 +237,17 @@ export function AgentListCard({ agents, onOpenAgentSession, onOpenAgentOutput, o
                     <p className="m-0 truncate font-semibold">{agent.id}</p>
                     <p className={`${monoClassName} m-0 mt-0.5 truncate text-xs text-(--muted)`}>{agent.role}</p>
                   </div>
-                  <span className={`${statusTagBaseClassName} ${statusTagToneClassName[agent.workStatus === "busy" ? "busy" : "idle"]}`}>
-                    {agent.workStatus === "busy" ? t('busy') : t('idle')}
+                  <span
+                    className={`${statusTagBaseClassName} ${statusTagToneClassName[agent.workStatus === "busy" ? "busy" : "idle"]}`}
+                  >
+                    {agent.workStatus === "busy" ? t("busy") : t("idle")}
                   </span>
-                  <p className="m-0 truncate text-xs text-(--muted)">{agent.outputPreview || t('noOutput')}</p>
-                  <p className="m-0 truncate text-xs text-(--muted)">{agent.eventPreview || t('noEvent')}</p>
+                  <p className="m-0 truncate text-xs text-(--muted)">{agent.outputPreview || t("noOutput")}</p>
+                  <p className="m-0 truncate text-xs text-(--muted)">{agent.eventPreview || t("noEvent")}</p>
                   <p className={`${monoClassName} m-0 text-xs text-(--muted)`}>
-                    {agent.lastActiveAt ? new Date(agent.lastActiveAt).toLocaleString(undefined, { hour12: false }) : "-"}
+                    {agent.lastActiveAt
+                      ? new Date(agent.lastActiveAt).toLocaleString(undefined, { hour12: false })
+                      : "-"}
                   </p>
                   <div className="flex items-center justify-end gap-2">
                     <button
@@ -243,7 +258,7 @@ export function AgentListCard({ agents, onOpenAgentSession, onOpenAgentOutput, o
                         onEditAgent(agent.id);
                       }}
                     >
-                      {t('editAgent')}
+                      {t("editAgent")}
                     </button>
                     <button
                       className={actionButtonClassName}
@@ -253,7 +268,7 @@ export function AgentListCard({ agents, onOpenAgentSession, onOpenAgentOutput, o
                         onDeleteAgent(agent.id);
                       }}
                     >
-                      {t('deleteAgent')}
+                      {t("deleteAgent")}
                     </button>
                     <button
                       className={actionButtonClassName}
@@ -263,7 +278,7 @@ export function AgentListCard({ agents, onOpenAgentSession, onOpenAgentOutput, o
                         onOpenAgentOutput(agent.id);
                       }}
                     >
-                      {t('viewOutput')}
+                      {t("viewOutput")}
                     </button>
                     <button
                       className={primaryActionButtonClassName}
@@ -273,7 +288,7 @@ export function AgentListCard({ agents, onOpenAgentSession, onOpenAgentOutput, o
                         onOpenAgentSession(agent.id);
                       }}
                     >
-                      {t('openSession')}
+                      {t("openSession")}
                     </button>
                   </div>
                 </li>
@@ -281,7 +296,7 @@ export function AgentListCard({ agents, onOpenAgentSession, onOpenAgentOutput, o
             </ul>
           </div>
         ) : (
-          <p className={`${monoClassName} m-0 px-3 pt-3 pb-2 text-[var(--muted)]`}>{t('noMatch')}</p>
+          <p className={`${monoClassName} m-0 px-3 pt-3 pb-2 text-[var(--muted)]`}>{t("noMatch")}</p>
         )}
       </div>
     </section>

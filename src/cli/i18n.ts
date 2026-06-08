@@ -1,30 +1,30 @@
-import { homedir } from "node:os";
-import { join } from "node:path";
-import { readFileSync } from "node:fs";
-import i18next from "i18next";
+import { homedir } from "node:os"
+import { join } from "node:path"
+import { readFileSync } from "node:fs"
+import i18next from "i18next"
 
-import zhCli from "./locales/zh.json";
-import enCli from "./locales/en.json";
+import zhCli from "./locales/zh.json"
+import enCli from "./locales/en.json"
 
 const resolveLocale = (): string => {
   // 1. env override
-  const envLocale = process.env.TASKMELD_LOCALE?.trim();
-  if (envLocale && ["zh", "en"].includes(envLocale)) return envLocale;
+  const envLocale = process.env.TASKMELD_LOCALE?.trim()
+  if (envLocale && ["zh", "en"].includes(envLocale)) return envLocale
 
   // 2. config.json
   try {
-    const configPath = join(homedir(), ".taskmeld", "config.json");
-    const raw = readFileSync(configPath, "utf8");
-    const config = JSON.parse(raw) as { locale?: string };
+    const configPath = join(homedir(), ".taskmeld", "config.json")
+    const raw = readFileSync(configPath, "utf8")
+    const config = JSON.parse(raw) as { locale?: string }
     if (config.locale && ["zh", "en"].includes(config.locale)) {
-      return config.locale;
+      return config.locale
     }
   } catch {
     // config file not found or invalid, fall through
   }
 
-  return "en";
-};
+  return "en"
+}
 
 i18next.init({
   lng: resolveLocale(),
@@ -35,10 +35,10 @@ i18next.init({
   defaultNS: "cli",
   fallbackLng: "en",
   interpolation: { escapeValue: false },
-});
+})
 
-export const t = i18next.t.bind(i18next);
+export const t = i18next.t.bind(i18next)
 
 export const changeLocale = async (locale: "en" | "zh") => {
-  await i18next.changeLanguage(locale);
-};
+  await i18next.changeLanguage(locale)
+}

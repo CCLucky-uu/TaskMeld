@@ -4,12 +4,7 @@ type TaskMeldIconProps = {
 
 export function TaskMeldIcon({ className }: TaskMeldIconProps) {
   return (
-    <svg
-      viewBox="0 0 76.05 83.85"
-      aria-hidden="true"
-      className={className}
-      fill="currentColor"
-    >
+    <svg viewBox="0 0 76.05 83.85" aria-hidden="true" className={className} fill="currentColor">
       {/* Use currentColor to inherit the project theme color, preventing icon color from breaking away from the theme. */}
       <path d="M12.29,64.28c-1.12,0-2.24-.47-3.03-1.38C3.29,56,0,47.17,0,38.03,0,17.06,17.06,0,38.03,0c5.29,0,10.41,1.07,15.21,3.17,2.02.88,2.95,3.24,2.06,5.27-.89,2.03-3.24,2.95-5.27,2.06-3.79-1.66-7.83-2.5-12.01-2.5-16.56,0-30.03,13.47-30.03,30.03,0,7.22,2.6,14.19,7.31,19.64,1.45,1.67,1.26,4.2-.41,5.64-.76.66-1.69.98-2.62.98Z" />
       <path d="M63.76,64.29c-.93,0-1.86-.32-2.62-.98-1.67-1.45-1.85-3.97-.41-5.64,4.72-5.45,7.31-12.42,7.31-19.64,0-2.86-.4-5.69-1.19-8.4-.62-2.12.6-4.34,2.72-4.96,2.12-.62,4.34.6,4.96,2.72,1,3.44,1.51,7.02,1.51,10.64,0,9.14-3.29,17.97-9.26,24.88-.79.91-1.91,1.38-3.03,1.38Z" />

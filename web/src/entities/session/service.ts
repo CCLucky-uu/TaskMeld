@@ -32,7 +32,11 @@ export async function sendSessionMessage(params: {
   message: string;
   mode: SendMode;
 }): Promise<SessionSendResponse> {
-  return wsRequest<SessionSendResponse>("session.send", { sessionId: params.sessionId, message: params.message, mode: params.mode });
+  return wsRequest<SessionSendResponse>("session.send", {
+    sessionId: params.sessionId,
+    message: params.message,
+    mode: params.mode,
+  });
 }
 
 const normalizeHistoryItems = (rawItems: unknown[]): SessionHistoryItem[] =>
@@ -102,7 +106,8 @@ const normalizeHistoryItems = (rawItems: unknown[]): SessionHistoryItem[] =>
         toolCallParts.forEach((part, partIndex) => {
           const toolName = String(part.name ?? part.toolName ?? "tool").trim() || "tool";
           const toolCallIdRaw = part.id ?? part.toolCallId ?? part.tool_call_id ?? obj.toolCallId ?? obj.tool_call_id;
-          const toolCallId = typeof toolCallIdRaw === "string" && toolCallIdRaw.trim() ? toolCallIdRaw.trim() : undefined;
+          const toolCallId =
+            typeof toolCallIdRaw === "string" && toolCallIdRaw.trim() ? toolCallIdRaw.trim() : undefined;
           const argsRaw = part.arguments;
           const argsText =
             typeof argsRaw === "string"

@@ -1,11 +1,11 @@
-import type { RenderSpecMap } from "../engine/types";
+import type { RenderSpecMap } from "../engine/types"
 
 export const initRenderSpecs: RenderSpecMap = {
-  "init": {
+  init: {
     kind: "text",
     render: (data) => {
-      const d = data as { ok: boolean; gatewayUrl?: string; configPath?: string; interactive?: boolean };
-if (d.interactive) return "";
+      const d = data as { ok: boolean; gatewayUrl?: string; configPath?: string; interactive?: boolean }
+      if (d.interactive) return ""
       if (d.ok) {
         const lines = [
           "Gateway configured successfully.",
@@ -14,10 +14,10 @@ if (d.interactive) return "";
           `  Config  ${d.configPath ?? "~/.taskmeld/config.json"}`,
           "",
           '  Run "taskmeld server start" to begin.',
-        ];
-        return lines.join("\n");
+        ]
+        return lines.join("\n")
       }
-      return "Setup was not completed.";
+      return "Setup was not completed."
     },
   },
-};
+}

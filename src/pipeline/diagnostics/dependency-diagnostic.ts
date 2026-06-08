@@ -1,13 +1,15 @@
-import { isDependencySatisfied, canNeverSatisfy, type DependencyCheckContext } from "../execution/dependency-check";
-import type { Run } from "../runtime-model";
+import { isDependencySatisfied, canNeverSatisfy, type DependencyCheckContext } from "../execution/dependency-check"
+import type { Run } from "../runtime-model"
 
 export type DependencyDiagnosticGraph = {
-  getWorkflowNodeById: (nodeId: string) => { dependencyPolicy?: "all" | "any"; routePolicy?: { allowed: string[] } | null } | null;
-  getIncomingEdges: (nodeId: string) => Array<{ from: string; to: string; when: string | null }>;
-  isCrossBranchEdge: (edge: { from: string; to: string; when: string | null }) => boolean;
-  isGroupId: (id: string) => boolean;
-  isWorkflowNodeEnabled: (id: string) => boolean;
-};
+  getWorkflowNodeById: (
+    nodeId: string,
+  ) => { dependencyPolicy?: "all" | "any"; routePolicy?: { allowed: string[] } | null } | null
+  getIncomingEdges: (nodeId: string) => Array<{ from: string; to: string; when: string | null }>
+  isCrossBranchEdge: (edge: { from: string; to: string; when: string | null }) => boolean
+  isGroupId: (id: string) => boolean
+  isWorkflowNodeEnabled: (id: string) => boolean
+}
 
 export type ReasonCode =
   | "dependency_satisfied"
@@ -20,23 +22,23 @@ export type ReasonCode =
   | "source_disabled_dependency_satisfied"
   | "source_disabled_route_impossible"
   | "missing_source_item_run"
-  | "missing_group_item_run";
+  | "missing_group_item_run"
 
 export type DependencyDiagnostic = {
-  itemKey: string;
-  nodeId: string;
+  itemKey: string
+  nodeId: string
   incoming: Array<{
-    from: string;
-    when: string | null;
-    satisfied: boolean;
-    impossible: boolean;
-    reason: ReasonCode;
-  }>;
-  policy: "all" | "any";
-  outcome: "queued" | "waiting" | "skipped";
-};
+    from: string
+    when: string | null
+    satisfied: boolean
+    impossible: boolean
+    reason: ReasonCode
+  }>
+  policy: "all" | "any"
+  outcome: "queued" | "waiting" | "skipped"
+}
 
-export type ReasonMessage = Record<ReasonCode, string>;
+export type ReasonMessage = Record<ReasonCode, string>
 
 export const REASON_MESSAGES: ReasonMessage = {
   dependency_satisfied: "Dependency satisfied",
@@ -50,7 +52,7 @@ export const REASON_MESSAGES: ReasonMessage = {
   source_disabled_route_impossible: "Upstream node is disabled but route edge cannot be satisfied",
   missing_source_item_run: "Missing upstream node item run record",
   missing_group_item_run: "Missing upstream parallel group item run record",
-};
+}
 
 const resolveOutcome = (
   satisfiedCount: number,
@@ -59,14 +61,14 @@ const resolveOutcome = (
   policy: "all" | "any",
 ): "queued" | "waiting" | "skipped" => {
   if (policy === "any") {
-    if (satisfiedCount > 0) return "queued";
-    if (impossibleCount === totalIncoming) return "skipped";
-    return "waiting";
+    if (satisfiedCount > 0) return "queued"
+    if (impossibleCount === totalIncoming) return "skipped"
+    return "waiting"
   }
-  if (satisfiedCount === totalIncoming) return "queued";
-  if (satisfiedCount + impossibleCount === totalIncoming && impossibleCount > 0) return "skipped";
-  return "waiting";
-};
+  if (satisfiedCount === totalIncoming) return "queued"
+  if (satisfiedCount + impossibleCount === totalIncoming && impossibleCount > 0) return "skipped"
+  return "waiting"
+}
 
 const resolveReason = (
   satisfied: boolean,
@@ -76,36 +78,36 @@ const resolveReason = (
   itemKey: string,
 ): ReasonCode => {
   if (satisfied) {
-    if (ctx.isGroupId(edge.from)) return "dependency_satisfied";
-    if (!ctx.isWorkflowNodeEnabled(edge.from)) return "source_disabled_dependency_satisfied";
-    return "dependency_satisfied";
+    if (ctx.isGroupId(edge.from)) return "dependency_satisfied"
+    if (!ctx.isWorkflowNodeEnabled(edge.from)) return "source_disabled_dependency_satisfied"
+    return "dependency_satisfied"
   }
 
-  if (ctx.isCrossBranchEdge(edge)) return "cross_branch_edge_blocked";
+  if (ctx.isCrossBranchEdge(edge)) return "cross_branch_edge_blocked"
 
   if (ctx.isGroupId(edge.from)) {
-    const sourceGroup = ctx.getGroupItemRun(edge.from, itemKey);
-    if (!sourceGroup) return "missing_group_item_run";
-    if (sourceGroup.status === "failed") return "group_not_success";
-    if (sourceGroup.status === "skipped") return "group_not_success";
-    return "group_not_success";
+    const sourceGroup = ctx.getGroupItemRun(edge.from, itemKey)
+    if (!sourceGroup) return "missing_group_item_run"
+    if (sourceGroup.status === "failed") return "group_not_success"
+    if (sourceGroup.status === "skipped") return "group_not_success"
+    return "group_not_success"
   }
 
   if (!ctx.isWorkflowNodeEnabled(edge.from)) {
-    if (edge.when !== null) return "source_disabled_route_impossible";
-    return "source_disabled_dependency_satisfied";
+    if (edge.when !== null) return "source_disabled_route_impossible"
+    return "source_disabled_dependency_satisfied"
   }
 
-  const source = ctx.getItemRun(edge.from, itemKey);
-  if (!source) return "missing_source_item_run";
+  const source = ctx.getItemRun(edge.from, itemKey)
+  if (!source) return "missing_source_item_run"
 
   if (edge.when && source.status === "success" && source.route !== edge.when) {
-    return "route_mismatch";
+    return "route_mismatch"
   }
-  if (source.status === "failed") return "source_failed";
-  if (source.status === "skipped") return "source_skipped";
-  return "source_not_success";
-};
+  if (source.status === "failed") return "source_failed"
+  if (source.status === "skipped") return "source_skipped"
+  return "source_not_success"
+}
 
 export const diagnoseNodeDependency = (
   run: Run,
@@ -113,15 +115,15 @@ export const diagnoseNodeDependency = (
   nodeId: string,
   itemKey?: string,
 ): DependencyDiagnostic[] => {
-  const workflowNode = graph.getWorkflowNodeById(nodeId);
-  const policy: "all" | "any" = workflowNode?.dependencyPolicy === "any" ? "any" : "all";
-  const incoming = graph.getIncomingEdges(nodeId);
+  const workflowNode = graph.getWorkflowNodeById(nodeId)
+  const policy: "all" | "any" = workflowNode?.dependencyPolicy === "any" ? "any" : "all"
+  const incoming = graph.getIncomingEdges(nodeId)
 
   const itemRuns = (run.itemRuns ?? [])
     .filter((item) => item.nodeId === nodeId)
-    .filter((item) => !itemKey || item.itemKey === itemKey);
+    .filter((item) => !itemKey || item.itemKey === itemKey)
 
-  if (itemRuns.length === 0) return [];
+  if (itemRuns.length === 0) return []
 
   const ctx: DependencyCheckContext = {
     isCrossBranchEdge: (edge) => graph.isCrossBranchEdge(edge),
@@ -132,19 +134,19 @@ export const diagnoseNodeDependency = (
       (run.groupItemRuns ?? []).find((item) => item.groupId === groupId && item.itemKey === key) ?? null,
     getItemRun: (node, key) =>
       (run.itemRuns ?? []).find((item) => item.nodeId === node && item.itemKey === key) ?? null,
-  };
+  }
 
   return itemRuns.map((item) => {
     const incomingDiagnostics = incoming.map((edge) => {
-      const satisfied = isDependencySatisfied(item.itemKey, edge, ctx);
-      const impossible = canNeverSatisfy(item.itemKey, edge, ctx);
-      const reason = resolveReason(satisfied, impossible, ctx, edge, item.itemKey);
-      return { from: edge.from, when: edge.when, satisfied, impossible, reason };
-    });
+      const satisfied = isDependencySatisfied(item.itemKey, edge, ctx)
+      const impossible = canNeverSatisfy(item.itemKey, edge, ctx)
+      const reason = resolveReason(satisfied, impossible, ctx, edge, item.itemKey)
+      return { from: edge.from, when: edge.when, satisfied, impossible, reason }
+    })
 
-    const satisfiedCount = incomingDiagnostics.filter((d) => d.satisfied).length;
-    const impossibleCount = incomingDiagnostics.filter((d) => d.impossible).length;
-    const outcome = resolveOutcome(satisfiedCount, impossibleCount, incoming.length, policy);
+    const satisfiedCount = incomingDiagnostics.filter((d) => d.satisfied).length
+    const impossibleCount = incomingDiagnostics.filter((d) => d.impossible).length
+    const outcome = resolveOutcome(satisfiedCount, impossibleCount, incoming.length, policy)
 
     return {
       itemKey: item.itemKey,
@@ -152,6 +154,6 @@ export const diagnoseNodeDependency = (
       incoming: incomingDiagnostics,
       policy,
       outcome,
-    };
-  });
-};
+    }
+  })
+}

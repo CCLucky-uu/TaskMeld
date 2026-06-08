@@ -35,13 +35,12 @@ import {
 import { controlPlaneNavItems } from "../model/controlPlaneNavItems";
 import { useControlPlanePage } from "../model/useControlPlanePage";
 import { useAgentCrudModal } from "../model/useAgentCrudModal";
+import { topologicalSortNodeIds } from "../model/controlPlaneUtils";
 import type { NavKey } from "../../../widgets/nav-panel/model/navItem";
 import PlusIcon from "@iconify-react/lucide/plus";
 const smallModalPanelClassName = `${modalPanelBaseClassName} w-[min(560px,94vw)]`;
-const outputModalPanelClassName =
-  `${modalPanelBaseClassName} grid max-h-[90vh] w-[min(980px,96vw)] grid-rows-[auto_auto_minmax(0,1fr)] gap-[10px] max-[760px]:h-screen max-[760px]:max-h-screen max-[760px]:w-screen`;
-const workflowModalPanelClassName =
-  `${modalPanelBaseClassName} max-h-[90vh] w-[min(1100px,96vw)] max-[760px]:h-screen max-[760px]:max-h-screen max-[760px]:w-screen`;
+const outputModalPanelClassName = `${modalPanelBaseClassName} grid max-h-[90vh] w-[min(980px,96vw)] grid-rows-[auto_auto_minmax(0,1fr)] gap-[10px] max-[760px]:h-screen max-[760px]:max-h-screen max-[760px]:w-screen`;
+const workflowModalPanelClassName = `${modalPanelBaseClassName} max-h-[90vh] w-[min(1100px,96vw)] max-[760px]:h-screen max-[760px]:max-h-screen max-[760px]:w-screen`;
 const monoClassName = "font-[JetBrains_Mono,monospace]";
 const fieldClassName = "mx-3 min-w-0";
 const fieldLabelClassName = "mb-1.5 block text-xs text-[var(--muted)]";
@@ -123,16 +122,8 @@ function ModalLayer({ open, onClose, panelClassName, ariaLabel, children }: Moda
 
   return (
     <>
-      <div
-        className={`${modalMaskBaseClassName} ${modalMaskOpenClassName}`}
-        onClick={onClose}
-        aria-hidden
-      />
-      <aside
-        className={`${modalFrameBaseClassName} ${modalFrameOpenClassName}`}
-        aria-hidden
-        onClick={onClose}
-      >
+      <div className={`${modalMaskBaseClassName} ${modalMaskOpenClassName}`} onClick={onClose} aria-hidden />
+      <aside className={`${modalFrameBaseClassName} ${modalFrameOpenClassName}`} aria-hidden onClick={onClose}>
         <div
           ref={panelRef}
           role="dialog"
@@ -165,9 +156,10 @@ export function ControlPlanePage({
   focusPipelineId,
 }: ControlPlanePageProps) {
   const { t } = useTranslation(["modal", "common", "nav", "pipeline", "agent"]);
-  const translatedStatusLabel = useMemo(() => Object.fromEntries(
-    Object.entries(statusLabel).map(([key, val]) => [key, t(`common:status.${val}`)]),
-  ), [t]);
+  const translatedStatusLabel = useMemo(
+    () => Object.fromEntries(Object.entries(statusLabel).map(([key, val]) => [key, t(`common:status.${val}`)])),
+    [t],
+  );
   const vm = useControlPlanePage();
   const effectivePageRoute: "home" | "pipeline" | "logs" | "agents" | "artifacts" | "settings" = pageRoute;
   const isPipelineRoute = effectivePageRoute === "pipeline";
@@ -364,6 +356,13 @@ export function ControlPlanePage({
     return () => window.clearTimeout(timer);
   }, [focusPipelineId, isPipelineRoute, vm.setActivePipelineId]);
 
+  // Auto-dismiss action message after 8 seconds
+  useEffect(() => {
+    if (!vm.actionMessage) return;
+    const timer = window.setTimeout(() => vm.setActionMessage(""), 8000);
+    return () => window.clearTimeout(timer);
+  }, [vm.actionMessage, vm.setActionMessage]);
+
   useEffect(() => {
     const handleKeydown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
@@ -449,36 +448,23 @@ export function ControlPlanePage({
     if (workflowJsonModalOpen && !vm.activePipelineId) {
       setWorkflowJsonModalOpen(false);
     }
-  }, [deletePipelineTargetId, pluginModalPipelineId, renamePipelineTargetId, vm.activePipelineId, vm.pipelineList, workflowJsonModalOpen]);
+  }, [
+    deletePipelineTargetId,
+    pluginModalPipelineId,
+    renamePipelineTargetId,
+    vm.activePipelineId,
+    vm.pipelineList,
+    workflowJsonModalOpen,
+  ]);
 
   return (
     <div className={pageLayoutClassName}>
       {isMobile ? (
-          <>
-            {/* Mobile: sidebar as a slide-out drawer from the left */}
-            {!navCollapsed && (
-              <div
-                className="fixed inset-0 z-40 bg-black/50"
-                onClick={() => setNavCollapsed(true)}
-                aria-hidden
-              />
-            )}
-            <NavPanel
-              navItems={controlPlaneNavItems}
-              active={vm.active}
-              onChangeActive={(label) => {
-                vm.setActive(label);
-                onNavigateByNav?.(label);
-              }}
-              onNavigateHome={onNavigateHome}
-              protocol={vm.gateway.protocol}
-              scopes={vm.gateway.scopes}
-              collapsed={navCollapsed}
-              variant="overlay"
-              onCloseDrawer={() => setNavCollapsed(true)}
-            />
-          </>
-        ) : (
+        <>
+          {/* Mobile: sidebar as a slide-out drawer from the left */}
+          {!navCollapsed && (
+            <div className="fixed inset-0 z-40 bg-black/50" onClick={() => setNavCollapsed(true)} aria-hidden />
+          )}
           <NavPanel
             navItems={controlPlaneNavItems}
             active={vm.active}
@@ -490,8 +476,24 @@ export function ControlPlanePage({
             protocol={vm.gateway.protocol}
             scopes={vm.gateway.scopes}
             collapsed={navCollapsed}
+            variant="overlay"
+            onCloseDrawer={() => setNavCollapsed(true)}
           />
-        )}
+        </>
+      ) : (
+        <NavPanel
+          navItems={controlPlaneNavItems}
+          active={vm.active}
+          onChangeActive={(label) => {
+            vm.setActive(label);
+            onNavigateByNav?.(label);
+          }}
+          onNavigateHome={onNavigateHome}
+          protocol={vm.gateway.protocol}
+          scopes={vm.gateway.scopes}
+          collapsed={navCollapsed}
+        />
+      )}
 
       <div className={contentLayoutClassName}>
         <TopBar
@@ -507,236 +509,240 @@ export function ControlPlanePage({
         />
 
         <main className={shellLayoutClassName} id="main-content">
-        <section className={centerColumnClassName}>
-          {effectivePageRoute === "logs" ? (
-            <RunLogPage currentRunId={vm.runId} />
-          ) : effectivePageRoute === "pipeline" ? (
-            <>
-          <div
-            data-center-card
-            className="sticky top-0 z-10 shrink-0 flex h-[66px] items-center justify-start px-8 [background-color:rgba(9,15,21,0.1)] [background-image:repeating-linear-gradient(-45deg,rgba(150,170,190,0.07)_0,rgba(150,170,190,0.07)_2px,transparent_2px,transparent_8px)]"
-          >
-            <button
-              className={pipelineCreateButtonClassName}
-              type="button"
-              onClick={() => {
-                setCreatePipelineModalOpen(true);
-                setCreatePipelineId("");
-                setCreatePipelineTitle("");
-                setCreatePipelineCloneEnabled(Boolean(vm.activePipelineId));
-                setCreatePipelineCloneFrom(vm.activePipelineId || vm.pipelineList[0]?.id || "");
-                setCreatePipelineError("");
-              }}
-              disabled={vm.isCreatingPipeline || vm.isDeletingPipeline || vm.isRenamingPipeline}
-            >
-              <PlusIcon className="mr-1.5 h-4 w-4" />
-              {vm.isCreatingPipeline ? t("modal:creating") : t("modal:createPipeline")}
-            </button>
-            <button
-              className={`${pipelineCreateButtonClassName} ml-2`}
-              type="button"
-              onClick={() => setDispatchBoardOpen(true)}
-            >
-              {t("pipeline:schedulerPanel")}
-            </button>
-          </div>
-          <PipelineCard
-            sections={vm.pipelineList.map((pipelineItem) => {
-              const pipelineId = pipelineItem.id;
-              const state = vm.pipelineStateById[pipelineId];
-              if (!state) return null;
-              const workflow = state.workflow;
-              const inferredGroups = workflow ? vm.getParallelGroupsForPipeline(pipelineId) : [];
-              return {
-                pipelineId,
-                title: pipelineItem.title,
-                canDelete: vm.pipelineList.length > 1,
-                pipeline: state.pipeline,
-                workflowNodeOrder: state.workflow?.nodes.map((node) => node.id) ?? state.pipeline.map((node) => node.id),
-                parallelGroups: inferredGroups,
-                pluginState: vm.getPipelineRemoteBatchPlugin(pipelineId),
-                schedulerPluginEnabled: vm.getPipelineSchedulerPlugin(pipelineId).enabled,
-                schedulerMode: state.schedulerState?.mode ?? "-",
-                schedulerEnabled: state.schedulerState?.enabled !== false,
-                batchStartBatch: vm.batchStartBatchById[pipelineId],
-                isBatchOperating: vm.isBatchOperating,
-                batchRunStatus: state.batchRunState?.status,
-                batchRunProcessedItems: state.batchRunState?.processedItems,
-                batchRunTotalItems: state.batchRunState?.totalItems,
-                batchRunProcessedBatches: state.batchRunState?.processedBatches,
-                batchRunTotalBatches: state.batchRunState?.totalBatches,
-                batchRunBatchSize: state.batchRunState?.batchSize,
-                batchRunError: state.batchRunState?.error ?? null,
-                isRunning: state.isRunning,
-                hasPipelineExecution: vm.getHasPipelineExecutionForPipeline(pipelineId),
-                isEditing: vm.getIsPipelineEditing(pipelineId),
-              };
-            }).filter((section): section is NonNullable<typeof section> => Boolean(section))}
-            selectedNodeId={vm.selectedNode?.id ?? ""}
-            selectedGroupId={vm.selectedGroup?.id ?? ""}
-            activePipelineId={vm.activePipelineId}
-            onSelectNode={onSelectNode}
-            onSelectGroup={onSelectGroup}
-            onRun={(pipelineId) => void vm.startPipelineRun(pipelineId)}
-            onStop={(pipelineId) => void vm.stopPipelineRun(pipelineId)}
-            deletingEntity={vm.isDeletingNode}
-            savingNodeOrder={vm.isSavingNodeConfig}
-            onToggleEditing={(pipelineId, editing) => vm.setPipelineEditing(pipelineId, editing)}
-            onOpenWorkflowJson={(pipelineId) => {
-              vm.setActivePipelineId(pipelineId);
-              setWorkflowJsonModalOpen(true);
-            }}
-            onOpenPlugins={(pipelineId) => {
-              vm.setActivePipelineId(pipelineId);
-              setPluginModalPipelineId(pipelineId);
-            }}
-            onRenamePipeline={(pipelineId, title) => vm.renamePipeline(pipelineId, title)}
-            onRequestDeletePipeline={(pipelineId) => {
-              setDeletePipelineError("");
-              setDeletePipelineTargetId(pipelineId);
-            }}
-            onRequestDeleteNode={(pipelineId, nodeId) => {
-              vm.setActivePipelineId(pipelineId);
-              vm.setDeleteTargetNodeId(nodeId);
-            }}
-            onRequestDeleteGroup={(pipelineId, groupId) => {
-              vm.setActivePipelineId(pipelineId);
-              vm.setDeleteTargetGroupId(groupId);
-            }}
-            onRequestCreateNode={() => vm.setIsCreateNodeModalOpen(true)}
-            onMoveNode={(pipelineId, nodeId, direction) => {
-              vm.selectNodeInPipeline(pipelineId, nodeId);
-              if (direction === "up") {
-                void vm.moveSelectedNodeUp(nodeId, pipelineId);
-              } else {
-                void vm.moveSelectedNodeDown(nodeId, pipelineId);
-              }
-            }}
-            onReorderNode={onReorderNode}
-            onChangeBatchStartBatch={(pipelineId, value) => vm.setBatchStartBatch(pipelineId, value)}
-            onStartRemoteKeywordBatchRun={(pipelineId) => void vm.startRemoteKeywordBatchRun(pipelineId)}
-            onToggleScheduler={(pipelineId, enabled) => {
-              void vm.toggleScheduler(enabled, pipelineId);
-            }}
-            onSwitchSchedulerMode={(pipelineId, mode) => {
-              void vm.switchSchedulerMode(mode, pipelineId);
-            }}
-            onManualTick={(pipelineId) => {
-              void vm.manualTick(pipelineId);
-            }}
-            deletingPipeline={vm.isDeletingPipeline}
-            statusTone={statusTone}
-            statusLabel={translatedStatusLabel}
-          />
-            </>
-          ) : effectivePageRoute === "agents" ? (
-            <AgentListCard
-              agents={vm.agentCards}
-              onOpenAgentSession={vm.openSessionModalForAgent}
-              onOpenAgentOutput={(agentId) => vm.setAgentOutputModalAgentId(agentId)}
-              onCreateAgent={agentCrud.create.open}
-              onEditAgent={agentCrud.edit.open}
-              onDeleteAgent={agentCrud.delete.open}
-            />
-          ) : effectivePageRoute === "artifacts" ? (
-            <ArtifactBoard
-              pipelines={vm.pipelineList.map((item) => ({
-                id: item.id,
-                title: item.title,
-              }))}
-              onNavigatePipeline={(pipelineId) => {
-                vm.setActivePipelineId(pipelineId);
-                onNavigateByNav?.("pipeline", pipelineId);
-              }}
-            />
-          ) : effectivePageRoute === "settings" ? (
-            <SettingsBoard />
-          ) : (
-            <OverviewBoard
-              pipelines={vm.pipelineList.map((pipelineItem) => ({
-                id: pipelineItem.id,
-                title: pipelineItem.title,
-                nodes: vm.pipelineStateById[pipelineItem.id]?.pipeline ?? [],
-                isRunning: vm.pipelineStateById[pipelineItem.id]?.isRunning ?? false,
-              }))}
-              onStartPipeline={async (pipelineId) => {
-                const pluginState = vm.getPipelineRemoteBatchPlugin(pipelineId);
-                if (pluginState.enabled) {
-                  await vm.startRemoteKeywordBatchRun(pipelineId);
-                  return;
-                }
-                await vm.startPipelineRun(pipelineId);
-              }}
-              onNavigatePipeline={(pipelineId) => {
-                vm.setActivePipelineId(pipelineId);
-                onNavigateByNav?.("pipeline", pipelineId);
-              }}
-              onOpenAgentSession={vm.openSessionModalForAgent}
-            />
-          )}
-        </section>
+          <section className={centerColumnClassName}>
+            {effectivePageRoute === "logs" ? (
+              <RunLogPage currentRunId={vm.runId} />
+            ) : effectivePageRoute === "pipeline" ? (
+              <>
+                <div
+                  data-center-card
+                  className="sticky top-0 z-10 shrink-0 flex h-[66px] items-center justify-start px-8 [background-color:rgba(9,15,21,0.1)] [background-image:repeating-linear-gradient(-45deg,rgba(150,170,190,0.07)_0,rgba(150,170,190,0.07)_2px,transparent_2px,transparent_8px)]"
+                >
+                  <button
+                    className={pipelineCreateButtonClassName}
+                    type="button"
+                    onClick={() => {
+                      setCreatePipelineModalOpen(true);
+                      setCreatePipelineId("");
+                      setCreatePipelineTitle("");
+                      setCreatePipelineCloneEnabled(Boolean(vm.activePipelineId));
+                      setCreatePipelineCloneFrom(vm.activePipelineId || vm.pipelineList[0]?.id || "");
+                      setCreatePipelineError("");
+                    }}
+                    disabled={vm.isCreatingPipeline || vm.isDeletingPipeline || vm.isRenamingPipeline}
+                  >
+                    <PlusIcon className="mr-1.5 h-4 w-4" />
+                    {vm.isCreatingPipeline ? t("modal:creating") : t("modal:createPipeline")}
+                  </button>
+                  <button
+                    className={`${pipelineCreateButtonClassName} ml-2`}
+                    type="button"
+                    onClick={() => setDispatchBoardOpen(true)}
+                  >
+                    {t("pipeline:schedulerPanel")}
+                  </button>
+                </div>
+                <PipelineCard
+                  sections={vm.pipelineList
+                    .map((pipelineItem) => {
+                      const pipelineId = pipelineItem.id;
+                      const state = vm.pipelineStateById[pipelineId];
+                      if (!state) return null;
+                      const workflow = state.workflow;
+                      const inferredGroups = workflow ? vm.getParallelGroupsForPipeline(pipelineId) : [];
+                      return {
+                        pipelineId,
+                        title: pipelineItem.title,
+                        canDelete: vm.pipelineList.length > 1,
+                        pipeline: state.pipeline,
+                        workflowNodeOrder: state.workflow
+                          ? topologicalSortNodeIds(state.workflow)
+                          : state.pipeline.map((node) => node.id),
+                        parallelGroups: inferredGroups,
+                        pluginState: vm.getPipelineRemoteBatchPlugin(pipelineId),
+                        schedulerPluginEnabled: vm.getPipelineSchedulerPlugin(pipelineId).enabled,
+                        schedulerMode: state.schedulerState?.mode ?? "-",
+                        schedulerEnabled: state.schedulerState?.enabled !== false,
+                        batchStartBatch: vm.batchStartBatchById[pipelineId],
+                        isBatchOperating: vm.isBatchOperating,
+                        batchRunStatus: state.batchRunState?.status,
+                        batchRunProcessedItems: state.batchRunState?.processedItems,
+                        batchRunTotalItems: state.batchRunState?.totalItems,
+                        batchRunProcessedBatches: state.batchRunState?.processedBatches,
+                        batchRunTotalBatches: state.batchRunState?.totalBatches,
+                        batchRunBatchSize: state.batchRunState?.batchSize,
+                        batchRunError: state.batchRunState?.error ?? null,
+                        isRunning: state.isRunning,
+                        hasPipelineExecution: vm.getHasPipelineExecutionForPipeline(pipelineId),
+                        isEditing: vm.getIsPipelineEditing(pipelineId),
+                      };
+                    })
+                    .filter((section): section is NonNullable<typeof section> => Boolean(section))}
+                  selectedNodeId={vm.selectedNode?.id ?? ""}
+                  selectedGroupId={vm.selectedGroup?.id ?? ""}
+                  activePipelineId={vm.activePipelineId}
+                  onSelectNode={onSelectNode}
+                  onSelectGroup={onSelectGroup}
+                  onRun={(pipelineId) => void vm.startPipelineRun(pipelineId)}
+                  onStop={(pipelineId) => void vm.stopPipelineRun(pipelineId)}
+                  deletingEntity={vm.isDeletingNode}
+                  savingNodeOrder={vm.isSavingNodeConfig}
+                  onToggleEditing={(pipelineId, editing) => vm.setPipelineEditing(pipelineId, editing)}
+                  onOpenWorkflowJson={(pipelineId) => {
+                    vm.setActivePipelineId(pipelineId);
+                    setWorkflowJsonModalOpen(true);
+                  }}
+                  onOpenPlugins={(pipelineId) => {
+                    vm.setActivePipelineId(pipelineId);
+                    setPluginModalPipelineId(pipelineId);
+                  }}
+                  onRenamePipeline={(pipelineId, title) => vm.renamePipeline(pipelineId, title)}
+                  onRequestDeletePipeline={(pipelineId) => {
+                    setDeletePipelineError("");
+                    setDeletePipelineTargetId(pipelineId);
+                  }}
+                  onRequestDeleteNode={(pipelineId, nodeId) => {
+                    vm.setActivePipelineId(pipelineId);
+                    vm.setDeleteTargetNodeId(nodeId);
+                  }}
+                  onRequestDeleteGroup={(pipelineId, groupId) => {
+                    vm.setActivePipelineId(pipelineId);
+                    vm.setDeleteTargetGroupId(groupId);
+                  }}
+                  onRequestCreateNode={() => vm.setIsCreateNodeModalOpen(true)}
+                  onMoveNode={(pipelineId, nodeId, direction) => {
+                    vm.selectNodeInPipeline(pipelineId, nodeId);
+                    if (direction === "up") {
+                      void vm.moveSelectedNodeUp(nodeId, pipelineId);
+                    } else {
+                      void vm.moveSelectedNodeDown(nodeId, pipelineId);
+                    }
+                  }}
+                  onReorderNode={onReorderNode}
+                  onChangeBatchStartBatch={(pipelineId, value) => vm.setBatchStartBatch(pipelineId, value)}
+                  onStartRemoteKeywordBatchRun={(pipelineId) => void vm.startRemoteKeywordBatchRun(pipelineId)}
+                  onToggleScheduler={(pipelineId, enabled) => {
+                    void vm.toggleScheduler(enabled, pipelineId);
+                  }}
+                  onSwitchSchedulerMode={(pipelineId, mode) => {
+                    void vm.switchSchedulerMode(mode, pipelineId);
+                  }}
+                  onManualTick={(pipelineId) => {
+                    void vm.manualTick(pipelineId);
+                  }}
+                  deletingPipeline={vm.isDeletingPipeline}
+                  statusTone={statusTone}
+                  statusLabel={translatedStatusLabel}
+                />
+              </>
+            ) : effectivePageRoute === "agents" ? (
+              <AgentListCard
+                agents={vm.agentCards}
+                onOpenAgentSession={vm.openSessionModalForAgent}
+                onOpenAgentOutput={(agentId) => vm.setAgentOutputModalAgentId(agentId)}
+                onCreateAgent={agentCrud.create.open}
+                onEditAgent={agentCrud.edit.open}
+                onDeleteAgent={agentCrud.delete.open}
+              />
+            ) : effectivePageRoute === "artifacts" ? (
+              <ArtifactBoard
+                pipelines={vm.pipelineList.map((item) => ({
+                  id: item.id,
+                  title: item.title,
+                }))}
+                onNavigatePipeline={(pipelineId) => {
+                  vm.setActivePipelineId(pipelineId);
+                  onNavigateByNav?.("pipeline", pipelineId);
+                }}
+              />
+            ) : effectivePageRoute === "settings" ? (
+              <SettingsBoard />
+            ) : (
+              <OverviewBoard
+                pipelines={vm.pipelineList.map((pipelineItem) => ({
+                  id: pipelineItem.id,
+                  title: pipelineItem.title,
+                  nodes: vm.pipelineStateById[pipelineItem.id]?.pipeline ?? [],
+                  isRunning: vm.pipelineStateById[pipelineItem.id]?.isRunning ?? false,
+                }))}
+                onStartPipeline={async (pipelineId) => {
+                  const pluginState = vm.getPipelineRemoteBatchPlugin(pipelineId);
+                  if (pluginState.enabled) {
+                    await vm.startRemoteKeywordBatchRun(pipelineId);
+                    return;
+                  }
+                  await vm.startPipelineRun(pipelineId);
+                }}
+                onNavigatePipeline={(pipelineId) => {
+                  vm.setActivePipelineId(pipelineId);
+                  onNavigateByNav?.("pipeline", pipelineId);
+                }}
+                onOpenAgentSession={vm.openSessionModalForAgent}
+              />
+            )}
+          </section>
 
-        {effectivePageRoute === "pipeline" && !detailCollapsed && vm.selectedNode ? (
-          <div className={detailPanelShellClassName} data-pipeline-detail-panel>
-            <NodeDetailPanel
-            selectedNode={vm.selectedNode}
-            selectedWorkflowNode={vm.selectedWorkflowNode}
-            agentOptions={vm.agents.map((a) => a.id)}
-            dependencyOptions={vm.dependencyOptions}
-            routeTargetOptions={vm.routeTargetOptions}
-            draftTitle={vm.draftTitle}
-            draftAgentId={vm.draftAgentId}
-            draftExecutorSessionId={vm.draftExecutorSessionId}
-            draftInstruction={vm.draftInstruction}
-            draftDependsOn={vm.draftDependsOn}
-            draftAllowReject={vm.draftAllowReject}
-            draftMaxRejectCount={vm.draftMaxRejectCount}
-            draftWorkflowLane={vm.draftWorkflowLane}
-            draftWorkflowRouteAllowed={vm.draftWorkflowRouteAllowed}
-            draftWorkflowRouteTargets={vm.draftWorkflowRouteTargets}
-            isSavingWorkflowConfig={vm.isSavingWorkflowConfig}
-            savingConfig={vm.isSavingNodeConfig}
-            hasPipelineExecution={vm.hasPipelineExecution}
-            onChangeDraftTitle={vm.setDraftTitle}
-            onChangeDraftAgentId={vm.setDraftAgentId}
-            onChangeDraftExecutorSessionId={vm.setDraftExecutorSessionId}
-            onChangeDraftInstruction={vm.setDraftInstruction}
-            sessionOptions={vm.nodeSessionOptions}
-            onChangeDraftDependsOn={vm.setDraftDependsOn}
-            onChangeDraftAllowReject={vm.setDraftAllowReject}
-            onChangeDraftMaxRejectCount={vm.setDraftMaxRejectCount}
-            onChangeDraftWorkflowLane={vm.setDraftWorkflowLane}
-            onChangeDraftWorkflowRouteAllowed={vm.setDraftWorkflowRouteAllowed}
-            onChangeDraftWorkflowRouteTarget={vm.setDraftWorkflowRouteTarget}
-            onBlurSave={vm.saveSelectedNodeConfigOnBlur}
-            onRetry={vm.retryNode}
-            statusTone={statusTone}
-            statusLabel={translatedStatusLabel}
-            />
-          </div>
-        ) : effectivePageRoute === "pipeline" && !detailCollapsed && vm.selectedGroup ? (
-          <div className={detailPanelShellClassName} data-pipeline-detail-panel>
-            <GroupDetailPanel
-            selectedGroup={vm.selectedGroup}
-            groupMemberOptions={vm.groupMemberOptions}
-            groupUpstreamOptions={vm.groupUpstreamOptions}
-            draftGroupId={vm.draftGroupId}
-            draftGroupMembers={vm.draftGroupMembers}
-            draftGroupUpstreams={vm.draftGroupUpstreams}
-            draftGroupJoinPolicy={vm.draftGroupJoinPolicy}
-            isSaving={vm.isSavingGroupConfig}
-            onChangeDraftGroupId={vm.setDraftGroupId}
-            onChangeDraftGroupMembers={vm.setDraftGroupMembers}
-            onChangeDraftGroupUpstreams={vm.setDraftGroupUpstreams}
-            onChangeDraftGroupJoinPolicy={vm.setDraftGroupJoinPolicy}
-            onSave={vm.saveSelectedGroupConfig}
-            isDeleting={vm.isDeletingNode}
-            statusTone={statusTone}
-            statusLabel={translatedStatusLabel}
-            onDelete={() => vm.setDeleteTargetGroupId(vm.selectedGroup?.id ?? "")}
-            />
-          </div>
-        ) : detailCollapsed ? null : <aside className={detailPanelShellClassName} />}
+          {effectivePageRoute === "pipeline" && !detailCollapsed && vm.selectedNode ? (
+            <div className={detailPanelShellClassName} data-pipeline-detail-panel>
+              <NodeDetailPanel
+                selectedNode={vm.selectedNode}
+                selectedWorkflowNode={vm.selectedWorkflowNode}
+                agentOptions={vm.agents.map((a) => a.id)}
+                dependencyOptions={vm.dependencyOptions}
+                routeTargetOptions={vm.routeTargetOptions}
+                draftTitle={vm.draftTitle}
+                draftAgentId={vm.draftAgentId}
+                draftExecutorSessionId={vm.draftExecutorSessionId}
+                draftInstruction={vm.draftInstruction}
+                draftDependsOn={vm.draftDependsOn}
+                draftAllowReject={vm.draftAllowReject}
+                draftMaxRejectCount={vm.draftMaxRejectCount}
+                draftWorkflowLane={vm.draftWorkflowLane}
+                draftWorkflowRouteAllowed={vm.draftWorkflowRouteAllowed}
+                draftWorkflowRouteTargets={vm.draftWorkflowRouteTargets}
+                isSaving={false}
+                hasPipelineExecution={vm.hasPipelineExecution}
+                onChangeDraftTitle={vm.setDraftTitle}
+                onChangeDraftAgentId={vm.setDraftAgentId}
+                onChangeDraftExecutorSessionId={vm.setDraftExecutorSessionId}
+                onChangeDraftInstruction={vm.setDraftInstruction}
+                sessionOptions={vm.nodeSessionOptions}
+                onChangeDraftDependsOn={vm.setDraftDependsOn}
+                onChangeDraftAllowReject={vm.setDraftAllowReject}
+                onChangeDraftMaxRejectCount={vm.setDraftMaxRejectCount}
+                onChangeDraftWorkflowLane={vm.setDraftWorkflowLane}
+                onChangeDraftWorkflowRouteAllowed={vm.setDraftWorkflowRouteAllowed}
+                onChangeDraftWorkflowRouteTarget={vm.setDraftWorkflowRouteTarget}
+                onRetry={vm.retryNode}
+                statusTone={statusTone}
+                statusLabel={translatedStatusLabel}
+              />
+            </div>
+          ) : effectivePageRoute === "pipeline" && !detailCollapsed && vm.selectedGroup ? (
+            <div className={detailPanelShellClassName} data-pipeline-detail-panel>
+              <GroupDetailPanel
+                selectedGroup={vm.selectedGroup}
+                groupMemberOptions={vm.groupMemberOptions}
+                groupUpstreamOptions={vm.groupUpstreamOptions}
+                draftGroupId={vm.draftGroupId}
+                draftGroupMembers={vm.draftGroupMembers}
+                draftGroupUpstreams={vm.draftGroupUpstreams}
+                draftGroupJoinPolicy={vm.draftGroupJoinPolicy}
+                isSaving={vm.isSavingGroupConfig}
+                onChangeDraftGroupId={vm.setDraftGroupId}
+                onChangeDraftGroupMembers={vm.setDraftGroupMembers}
+                onChangeDraftGroupUpstreams={vm.setDraftGroupUpstreams}
+                onChangeDraftGroupJoinPolicy={vm.setDraftGroupJoinPolicy}
+                onSave={vm.saveSelectedGroupConfig}
+                isDeleting={vm.isDeletingNode}
+                statusTone={statusTone}
+                statusLabel={translatedStatusLabel}
+                onDelete={() => vm.setDeleteTargetGroupId(vm.selectedGroup?.id ?? "")}
+              />
+            </div>
+          ) : detailCollapsed ? null : (
+            <aside className={detailPanelShellClassName} />
+          )}
         </main>
       </div>
 
@@ -750,86 +756,84 @@ export function ControlPlanePage({
         panelClassName={smallModalPanelClassName}
         ariaLabel={t("modal:createPipelineTitle")}
       >
-          <div className={panelHeaderClassName}>
-            <h2>{t("modal:createPipeline")}</h2>
-            <button
-              className={drawerCloseClassName}
-              type="button"
-              onClick={() => {
-                blurActiveElement();
-                setCreatePipelineModalOpen(false);
-                resetCreatePipelineDraft();
-              }}
-              aria-label={t("modal:close")}
-            >
-              <CloseIcon />
-            </button>
-          </div>
+        <div className={panelHeaderClassName}>
+          <h2>{t("modal:createPipeline")}</h2>
+          <button
+            className={drawerCloseClassName}
+            type="button"
+            onClick={() => {
+              blurActiveElement();
+              setCreatePipelineModalOpen(false);
+              resetCreatePipelineDraft();
+            }}
+            aria-label={t("modal:close")}
+          >
+            <CloseIcon />
+          </button>
+        </div>
+        <div className={fieldClassName}>
+          <label className={fieldLabelClassName}>{t("modal:fieldLabel.pipelineId")}</label>
+          <input
+            className={controlSingleLineMonoClassName}
+            value={createPipelineId}
+            onChange={(event) => setCreatePipelineId(event.target.value)}
+            placeholder={t("modal:placeholder.pipelineId")}
+          />
+        </div>
+        <div className={fieldClassName}>
+          <label className={fieldLabelClassName}>{t("modal:fieldLabel.pipelineTitle")}</label>
+          <input
+            className={controlSingleLineClassName}
+            value={createPipelineTitle}
+            onChange={(event) => setCreatePipelineTitle(event.target.value)}
+            placeholder={t("modal:placeholder.pipelineTitle")}
+          />
+        </div>
+        <div className={fieldClassName}>
+          <label className={fieldLabelClassName}>{t("modal:fieldLabel.createMethod")}</label>
+          <InlineSelect
+            value={createPipelineCloneEnabled ? "clone" : "blank"}
+            options={[
+              { value: "blank", label: t("modal:fieldLabel.blank") },
+              { value: "clone", label: t("modal:fieldLabel.clone") },
+            ]}
+            onChange={(next) => {
+              const cloneEnabled = next === "clone";
+              setCreatePipelineCloneEnabled(cloneEnabled);
+              if (cloneEnabled && !createPipelineCloneFrom) {
+                setCreatePipelineCloneFrom(vm.activePipelineId || vm.pipelineList[0]?.id || "");
+              }
+            }}
+            triggerClassName={controlInputClassName}
+            ariaLabel={t("modal:fieldLabel.createMethod")}
+          />
+        </div>
+        {createPipelineCloneEnabled ? (
           <div className={fieldClassName}>
-            <label className={fieldLabelClassName}>{t("modal:fieldLabel.pipelineId")}</label>
-            <input
-              className={controlSingleLineMonoClassName}
-              value={createPipelineId}
-              onChange={(event) => setCreatePipelineId(event.target.value)}
-              placeholder={t("modal:placeholder.pipelineId")}
-            />
-          </div>
-          <div className={fieldClassName}>
-            <label className={fieldLabelClassName}>{t("modal:fieldLabel.pipelineTitle")}</label>
-            <input
-              className={controlSingleLineClassName}
-              value={createPipelineTitle}
-              onChange={(event) => setCreatePipelineTitle(event.target.value)}
-              placeholder={t("modal:placeholder.pipelineTitle")}
-            />
-          </div>
-          <div className={fieldClassName}>
-            <label className={fieldLabelClassName}>{t("modal:fieldLabel.createMethod")}</label>
+            <label className={fieldLabelClassName}>{t("modal:fieldLabel.cloneSource")}</label>
             <InlineSelect
-              value={createPipelineCloneEnabled ? "clone" : "blank"}
-              options={[
-                { value: "blank", label: t("modal:fieldLabel.blank") },
-                { value: "clone", label: t("modal:fieldLabel.clone") },
-              ]}
-              onChange={(next) => {
-                const cloneEnabled = next === "clone";
-                setCreatePipelineCloneEnabled(cloneEnabled);
-                if (cloneEnabled && !createPipelineCloneFrom) {
-                  setCreatePipelineCloneFrom(vm.activePipelineId || vm.pipelineList[0]?.id || "");
-                }
-              }}
+              value={createPipelineCloneFrom}
+              options={vm.pipelineList.map((item) => ({
+                value: item.id,
+                label: `${item.id} | ${item.title}`,
+              }))}
+              onChange={setCreatePipelineCloneFrom}
               triggerClassName={controlInputClassName}
-              ariaLabel={t("modal:fieldLabel.createMethod")}
+              ariaLabel={t("modal:fieldLabel.cloneSource")}
             />
           </div>
-          {createPipelineCloneEnabled ? (
-            <div className={fieldClassName}>
-              <label className={fieldLabelClassName}>{t("modal:fieldLabel.cloneSource")}</label>
-              <InlineSelect
-                value={createPipelineCloneFrom}
-                options={vm.pipelineList.map((item) => ({
-                  value: item.id,
-                  label: `${item.id} | ${item.title}`,
-                }))}
-                onChange={setCreatePipelineCloneFrom}
-                triggerClassName={controlInputClassName}
-                ariaLabel={t("modal:fieldLabel.cloneSource")}
-              />
-            </div>
-          ) : null}
-          {createPipelineError ? (
-            <p className={`${modalSublineClassName} text-(--bad)`}>{createPipelineError}</p>
-          ) : null}
-          <div className={actionRowClassName}>
-            <button
-              className={actionButtonClassName}
-              type="button"
-              onClick={() => void submitCreatePipeline()}
-              disabled={vm.isCreatingPipeline || (createPipelineCloneEnabled && !createPipelineCloneFrom)}
-            >
-              {vm.isCreatingPipeline ? t("modal:creating") : t("modal:action.confirmCreate")}
-            </button>
-          </div>
+        ) : null}
+        {createPipelineError ? <p className={`${modalSublineClassName} text-(--bad)`}>{createPipelineError}</p> : null}
+        <div className={actionRowClassName}>
+          <button
+            className={actionButtonClassName}
+            type="button"
+            onClick={() => void submitCreatePipeline()}
+            disabled={vm.isCreatingPipeline || (createPipelineCloneEnabled && !createPipelineCloneFrom)}
+          >
+            {vm.isCreatingPipeline ? t("modal:creating") : t("modal:action.confirmCreate")}
+          </button>
+        </div>
       </ModalLayer>
 
       <ModalLayer
@@ -841,46 +845,44 @@ export function ControlPlanePage({
         panelClassName={smallModalPanelClassName}
         ariaLabel={t("modal:renamePipeline")}
       >
-          <div className={panelHeaderClassName}>
-            <h2>{t("modal:renamePipeline")}</h2>
-            <button
-              className={drawerCloseClassName}
-              type="button"
-              onClick={() => {
-                blurActiveElement();
-                closeRenamePipelineModal();
-              }}
-              aria-label={t("modal:close")}
-            >
-              <CloseIcon />
-            </button>
-          </div>
-          <p className={modalSublineClassName}>
-            {t("modal:currentPipeline")} <code>{renamePipelineTarget?.id ?? renamePipelineTargetId ?? "-"}</code>
-            {renamePipelineTarget?.title ? ` (${t("modal:currentTitle")}: ${renamePipelineTarget.title})` : ""}.
-          </p>
-          <div className={fieldClassName}>
-            <label className={fieldLabelClassName}>{t("modal:fieldLabel.newTitle")}</label>
-            <input
-              className={controlSingleLineClassName}
-              value={renamePipelineTitle}
-              onChange={(event) => setRenamePipelineTitle(event.target.value)}
-              placeholder={t("modal:placeholder.newTitle")}
-            />
-          </div>
-          {renamePipelineError ? (
-            <p className={`${modalSublineClassName} text-(--bad)`}>{renamePipelineError}</p>
-          ) : null}
-          <div className={actionRowClassName}>
-            <button
-              className={actionButtonClassName}
-              type="button"
-              onClick={() => void submitRenamePipeline()}
-              disabled={!renamePipelineTargetId || !renamePipelineTitle.trim() || vm.isRenamingPipeline}
-            >
-              {vm.isRenamingPipeline ? t("modal:saving") : t("modal:action.confirmRename")}
-            </button>
-          </div>
+        <div className={panelHeaderClassName}>
+          <h2>{t("modal:renamePipeline")}</h2>
+          <button
+            className={drawerCloseClassName}
+            type="button"
+            onClick={() => {
+              blurActiveElement();
+              closeRenamePipelineModal();
+            }}
+            aria-label={t("modal:close")}
+          >
+            <CloseIcon />
+          </button>
+        </div>
+        <p className={modalSublineClassName}>
+          {t("modal:currentPipeline")} <code>{renamePipelineTarget?.id ?? renamePipelineTargetId ?? "-"}</code>
+          {renamePipelineTarget?.title ? ` (${t("modal:currentTitle")}: ${renamePipelineTarget.title})` : ""}.
+        </p>
+        <div className={fieldClassName}>
+          <label className={fieldLabelClassName}>{t("modal:fieldLabel.newTitle")}</label>
+          <input
+            className={controlSingleLineClassName}
+            value={renamePipelineTitle}
+            onChange={(event) => setRenamePipelineTitle(event.target.value)}
+            placeholder={t("modal:placeholder.newTitle")}
+          />
+        </div>
+        {renamePipelineError ? <p className={`${modalSublineClassName} text-(--bad)`}>{renamePipelineError}</p> : null}
+        <div className={actionRowClassName}>
+          <button
+            className={actionButtonClassName}
+            type="button"
+            onClick={() => void submitRenamePipeline()}
+            disabled={!renamePipelineTargetId || !renamePipelineTitle.trim() || vm.isRenamingPipeline}
+          >
+            {vm.isRenamingPipeline ? t("modal:saving") : t("modal:action.confirmRename")}
+          </button>
+        </div>
       </ModalLayer>
 
       <ModalLayer
@@ -893,38 +895,37 @@ export function ControlPlanePage({
         panelClassName={smallModalPanelClassName}
         ariaLabel={t("modal:deletePipeline")}
       >
-          <div className={panelHeaderClassName}>
-            <h2>{t("modal:deletePipeline")}</h2>
-            <button
-              className={drawerCloseClassName}
-              type="button"
-              onClick={() => {
-                blurActiveElement();
-                setDeletePipelineError("");
-                setDeletePipelineTargetId(null);
-              }}
-              aria-label={t("modal:close")}
-            >
-              <CloseIcon />
-            </button>
-          </div>
-          <p className={modalSublineClassName}>
-            {t("modal:deleteConfirm")} <code>{deletePipelineTarget?.id ?? deletePipelineTargetId ?? "-"}</code>
-            {deletePipelineTarget?.title ? ` (${deletePipelineTarget.title})` : ""}. {t("modal:archiveNote")} <code>.data/pipelines/_deleted</code>.
-          </p>
-          {deletePipelineError ? (
-            <p className={`${modalSublineClassName} text-(--bad)`}>{deletePipelineError}</p>
-          ) : null}
-          <div className={actionRowClassName}>
-            <button
-              className={actionButtonClassName}
-              type="button"
-              onClick={() => deletePipelineTargetId && void confirmDeletePipeline(deletePipelineTargetId)}
-              disabled={!deletePipelineTargetId || vm.isDeletingPipeline}
-            >
-              {vm.isDeletingPipeline ? t("modal:deleting") : t("modal:action.confirmDeletePipeline")}
-            </button>
-          </div>
+        <div className={panelHeaderClassName}>
+          <h2>{t("modal:deletePipeline")}</h2>
+          <button
+            className={drawerCloseClassName}
+            type="button"
+            onClick={() => {
+              blurActiveElement();
+              setDeletePipelineError("");
+              setDeletePipelineTargetId(null);
+            }}
+            aria-label={t("modal:close")}
+          >
+            <CloseIcon />
+          </button>
+        </div>
+        <p className={modalSublineClassName}>
+          {t("modal:deleteConfirm")} <code>{deletePipelineTarget?.id ?? deletePipelineTargetId ?? "-"}</code>
+          {deletePipelineTarget?.title ? ` (${deletePipelineTarget.title})` : ""}. {t("modal:archiveNote")}{" "}
+          <code>.data/pipelines/_deleted</code>.
+        </p>
+        {deletePipelineError ? <p className={`${modalSublineClassName} text-(--bad)`}>{deletePipelineError}</p> : null}
+        <div className={actionRowClassName}>
+          <button
+            className={actionButtonClassName}
+            type="button"
+            onClick={() => deletePipelineTargetId && void confirmDeletePipeline(deletePipelineTargetId)}
+            disabled={!deletePipelineTargetId || vm.isDeletingPipeline}
+          >
+            {vm.isDeletingPipeline ? t("modal:deleting") : t("modal:action.confirmDeletePipeline")}
+          </button>
+        </div>
       </ModalLayer>
 
       <ModalLayer
@@ -933,48 +934,48 @@ export function ControlPlanePage({
         panelClassName={smallModalPanelClassName}
         ariaLabel={t("agent:createAgentTitle")}
       >
-          <div className={panelHeaderClassName}>
-            <h2>{t("agent:createAgentTitle")}</h2>
-            <button
-              className={drawerCloseClassName}
-              type="button"
-              onClick={agentCrud.create.close}
-              aria-label={t("modal:close")}
-            >
-              <CloseIcon />
-            </button>
-          </div>
-          <div className={fieldClassName}>
-            <label className={fieldLabelClassName}>{t("agent:fieldLabel.agentName")}</label>
-            <input
-              className={controlSingleLineMonoClassName}
-              value={agentCrud.create.name}
-              onChange={(event) => agentCrud.create.syncWorkspaceFromName(event.target.value)}
-              placeholder={t("agent:placeholder.agentName")}
-            />
-          </div>
-          <div className={fieldClassName}>
-            <label className={fieldLabelClassName}>{t("agent:fieldLabel.agentWorkspace")}</label>
-            <input
-              className={controlSingleLineMonoClassName}
-              value={agentCrud.create.workspace}
-              onChange={(event) => agentCrud.create.setWorkspace(event.target.value)}
-              placeholder={t("agent:placeholder.agentWorkspace")}
-            />
-          </div>
-          {agentCrud.create.error ? (
-            <p className={`${modalSublineClassName} text-(--bad)`}>{agentCrud.create.error}</p>
-          ) : null}
-          <div className={actionRowClassName}>
-            <button
-              className={actionButtonClassName}
-              type="button"
-              onClick={() => void agentCrud.create.submit()}
-              disabled={agentCrud.create.isLoading || !agentCrud.create.name.trim()}
-            >
-              {agentCrud.create.isLoading ? t("agent:creating") : t("agent:action.confirmCreate")}
-            </button>
-          </div>
+        <div className={panelHeaderClassName}>
+          <h2>{t("agent:createAgentTitle")}</h2>
+          <button
+            className={drawerCloseClassName}
+            type="button"
+            onClick={agentCrud.create.close}
+            aria-label={t("modal:close")}
+          >
+            <CloseIcon />
+          </button>
+        </div>
+        <div className={fieldClassName}>
+          <label className={fieldLabelClassName}>{t("agent:fieldLabel.agentName")}</label>
+          <input
+            className={controlSingleLineMonoClassName}
+            value={agentCrud.create.name}
+            onChange={(event) => agentCrud.create.syncWorkspaceFromName(event.target.value)}
+            placeholder={t("agent:placeholder.agentName")}
+          />
+        </div>
+        <div className={fieldClassName}>
+          <label className={fieldLabelClassName}>{t("agent:fieldLabel.agentWorkspace")}</label>
+          <input
+            className={controlSingleLineMonoClassName}
+            value={agentCrud.create.workspace}
+            onChange={(event) => agentCrud.create.setWorkspace(event.target.value)}
+            placeholder={t("agent:placeholder.agentWorkspace")}
+          />
+        </div>
+        {agentCrud.create.error ? (
+          <p className={`${modalSublineClassName} text-(--bad)`}>{agentCrud.create.error}</p>
+        ) : null}
+        <div className={actionRowClassName}>
+          <button
+            className={actionButtonClassName}
+            type="button"
+            onClick={() => void agentCrud.create.submit()}
+            disabled={agentCrud.create.isLoading || !agentCrud.create.name.trim()}
+          >
+            {agentCrud.create.isLoading ? t("agent:creating") : t("agent:action.confirmCreate")}
+          </button>
+        </div>
       </ModalLayer>
 
       <ModalLayer
@@ -983,51 +984,51 @@ export function ControlPlanePage({
         panelClassName={smallModalPanelClassName}
         ariaLabel={t("agent:editAgentTitle")}
       >
-          <div className={panelHeaderClassName}>
-            <h2>{t("agent:editAgentTitle")}</h2>
-            <button
-              className={drawerCloseClassName}
-              type="button"
-              onClick={agentCrud.edit.close}
-              aria-label={t("modal:close")}
-            >
-              <CloseIcon />
-            </button>
-          </div>
-          <p className={modalSublineClassName}>
-            Agent ID: <code>{agentCrud.edit.id}</code>
-          </p>
-          <div className={fieldClassName}>
-            <label className={fieldLabelClassName}>{t("agent:fieldLabel.agentName")}</label>
-            <input
-              className={controlSingleLineMonoClassName}
-              value={agentCrud.edit.name}
-              onChange={(event) => agentCrud.edit.setName(event.target.value)}
-              placeholder={t("agent:placeholder.agentName")}
-            />
-          </div>
-          <div className={fieldClassName}>
-            <label className={fieldLabelClassName}>{t("agent:fieldLabel.agentWorkspace")}</label>
-            <input
-              className={controlSingleLineMonoClassName}
-              value={agentCrud.edit.workspace}
-              onChange={(event) => agentCrud.edit.setWorkspace(event.target.value)}
-              placeholder={t("agent:placeholder.agentWorkspace")}
-            />
-          </div>
-          {agentCrud.edit.error ? (
-            <p className={`${modalSublineClassName} text-(--bad)`}>{agentCrud.edit.error}</p>
-          ) : null}
-          <div className={actionRowClassName}>
-            <button
-              className={actionButtonClassName}
-              type="button"
-              onClick={() => void agentCrud.edit.submit()}
-              disabled={agentCrud.edit.isLoading || (!agentCrud.edit.name.trim() && !agentCrud.edit.workspace.trim())}
-            >
-              {agentCrud.edit.isLoading ? t("agent:updating") : t("agent:action.confirmUpdate")}
-            </button>
-          </div>
+        <div className={panelHeaderClassName}>
+          <h2>{t("agent:editAgentTitle")}</h2>
+          <button
+            className={drawerCloseClassName}
+            type="button"
+            onClick={agentCrud.edit.close}
+            aria-label={t("modal:close")}
+          >
+            <CloseIcon />
+          </button>
+        </div>
+        <p className={modalSublineClassName}>
+          Agent ID: <code>{agentCrud.edit.id}</code>
+        </p>
+        <div className={fieldClassName}>
+          <label className={fieldLabelClassName}>{t("agent:fieldLabel.agentName")}</label>
+          <input
+            className={controlSingleLineMonoClassName}
+            value={agentCrud.edit.name}
+            onChange={(event) => agentCrud.edit.setName(event.target.value)}
+            placeholder={t("agent:placeholder.agentName")}
+          />
+        </div>
+        <div className={fieldClassName}>
+          <label className={fieldLabelClassName}>{t("agent:fieldLabel.agentWorkspace")}</label>
+          <input
+            className={controlSingleLineMonoClassName}
+            value={agentCrud.edit.workspace}
+            onChange={(event) => agentCrud.edit.setWorkspace(event.target.value)}
+            placeholder={t("agent:placeholder.agentWorkspace")}
+          />
+        </div>
+        {agentCrud.edit.error ? (
+          <p className={`${modalSublineClassName} text-(--bad)`}>{agentCrud.edit.error}</p>
+        ) : null}
+        <div className={actionRowClassName}>
+          <button
+            className={actionButtonClassName}
+            type="button"
+            onClick={() => void agentCrud.edit.submit()}
+            disabled={agentCrud.edit.isLoading || (!agentCrud.edit.name.trim() && !agentCrud.edit.workspace.trim())}
+          >
+            {agentCrud.edit.isLoading ? t("agent:updating") : t("agent:action.confirmUpdate")}
+          </button>
+        </div>
       </ModalLayer>
 
       <ModalLayer
@@ -1036,44 +1037,44 @@ export function ControlPlanePage({
         panelClassName={smallModalPanelClassName}
         ariaLabel={t("agent:deleteAgentTitle")}
       >
-          <div className={panelHeaderClassName}>
-            <h2>{t("agent:deleteAgentTitle")}</h2>
-            <button
-              className={drawerCloseClassName}
-              type="button"
-              onClick={agentCrud.delete.close}
-              aria-label={t("modal:close")}
-            >
-              <CloseIcon />
-            </button>
-          </div>
-          <p className={modalSublineClassName}>
-            {t("agent:deleteAgentConfirm")} <code>{agentCrud.delete.id}</code>.
-          </p>
-          <p className={modalSublineClassName}>{t("agent:deleteAgentNote")}</p>
-          <div className={fieldClassName}>
-            <label className="flex items-center gap-2 text-xs text-[var(--muted)] cursor-pointer">
-              <input
-                type="checkbox"
-                checked={agentCrud.delete.files}
-                onChange={(event) => agentCrud.delete.setFiles(event.target.checked)}
-              />
-              {t("agent:deleteFiles")}
-            </label>
-          </div>
-          {agentCrud.delete.error ? (
-            <p className={`${modalSublineClassName} text-(--bad)`}>{agentCrud.delete.error}</p>
-          ) : null}
-          <div className={actionRowClassName}>
-            <button
-              className={actionButtonClassName}
-              type="button"
-              onClick={() => void agentCrud.delete.submit()}
-              disabled={agentCrud.delete.isLoading}
-            >
-              {agentCrud.delete.isLoading ? t("agent:deleting") : t("agent:action.confirmDelete")}
-            </button>
-          </div>
+        <div className={panelHeaderClassName}>
+          <h2>{t("agent:deleteAgentTitle")}</h2>
+          <button
+            className={drawerCloseClassName}
+            type="button"
+            onClick={agentCrud.delete.close}
+            aria-label={t("modal:close")}
+          >
+            <CloseIcon />
+          </button>
+        </div>
+        <p className={modalSublineClassName}>
+          {t("agent:deleteAgentConfirm")} <code>{agentCrud.delete.id}</code>.
+        </p>
+        <p className={modalSublineClassName}>{t("agent:deleteAgentNote")}</p>
+        <div className={fieldClassName}>
+          <label className="flex items-center gap-2 text-xs text-[var(--muted)] cursor-pointer">
+            <input
+              type="checkbox"
+              checked={agentCrud.delete.files}
+              onChange={(event) => agentCrud.delete.setFiles(event.target.checked)}
+            />
+            {t("agent:deleteFiles")}
+          </label>
+        </div>
+        {agentCrud.delete.error ? (
+          <p className={`${modalSublineClassName} text-(--bad)`}>{agentCrud.delete.error}</p>
+        ) : null}
+        <div className={actionRowClassName}>
+          <button
+            className={actionButtonClassName}
+            type="button"
+            onClick={() => void agentCrud.delete.submit()}
+            disabled={agentCrud.delete.isLoading}
+          >
+            {agentCrud.delete.isLoading ? t("agent:deleting") : t("agent:action.confirmDelete")}
+          </button>
+        </div>
       </ModalLayer>
 
       <div
@@ -1122,75 +1123,83 @@ export function ControlPlanePage({
           </div>
           {vm.draftCreateKind === "node" ? (
             <>
-          <div className={fieldClassName}>
-            <label className={fieldLabelClassName}>{t("modal:fieldLabel.nodeId")}</label>
-            <input
-              className={controlSingleLineMonoClassName}
-              value={vm.draftNewNodeId}
-              onChange={(event) => vm.setDraftNewNodeId(event.target.value)}
-              placeholder={t("modal:placeholder.nodeId")}
-            />
-          </div>
-          <div className={fieldClassName}>
-            <label className={fieldLabelClassName}>{t("modal:fieldLabel.nodeTitle")}</label>
-            <input
-              className={controlSingleLineClassName}
-              value={vm.draftNewNodeTitle}
-              onChange={(event) => vm.setDraftNewNodeTitle(event.target.value)}
-              placeholder={t("modal:placeholder.nodeTitle")}
-            />
-          </div>
-          <div className={fieldClassName}>
-            <label className={fieldLabelClassName}>Agent</label>
-            <InlineSelect
-              value={vm.draftNewNodeAgentId}
-              options={(vm.agents.length ? vm.agents.map((agent) => agent.id) : [vm.draftNewNodeAgentId || "-"]).map(
-                (agentId) => ({
-                  value: agentId,
-                  label: agentId,
-                }),
-              )}
-              onChange={vm.setDraftNewNodeAgentId}
-              triggerClassName={controlInputClassName}
-              ariaLabel="Agent"
-            />
-          </div>
-          <div className={fieldClassName}>
-            <label className={fieldLabelClassName}>{t("modal:fieldLabel.nodeInstruction")}</label>
-            <textarea
-              className={controlTextAreaMonoClassName}
-              value={vm.draftNewNodeInstruction}
-              onChange={(event) => vm.setDraftNewNodeInstruction(event.target.value)}
-              rows={4}
-              placeholder={t("modal:placeholder.nodeInstruction")}
-            />
-          </div>
-          <div className={fieldClassName}>
-            <label className={fieldLabelClassName}>{t("modal:fieldLabel.dependsOn")}</label>
-            <select
-              className={controlInputMonoClassName}
-              value={vm.draftNewNodeDependsOn}
-              onChange={(event) =>
-                vm.setDraftNewNodeDependsOn(
-                  Array.from(event.target.selectedOptions)
-                    .map((option) => option.value)
-                    .filter(Boolean),
-                )
-              }
-              multiple
-              size={Math.max(3, Math.min(8, vm.newNodeDependencyOptions.length || 3))}
-            >
-              {vm.newNodeDependencyOptions.map((node) => (
-                <option key={node.id} value={node.id}>
-                  {node.id} - {node.title}
-                </option>
-              ))}
-            </select>
-            <small className={`${monoClassName} mt-1.5 block text-xs text-(--muted)`}>{t("modal:multiSelectHint")}</small>
-          </div>
-          <button className={actionButtonClassName} type="button" onClick={vm.addTemplateNode} disabled={vm.isAddingNode}>
-            {vm.isAddingNode ? t("modal:creating") : t("modal:action.confirmAdd")}
-          </button>
+              <div className={fieldClassName}>
+                <label className={fieldLabelClassName}>{t("modal:fieldLabel.nodeId")}</label>
+                <input
+                  className={controlSingleLineMonoClassName}
+                  value={vm.draftNewNodeId}
+                  onChange={(event) => vm.setDraftNewNodeId(event.target.value)}
+                  placeholder={t("modal:placeholder.nodeId")}
+                />
+              </div>
+              <div className={fieldClassName}>
+                <label className={fieldLabelClassName}>{t("modal:fieldLabel.nodeTitle")}</label>
+                <input
+                  className={controlSingleLineClassName}
+                  value={vm.draftNewNodeTitle}
+                  onChange={(event) => vm.setDraftNewNodeTitle(event.target.value)}
+                  placeholder={t("modal:placeholder.nodeTitle")}
+                />
+              </div>
+              <div className={fieldClassName}>
+                <label className={fieldLabelClassName}>Agent</label>
+                <InlineSelect
+                  value={vm.draftNewNodeAgentId}
+                  options={(vm.agents.length
+                    ? vm.agents.map((agent) => agent.id)
+                    : [vm.draftNewNodeAgentId || "-"]
+                  ).map((agentId) => ({
+                    value: agentId,
+                    label: agentId,
+                  }))}
+                  onChange={vm.setDraftNewNodeAgentId}
+                  triggerClassName={controlInputClassName}
+                  ariaLabel="Agent"
+                />
+              </div>
+              <div className={fieldClassName}>
+                <label className={fieldLabelClassName}>{t("modal:fieldLabel.nodeInstruction")}</label>
+                <textarea
+                  className={controlTextAreaMonoClassName}
+                  value={vm.draftNewNodeInstruction}
+                  onChange={(event) => vm.setDraftNewNodeInstruction(event.target.value)}
+                  rows={4}
+                  placeholder={t("modal:placeholder.nodeInstruction")}
+                />
+              </div>
+              <div className={fieldClassName}>
+                <label className={fieldLabelClassName}>{t("modal:fieldLabel.dependsOn")}</label>
+                <select
+                  className={controlInputMonoClassName}
+                  value={vm.draftNewNodeDependsOn}
+                  onChange={(event) =>
+                    vm.setDraftNewNodeDependsOn(
+                      Array.from(event.target.selectedOptions)
+                        .map((option) => option.value)
+                        .filter(Boolean),
+                    )
+                  }
+                  multiple
+                  size={Math.max(3, Math.min(8, vm.newNodeDependencyOptions.length || 3))}
+                >
+                  {vm.newNodeDependencyOptions.map((node) => (
+                    <option key={node.id} value={node.id}>
+                      {node.id} - {node.title}
+                    </option>
+                  ))}
+                </select>
+                <small className={`${monoClassName} mt-1.5 block text-xs text-(--muted)`}>
+                  {t("modal:multiSelectHint")}
+                </small>
+              </div>
+              <button
+                className={actionButtonClassName}
+                type="button"
+                onClick={vm.addTemplateNode}
+                disabled={vm.isAddingNode}
+              >
+                {vm.isAddingNode ? t("modal:creating") : t("modal:action.confirmAdd")}
+              </button>
             </>
           ) : (
             <>
@@ -1261,7 +1270,12 @@ export function ControlPlanePage({
                   ariaLabel={t("modal:fieldLabel.joinPolicy")}
                 />
               </div>
-              <button className={actionButtonClassName} type="button" onClick={vm.addParallelGroup} disabled={vm.isAddingNode}>
+              <button
+                className={actionButtonClassName}
+                type="button"
+                onClick={vm.addParallelGroup}
+                disabled={vm.isAddingNode}
+              >
                 {vm.isAddingNode ? t("modal:creating") : t("modal:action.confirmAddGroup")}
               </button>
             </>
@@ -1311,7 +1325,8 @@ export function ControlPlanePage({
           ) : (
             <p className={modalSublineClassName}>
               {t("modal:deleteNodeConfirm")} <code>{deleteTargetNode?.id ?? vm.deleteTargetNodeId}</code>
-              {deleteTargetNode ? ` (${deleteTargetNode.title})` : ""}{t("modal:deleteNodeNote")}
+              {deleteTargetNode ? ` (${deleteTargetNode.title})` : ""}
+              {t("modal:deleteNodeNote")}
             </p>
           )}
           <button
@@ -1360,12 +1375,16 @@ export function ControlPlanePage({
               <CloseIcon />
             </button>
           </div>
-          <div className={`${monoClassName} flex items-center justify-between gap-3 overflow-hidden border border-(--line) bg-[rgba(15,23,29,0.6)] px-2.5 py-2 text-xs text-(--muted)`}>
+          <div
+            className={`${monoClassName} flex items-center justify-between gap-3 overflow-hidden border border-(--line) bg-[rgba(15,23,29,0.6)] px-2.5 py-2 text-xs text-(--muted)`}
+          >
             <span>Agent: {outputAgent?.id ?? vm.agentOutputModalAgentId}</span>
             <span>{outputAgent?.outputRunId ?? "run:unknown"}</span>
           </div>
           <div className="min-h-26.25 max-h-[calc(90vh-160px)] overflow-auto border border-(--line) bg-[#0f171d] max-[760px]:h-full max-[760px]:min-h-0 max-[760px]:max-h-none">
-            <pre className="m-0 whitespace-pre-wrap wrap-break-word p-3 font-[JetBrains_Mono,monospace] text-[13px] leading-[1.45] text-(--text)">{outputAgent?.outputContent || t("modal:noOutput")}</pre>
+            <pre className="m-0 whitespace-pre-wrap wrap-break-word p-3 font-[JetBrains_Mono,monospace] text-[13px] leading-[1.45] text-(--text)">
+              {outputAgent?.outputContent || t("modal:noOutput")}
+            </pre>
           </div>
         </div>
       </aside>
@@ -1420,36 +1439,43 @@ export function ControlPlanePage({
         panelClassName={workflowModalPanelClassName}
         ariaLabel={t("modal:editWorkflowJson")}
       >
-          <div className={panelHeaderClassName}>
-            <h2>Workflow JSON ({vm.activePipelineTitle || vm.activePipelineId || "-"})</h2>
-            <button
-              className={drawerCloseClassName}
-              type="button"
-              onClick={() => {
-                blurActiveElement();
-                setWorkflowJsonModalOpen(false);
-              }}
-              aria-label={t("modal:close")}
-            >
-              <CloseIcon />
-            </button>
-          </div>
-          <p className={`${modalSublineClassName} ${monoClassName}`}>{vm.workflow ? `nodes=${vm.workflow.nodes.length}` : "-"}</p>
-          <div className={fieldClassName}>
-            <label className={fieldLabelClassName}>{t("modal:workflowJsonLabel")}</label>
-            <textarea
-              className={controlTextAreaMonoClassName}
-              rows={18}
-              value={vm.workflowJsonDraft}
-              onChange={(event) => vm.setWorkflowJsonDraft(event.target.value)}
-              placeholder="workflow json"
-            />
-          </div>
-          <div className={actionRowClassName}>
-            <button className={actionButtonClassName} type="button" onClick={() => void vm.saveWorkflowJsonDraft()} disabled={vm.isSavingWorkflowJson}>
-              {vm.isSavingWorkflowJson ? t("modal:saving") : t("modal:action.saveWorkflow")}
-            </button>
-          </div>
+        <div className={panelHeaderClassName}>
+          <h2>Workflow JSON ({vm.activePipelineTitle || vm.activePipelineId || "-"})</h2>
+          <button
+            className={drawerCloseClassName}
+            type="button"
+            onClick={() => {
+              blurActiveElement();
+              setWorkflowJsonModalOpen(false);
+            }}
+            aria-label={t("modal:close")}
+          >
+            <CloseIcon />
+          </button>
+        </div>
+        <p className={`${modalSublineClassName} ${monoClassName}`}>
+          {vm.workflow ? `nodes=${vm.workflow.nodes.length}` : "-"}
+        </p>
+        <div className={fieldClassName}>
+          <label className={fieldLabelClassName}>{t("modal:workflowJsonLabel")}</label>
+          <textarea
+            className={controlTextAreaMonoClassName}
+            rows={18}
+            value={vm.workflowJsonDraft}
+            onChange={(event) => vm.setWorkflowJsonDraft(event.target.value)}
+            placeholder="workflow json"
+          />
+        </div>
+        <div className={actionRowClassName}>
+          <button
+            className={actionButtonClassName}
+            type="button"
+            onClick={() => void vm.saveWorkflowJsonDraft()}
+            disabled={vm.isSavingWorkflowJson}
+          >
+            {vm.isSavingWorkflowJson ? t("modal:saving") : t("modal:action.saveWorkflow")}
+          </button>
+        </div>
       </ModalLayer>
 
       <ModalLayer
@@ -1475,9 +1501,23 @@ export function ControlPlanePage({
             <CloseIcon />
           </button>
         </div>
-        <PipelineDispatchBoard
-          pipelines={vm.pipelineList.map((p) => ({ id: p.id, title: p.title }))}
-        />
+        <PipelineDispatchBoard pipelines={vm.pipelineList.map((p) => ({ id: p.id, title: p.title }))} />
+      </ModalLayer>
+
+      {/* Action message dialog (run/save errors) */}
+      <ModalLayer
+        open={Boolean(vm.actionMessage)}
+        onClose={() => vm.setActionMessage("")}
+        panelClassName={smallModalPanelClassName}
+        ariaLabel="Action result"
+      >
+        <div className={panelHeaderClassName}>
+          <h2>{t("modal:error")}</h2>
+          <button className={drawerCloseClassName} type="button" onClick={() => vm.setActionMessage("")}>
+            <CloseIcon />
+          </button>
+        </div>
+        <div className="mx-3 mb-4 text-sm leading-relaxed">{vm.actionMessage}</div>
       </ModalLayer>
     </div>
   );

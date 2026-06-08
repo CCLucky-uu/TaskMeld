@@ -1,27 +1,27 @@
-import type { PipelineRegistry } from "../app/pipeline-registry";
+import type { PipelineRegistry } from "../app/pipeline-registry"
 
 export type SystemSnapshot = {
-  generatedAt: string;
+  generatedAt: string
   gateway: {
-    status: unknown;
-    hello: unknown;
-    lastFrame: unknown;
-  };
+    status: unknown
+    hello: unknown
+    lastFrame: unknown
+  }
   pipelines: Array<{
-    id: string;
-    title: string;
-  }>;
-  bootstrap: ReturnType<PipelineRegistry["getBootstrapPayload"]>;
-};
+    id: string
+    title: string
+  }>
+  bootstrap: ReturnType<PipelineRegistry["getBootstrapPayload"]>
+}
 
 export type SystemService = {
-  getSnapshot: () => SystemSnapshot;
-};
+  getSnapshot: () => SystemSnapshot
+}
 
 export const createSystemService = (app: PipelineRegistry): SystemService => {
   const getSnapshot = (): SystemSnapshot => {
     // Reuse the registry's aggregated bootstrap result so the CLI sees the same system snapshot as existing frontends.
-    const bootstrap = app.getBootstrapPayload();
+    const bootstrap = app.getBootstrapPayload()
     return {
       generatedAt: new Date().toISOString(),
       gateway: {
@@ -34,11 +34,10 @@ export const createSystemService = (app: PipelineRegistry): SystemService => {
         title: definition.title,
       })),
       bootstrap,
-    };
-  };
+    }
+  }
 
   return {
     getSnapshot,
-  };
-};
-
+  }
+}

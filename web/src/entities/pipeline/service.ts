@@ -75,7 +75,9 @@ export async function renamePipeline(pipelineId: PipelineId, title: string) {
   return wsRequest<{ ok: boolean; item?: PipelineListItem }>("pipeline.rename", { pipelineId, title });
 }
 
-export async function fetchCurrentPipeline(pipelineId: PipelineId): Promise<{ run: Run; scheduler: WorkflowSchedulerState | null }> {
+export async function fetchCurrentPipeline(
+  pipelineId: PipelineId,
+): Promise<{ run: Run; scheduler: WorkflowSchedulerState | null }> {
   const data = await wsRequest<PipelineResponse>("pipeline.current", { pipelineId });
   return normalizePipelineRun(data);
 }
@@ -86,15 +88,24 @@ export async function fetchWorkflowDefinition(pipelineId: PipelineId): Promise<W
 }
 
 export async function saveWorkflowDefinition(pipelineId: PipelineId, workflow: WorkflowDefinition) {
-  return wsRequest<{ ok: boolean; workflow?: WorkflowDefinition; run?: Run }>("pipeline.workflow.save", { pipelineId, workflow });
+  return wsRequest<{ ok: boolean; workflow?: WorkflowDefinition; run?: Run }>("pipeline.workflow.save", {
+    pipelineId,
+    workflow,
+  });
 }
 
 export async function togglePipelineScheduler(pipelineId: PipelineId, enabled: boolean) {
-  return wsRequest<{ ok: boolean; scheduler?: WorkflowSchedulerState }>("pipeline.scheduler.toggle", { pipelineId, enabled });
+  return wsRequest<{ ok: boolean; scheduler?: WorkflowSchedulerState }>("pipeline.scheduler.toggle", {
+    pipelineId,
+    enabled,
+  });
 }
 
 export async function setPipelineSchedulerMode(pipelineId: PipelineId, mode: "auto" | "manual") {
-  return wsRequest<{ ok: boolean; scheduler?: WorkflowSchedulerState }>("pipeline.scheduler.mode", { pipelineId, mode });
+  return wsRequest<{ ok: boolean; scheduler?: WorkflowSchedulerState }>("pipeline.scheduler.mode", {
+    pipelineId,
+    mode,
+  });
 }
 
 export async function pipelineManualTick(pipelineId: PipelineId) {
@@ -171,7 +182,10 @@ export async function createPipelineLink(payload: {
   onJobFailed?: "continue" | "pause";
   maxPendingJobs?: number;
 }) {
-  return wsRequest<{ ok: boolean; link?: PipelineLink; error?: string }>("pipeline.link.create", payload as Record<string, unknown>);
+  return wsRequest<{ ok: boolean; link?: PipelineLink; error?: string }>(
+    "pipeline.link.create",
+    payload as Record<string, unknown>,
+  );
 }
 
 export async function updatePipelineLink(linkId: string, patch: Record<string, unknown>) {
@@ -189,11 +203,18 @@ export async function fetchPipelineQueue(pipelineId: PipelineId): Promise<Pipeli
 }
 
 export async function retryPipelineQueueJob(pipelineId: PipelineId, jobId: string) {
-  return wsRequest<{ ok: boolean; job?: PipelineInboundJob; error?: string }>("pipeline.queue.retry", { pipelineId, jobId });
+  return wsRequest<{ ok: boolean; job?: PipelineInboundJob; error?: string }>("pipeline.queue.retry", {
+    pipelineId,
+    jobId,
+  });
 }
 
 export async function cancelPipelineQueueJob(pipelineId: PipelineId, jobId: string, reason?: string) {
-  return wsRequest<{ ok: boolean; error?: string }>("pipeline.queue.cancel", { pipelineId, jobId, reason: reason ?? "canceled_by_user" });
+  return wsRequest<{ ok: boolean; error?: string }>("pipeline.queue.cancel", {
+    pipelineId,
+    jobId,
+    reason: reason ?? "canceled_by_user",
+  });
 }
 
 export async function drainPipelineQueue(pipelineId: PipelineId) {

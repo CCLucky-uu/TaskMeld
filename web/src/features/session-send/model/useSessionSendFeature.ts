@@ -49,7 +49,11 @@ export function useSessionSendFeature({ reload }: UseSessionSendFeatureArgs) {
       });
       const modelText = ok?.model ? `${ok.modelProvider ? `${ok.modelProvider}/` : ""}${ok.model}` : "-";
       setLastSendInfo(
-        t("sendSuccess", { method: ok?.usedMethod ?? "-", model: modelText, params: JSON.stringify(ok?.usedParams ?? {}, null, 2) }),
+        t("sendSuccess", {
+          method: ok?.usedMethod ?? "-",
+          model: modelText,
+          params: JSON.stringify(ok?.usedParams ?? {}, null, 2),
+        }),
       );
       setSessionMessage("");
       await reload();

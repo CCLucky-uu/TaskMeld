@@ -52,7 +52,10 @@ export async function fetchStoredArtifactContent(params: {
   pipelineId: string;
   relativePath: string;
 }): Promise<StoredArtifactContent | null> {
-  const data = await wsRequest<ArtifactContentResponse>("artifact.content.get", { pipelineId: params.pipelineId, relativePath: params.relativePath });
+  const data = await wsRequest<ArtifactContentResponse>("artifact.content.get", {
+    pipelineId: params.pipelineId,
+    relativePath: params.relativePath,
+  });
   return data.content ?? null;
 }
 

@@ -2,6 +2,48 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.0] - 2026-06-08
+
+### Added
+
+- **Wevra Agent**: Built-in AI agent for natural language pipeline management
+  - 28 built-in tools covering Pipeline, Agent, System, Memory, Skill, Artifact, Session, and Web operations
+  - ReAct (Reasoning + Acting) loop for intelligent task execution
+  - Multi-provider LLM support (DeepSeek, OpenAI, Xiaomi MiMo, custom providers)
+  - Real-time streaming of thinking process and execution results via WebSocket
+  - Three permission modes: Plan (read-only), Normal (confirm writes), Auto (full access)
+  - Cross-session memory system for knowledge accumulation
+  - Skill system with 3 built-in skills (core-behavior, pipeline-management, failure-diagnosis)
+  - Conversation management with JSONL persistence and crash recovery
+- **Agent Tools**: Complete agent lifecycle management (6 tools)
+  - `agent_list`: List all registered agents with activity filtering
+  - `agent_get`: Get agent details with optional session inclusion
+  - `agent_create`: Create new agent (requires confirmation)
+  - `agent_update`: Update agent name/workspace (requires confirmation)
+  - `agent_delete`: Delete agent permanently (requires confirmation)
+  - `agent_send`: Send message to agent and wait for reply (synchronous)
+- **Pipeline Tools**: Full pipeline management (12 tools)
+  - Pipeline CRUD, run/stop, diagnosis, plugin management, node management, pre-run validation
+- **Web Console**: WevraChatPanel for natural language interaction
+  - Message bubbles, conversation sidebar, mode switching, confirmation dialogs
+  - Model selection, context usage bar, debug panel
+- **WebSocket API**: 19 methods for Wevra management
+  - `wevra.chat`, `wevra.conversations.*`, `wevra.models.*`, `wevra.config.*`, `wevra.tool-preferences.*`, `wevra.confirm`
+
+### Changed
+
+- Version bumped to 0.2.0 to reflect major feature addition
+- README updated to highlight Wevra as core competitive advantage
+- Three-layer architecture documented: OpenClaw (execution) + TaskMeld (orchestration) + Wevra (intelligence)
+
+### Technical
+
+- Zero-dependency Agent framework using native `fetch` for OpenAI-compatible APIs
+- ~350 lines of code for entire reasoning layer
+- Tool-based architecture: LLM calls tools, tools call services
+- Frozen prompt mechanism for cache efficiency
+- Per-conversation mode tracking and preference management
+
 ## [0.1.50] - 2026-06-02
 
 ### Added
@@ -55,6 +97,7 @@ All notable changes to this project will be documented in this file.
 - OpenClaw Gateway WebSocket client integration
 - MIT License
 
+[0.2.0]: https://github.com/CCLucky-uu/TaskMeld/releases/tag/v0.2.0
 [0.1.50]: https://github.com/CCLucky-uu/TaskMeld/releases/tag/v0.1.50
 [0.1.41]: https://github.com/CCLucky-uu/TaskMeld/releases/tag/v0.1.41
 [0.1.3]: https://github.com/CCLucky-uu/TaskMeld/releases/tag/v0.1.3

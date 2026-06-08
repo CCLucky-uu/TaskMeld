@@ -66,7 +66,9 @@ const extractFileContent = (data: AgentFileGetResponse, defaultName: string): Ag
 
 export async function fetchAgentCoreFiles(agentId: string): Promise<AgentCoreFileItem[]> {
   const data = await wsRequest<AgentFilesListResponse>("agent.files.list", { agentId });
-  return resolveFileListSource(data).map(mapFileListItem).filter((item): item is AgentCoreFileItem => Boolean(item));
+  return resolveFileListSource(data)
+    .map(mapFileListItem)
+    .filter((item): item is AgentCoreFileItem => Boolean(item));
 }
 
 export async function fetchAgentCoreFileContent(agentId: string, name: string): Promise<AgentCoreFileContent> {
@@ -79,29 +81,23 @@ export async function setAgentCoreFileContent(params: {
   name: string;
   content: string;
 }): Promise<AgentCoreFileContent> {
-  const data = await wsRequest<AgentFileGetResponse>("agent.files.set", { agentId: params.agentId, name: params.name, content: params.content });
+  const data = await wsRequest<AgentFileGetResponse>("agent.files.set", {
+    agentId: params.agentId,
+    name: params.name,
+    content: params.content,
+  });
   return extractFileContent(data, params.name);
 }
 
-export async function createAgent(params: {
-  name: string;
-  workspace?: string;
-}): Promise<unknown> {
+export async function createAgent(params: { name: string; workspace?: string }): Promise<unknown> {
   return wsRequest("agent.create", { name: params.name, workspace: params.workspace });
 }
 
-export async function updateAgent(params: {
-  agentId: string;
-  name?: string;
-  workspace?: string;
-}): Promise<unknown> {
+export async function updateAgent(params: { agentId: string; name?: string; workspace?: string }): Promise<unknown> {
   return wsRequest("agent.update", { agentId: params.agentId, name: params.name, workspace: params.workspace });
 }
 
-export async function deleteAgent(params: {
-  agentId: string;
-  deleteFiles?: boolean;
-}): Promise<unknown> {
+export async function deleteAgent(params: { agentId: string; deleteFiles?: boolean }): Promise<unknown> {
   return wsRequest("agent.delete", { agentId: params.agentId, deleteFiles: params.deleteFiles });
 }
 

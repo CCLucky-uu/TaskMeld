@@ -88,8 +88,13 @@ export function InlineSelect({
         disabled={disabled}
         aria-label={ariaLabel}
       >
-        <span className="block min-w-0 overflow-hidden pr-5 text-left text-ellipsis whitespace-nowrap">{selectedLabel}</span>
-        <span className={`pointer-events-none absolute top-1/2 right-2 inline-flex -translate-y-1/2 items-center justify-center leading-none ${open ? "text-[#62cfc0]" : "text-[var(--muted)]"}`} aria-hidden="true">
+        <span className="block min-w-0 overflow-hidden pr-5 text-left text-ellipsis whitespace-nowrap">
+          {selectedLabel}
+        </span>
+        <span
+          className={`pointer-events-none absolute top-1/2 right-2 inline-flex -translate-y-1/2 items-center justify-center leading-none ${open ? "text-[#62cfc0]" : "text-[var(--muted)]"}`}
+          aria-hidden="true"
+        >
           <svg viewBox="0 0 16 16" width="12" height="12" focusable="false">
             <path
               d="M4 6.5 8 10l4-3.5"

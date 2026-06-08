@@ -46,7 +46,10 @@ const normalizeMarkdownForPrediction = (markdown: string): string => {
 };
 
 const getBubbleContentWidth = ({ viewportWidth }: PredictOptions): number => {
-  const outerWidth = Math.min(MAX_BUBBLE_WIDTH, Math.max(MIN_BUBBLE_WIDTH, Math.floor(viewportWidth * BUBBLE_WIDTH_RATIO)));
+  const outerWidth = Math.min(
+    MAX_BUBBLE_WIDTH,
+    Math.max(MIN_BUBBLE_WIDTH, Math.floor(viewportWidth * BUBBLE_WIDTH_RATIO)),
+  );
   return Math.max(120, outerWidth - BUBBLE_HORIZONTAL_GUTTER);
 };
 
@@ -103,13 +106,9 @@ export const predictToolCardMinHeight = ({
   if (toolCollapsed) return TOOL_COLLAPSED_ROW_HEIGHT;
 
   const contentWidth = getToolContentWidth({ viewportWidth });
-  const key = [
-    contentWidth,
-    toolCollapsed ? "1" : "0",
-    toolOutputCollapsed ? "1" : "0",
-    commandText,
-    outputText,
-  ].join("::");
+  const key = [contentWidth, toolCollapsed ? "1" : "0", toolOutputCollapsed ? "1" : "0", commandText, outputText].join(
+    "::",
+  );
   const cached = toolHeightCache.get(key);
   if (cached !== undefined) return cached;
 

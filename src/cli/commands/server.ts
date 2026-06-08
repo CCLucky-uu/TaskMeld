@@ -1,21 +1,21 @@
-import { t } from "../i18n";
-import type { CliCommandHandler, CliRouteDefinition } from "../types";
+import { t } from "../i18n"
+import type { CliCommandHandler, CliRouteDefinition } from "../types"
 
 export const serverEnsureCommand: CliCommandHandler = async (_input, ctx) => {
-  return ctx.app.serverService.ensureServerReady();
-};
+  return ctx.app.serverService.ensureServerReady()
+}
 
 export const serverStartCommand: CliCommandHandler = async (_input, ctx) => {
-  return ctx.app.serverService.startServer();
-};
+  return ctx.app.serverService.startServer()
+}
 
 export const serverStatusCommand: CliCommandHandler = async (_input, ctx) => {
-  return ctx.app.serverService.getServerStatus();
-};
+  return ctx.app.serverService.getServerStatus()
+}
 
 export const serverStopCommand: CliCommandHandler = async (_input, ctx) => {
-  return ctx.app.serverService.stopServer();
-};
+  return ctx.app.serverService.stopServer()
+}
 
 export const serverRoutes: CliRouteDefinition[] = [
   {
@@ -27,10 +27,7 @@ export const serverRoutes: CliRouteDefinition[] = [
     help: {
       usage: "taskmeld server ensure [--format <json|md>]",
       summary: t("server.ensure.summary"),
-      notes: [
-        t("server.ensure.noteDaemonFirst"),
-        t("server.ensure.noteNewDaemon"),
-      ],
+      notes: [t("server.ensure.noteDaemonFirst"), t("server.ensure.noteNewDaemon")],
     },
   },
   {
@@ -67,4 +64,4 @@ export const serverRoutes: CliRouteDefinition[] = [
       summary: t("server.stop.summary"),
     },
   },
-];
+]

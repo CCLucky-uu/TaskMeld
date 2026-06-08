@@ -376,6 +376,7 @@ export type modalKey =
 
 export type navKey =
   | "overview"
+  | "wevra"
   | "agents"
   | "pipeline"
   | "pipelineRuns"
@@ -925,6 +926,7 @@ export type TranslationKey =
   | "modal:deleteGroupNote"
   | "modal:workflowJsonLabel"
   | "nav:overview"
+  | "nav:wevra"
   | "nav:agents"
   | "nav:pipeline"
   | "nav:pipelineRuns"
@@ -1102,16 +1104,16 @@ export type TranslationKey =
 
 /** Maps each namespace to its bare key type (for useTranslation-scoped t() calls). */
 export interface TranslationKeyMap {
-  "agent": agentKey;
-  "artifact": artifactKey;
-  "common": commonKey;
-  "dispatch": dispatchKey;
-  "log": logKey;
-  "modal": modalKey;
-  "nav": navKey;
+  agent: agentKey;
+  artifact: artifactKey;
+  common: commonKey;
+  dispatch: dispatchKey;
+  log: logKey;
+  modal: modalKey;
+  nav: navKey;
   "node-detail": node_detailKey;
-  "overview": overviewKey;
-  "pipeline": pipelineKey;
-  "session": sessionKey;
-  "timeline": timelineKey;
+  overview: overviewKey;
+  pipeline: pipelineKey;
+  session: sessionKey;
+  timeline: timelineKey;
 }

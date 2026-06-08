@@ -66,12 +66,9 @@ function main() {
     .join("\n\n");
 
   // Build namespaced key type: "common:status.running" | "nav:pipeline" | ...
-  const allNamespacedKeys = [...namespaceKeys.entries()]
-    .flatMap(([ns, keys]) => keys.map((k) => `${ns}:${k}`));
+  const allNamespacedKeys = [...namespaceKeys.entries()].flatMap(([ns, keys]) => keys.map((k) => `${ns}:${k}`));
 
-  const namespacedUnion = allNamespacedKeys
-    .map((k) => `  | "${k}"`)
-    .join("\n");
+  const namespacedUnion = allNamespacedKeys.map((k) => `  | "${k}"`).join("\n");
 
   // Build bare key lookup (for useTranslation with a namespace)
   const bareKeyMap = [...namespaceKeys.entries()]
@@ -97,7 +94,9 @@ ${bareKeyMap}
 `;
 
   writeFileSync(OUTPUT_PATH, output, "utf8");
-  console.log(`Generated ${OUTPUT_PATH} with ${allNamespacedKeys.length} keys across ${namespaceKeys.size} namespaces.`);
+  console.log(
+    `Generated ${OUTPUT_PATH} with ${allNamespacedKeys.length} keys across ${namespaceKeys.size} namespaces.`,
+  );
 }
 
 main();

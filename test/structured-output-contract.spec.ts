@@ -1,5 +1,9 @@
-import assert from "node:assert/strict";
-import { validateEnvelope, type EnvelopeValidationContext, type ResultEnvelope } from "../src/pipeline/structured-output/contract";
+import assert from "node:assert/strict"
+import {
+  validateEnvelope,
+  type EnvelopeValidationContext,
+  type ResultEnvelope,
+} from "../src/pipeline/structured-output/contract"
 
 const ctx: EnvelopeValidationContext = {
   runId: "run-1",
@@ -7,7 +11,7 @@ const ctx: EnvelopeValidationContext = {
   requestId: "req-1",
   sessionId: "agent:n1:main",
   outputSpec: { type: "brief.v1", schemaVersion: 1 },
-};
+}
 
 const makeEnvelope = (content: ResultEnvelope["artifacts"][number]["content"]): ResultEnvelope => ({
   version: "2.0",
@@ -28,7 +32,7 @@ const makeEnvelope = (content: ResultEnvelope["artifacts"][number]["content"]): 
   control: { sleepUntil: null, retryFromNodeId: null },
   logs: [],
   error: null,
-});
+})
 
 const run = () => {
   const emptyContents: Array<ResultEnvelope["artifacts"][number]["content"]> = [
@@ -39,12 +43,12 @@ const run = () => {
     {},
     ["", null, []],
     { summary: "", items: [] },
-  ];
+  ]
 
   for (const content of emptyContents) {
-    const result = validateEnvelope(makeEnvelope(content), ctx);
-    assert.equal(result.ok, false, `success envelope with empty content should fail: ${JSON.stringify(content)}`);
-    if (!result.ok) assert.equal(result.code, "artifact_content_invalid");
+    const result = validateEnvelope(makeEnvelope(content), ctx)
+    assert.equal(result.ok, false, `success envelope with empty content should fail: ${JSON.stringify(content)}`)
+    if (!result.ok) assert.equal(result.code, "artifact_content_invalid")
   }
 
   const validContents: Array<ResultEnvelope["artifacts"][number]["content"]> = [
@@ -53,14 +57,14 @@ const run = () => {
     false,
     ["item"],
     { summary: "done" },
-  ];
+  ]
 
   for (const content of validContents) {
-    const result = validateEnvelope(makeEnvelope(content), ctx);
-    assert.equal(result.ok, true, `non-empty content should pass: ${JSON.stringify(content)}`);
+    const result = validateEnvelope(makeEnvelope(content), ctx)
+    assert.equal(result.ok, true, `non-empty content should pass: ${JSON.stringify(content)}`)
   }
 
-  console.log("structured-output contract tests passed");
-};
+  console.log("structured-output contract tests passed")
+}
 
-run();
+run()

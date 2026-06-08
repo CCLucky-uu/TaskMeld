@@ -1,10 +1,10 @@
-import type { PipelineRegistry } from "../app/pipeline-registry";
+import type { PipelineRegistry } from "../app/pipeline-registry"
 
 export const ensureGatewayReadyForReadonly = async (app: PipelineRegistry): Promise<void> => {
-  if (app.gateway.client.getStatus().status === "ready") return;
+  if (app.gateway.client.getStatus().status === "ready") return
   // When a read-only command hits a gateway method, the link must be established first, otherwise sendReq would fail immediately.
-  await app.gateway.client.connect();
-};
+  await app.gateway.client.connect()
+}
 
 // Generic alias for contexts that don't distinguish read-only vs write operations (e.g. agent CRUD mutations).
-export const ensureGatewayConnected = ensureGatewayReadyForReadonly;
+export const ensureGatewayConnected = ensureGatewayReadyForReadonly

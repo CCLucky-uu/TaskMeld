@@ -1,4 +1,4 @@
-import { isRecord } from "../utils/guards";
+import { isRecord } from "../utils/guards"
 import {
   normalizeWorkflowScheduler,
   normalizeWorkflowPlugins,
@@ -6,100 +6,111 @@ import {
   normalizeWorkflowNode,
   normalizeWorkflowEdge,
   normalizeWorkflowGroup,
-} from "./workflow/normalize";
-import { loadWorkflowDefinitionWithStorage } from "./workflow/io";
-import { validateWorkflowGraph } from "./workflow/validate";
-import type {
-  WorkflowDefinitionRuntime,
-  WorkflowStorageOptions,
-  WorkflowReadResult,
-} from "./types/workflow";
+} from "./workflow/normalize"
+import { loadWorkflowDefinitionWithStorage } from "./workflow/io"
+import { validateWorkflowGraph } from "./workflow/validate"
+import type { WorkflowDefinitionRuntime, WorkflowStorageOptions, WorkflowReadResult } from "./types/workflow"
 
 // ====== Re-exports from extracted modules ======
 
 // Defaults
-export { defaultTemplateNodes, defaultWorkflowDefinition } from "./workflow/defaults";
+export { defaultTemplateNodes, defaultWorkflowDefinition } from "./workflow/defaults"
 
 // Template mapper
-export { mergeTemplateNodesIntoWorkflow, workflowToTemplateNodes } from "./workflow/template-mapper";
+export { mergeTemplateNodesIntoWorkflow, workflowToTemplateNodes } from "./workflow/template-mapper"
 
 // ====== Normalize fallbacks ======
 
 export const normalizeWorkflowFallbacks = (workflow: WorkflowDefinitionRuntime): WorkflowDefinitionRuntime => {
-  return normalizeWorkflowFallbacksWithStorage(workflow, {});
-};
+  return normalizeWorkflowFallbacksWithStorage(workflow, {})
+}
 
 export const normalizeWorkflowFallbacksWithStorage = (
   workflow: WorkflowDefinitionRuntime,
   options: WorkflowStorageOptions,
 ): WorkflowDefinitionRuntime => {
-  const currentNodeById = new Map(loadWorkflowDefinitionWithStorage(options).nodes.map((node) => [node.id, node]));
+  const currentNodeById = new Map(loadWorkflowDefinitionWithStorage(options).nodes.map((node) => [node.id, node]))
   const normalizedNodes = workflow.nodes.map((node) => {
-    const prev = currentNodeById.get(node.id);
-    if (!prev) return node;
-    const prevAgent = prev.executor.agentId.trim();
-    const nextAgent = node.executor.agentId.trim();
-    if (prevAgent === nextAgent) return node;
+    const prev = currentNodeById.get(node.id)
+    if (!prev) return node
+    const prevAgent = prev.executor.agentId.trim()
+    const nextAgent = node.executor.agentId.trim()
+    if (prevAgent === nextAgent) return node
     return {
       ...node,
       executor: {
         ...node.executor,
         fallbackAgentId: null,
       },
-    };
-  });
+    }
+  })
   return {
     ...workflow,
     nodes: normalizedNodes,
-  };
-};
+  }
+}
 
 // ====== Read template nodes from raw ======
 
 export const readTemplateNodesFromRaw = (value: unknown): import("./types/workflow").PipelineTemplateNode[] | null => {
-  if (!Array.isArray(value)) return null;
-  const nodes: import("./types/workflow").PipelineTemplateNode[] = [];
+  if (!Array.isArray(value)) return null
+  const nodes: import("./types/workflow").PipelineTemplateNode[] = []
   for (const item of value) {
-    const normalized = normalizeTemplateNode(item);
-    if (!normalized) return null;
-    nodes.push(normalized);
+    const normalized = normalizeTemplateNode(item)
+    if (!normalized) return null
+    nodes.push(normalized)
   }
-  const ids = new Set(nodes.map((n) => n.id));
-  if (ids.size !== nodes.length) return null;
+  const ids = new Set(nodes.map((n) => n.id))
+  if (ids.size !== nodes.length) return null
   for (const node of nodes) {
     for (const dep of node.dependsOn) {
-      if (!ids.has(dep)) return null;
+      if (!ids.has(dep)) return null
     }
   }
-  return nodes;
-};
+  return nodes
+}
 
 // ====== Migration ======
 
 export const migrateWorkflowDefinitionV2RawToV3 = (value: unknown): WorkflowReadResult => {
   if (!isRecord(value) || value.version !== "2.0") {
-    return { ok: false, error: "invalid_workflow_definition", detail: "Migration is only supported from workflow v2.0" };
+    return { ok: false, error: "invalid_workflow_definition", detail: "Migration is only supported from workflow v2.0" }
   }
   if (!Array.isArray(value.nodes) || !Array.isArray(value.edges) || !Array.isArray(value.groups)) {
-    return { ok: false, error: "invalid_workflow_definition", detail: "workflow.nodes/edges/groups must be arrays" };
+    return { ok: false, error: "invalid_workflow_definition", detail: "workflow.nodes/edges/groups must be arrays" }
   }
-  const nodes: import("./types/workflow").WorkflowNode[] = [];
+  const nodes: import("./types/workflow").WorkflowNode[] = []
   for (const item of value.nodes) {
-    const normalized = normalizeWorkflowNode(item);
-    if (!normalized) return { ok: false, error: "invalid_workflow_definition", detail: "workflow.nodes contains an invalid node structure" };
-    nodes.push(normalized);
+    const normalized = normalizeWorkflowNode(item)
+    if (!normalized)
+      return {
+        ok: false,
+        error: "invalid_workflow_definition",
+        detail: "workflow.nodes contains an invalid node structure",
+      }
+    nodes.push(normalized)
   }
-  const edges: import("./types/workflow").WorkflowEdge[] = [];
+  const edges: import("./types/workflow").WorkflowEdge[] = []
   for (const item of value.edges) {
-    const normalized = normalizeWorkflowEdge(item);
-    if (!normalized) return { ok: false, error: "invalid_workflow_definition", detail: "workflow.edges contains an invalid edge structure" };
-    edges.push(normalized);
+    const normalized = normalizeWorkflowEdge(item)
+    if (!normalized)
+      return {
+        ok: false,
+        error: "invalid_workflow_definition",
+        detail: "workflow.edges contains an invalid edge structure",
+      }
+    edges.push(normalized)
   }
-  const groups: import("./types/workflow").WorkflowGroup[] = [];
+  const groups: import("./types/workflow").WorkflowGroup[] = []
   for (const item of value.groups) {
-    const normalized = normalizeWorkflowGroup(item);
-    if (!normalized) return { ok: false, error: "invalid_workflow_definition", detail: "workflow.groups contains an invalid parallel group structure" };
-    groups.push(normalized);
+    const normalized = normalizeWorkflowGroup(item)
+    if (!normalized)
+      return {
+        ok: false,
+        error: "invalid_workflow_definition",
+        detail: "workflow.groups contains an invalid parallel group structure",
+      }
+    groups.push(normalized)
   }
   const workflow: WorkflowDefinitionRuntime = {
     version: "3.0",
@@ -109,11 +120,11 @@ export const migrateWorkflowDefinitionV2RawToV3 = (value: unknown): WorkflowRead
     nodes,
     edges,
     groups,
-  };
-  const validation = validateWorkflowGraph(workflow);
-  if (!validation.ok) return { ok: false, error: validation.error, detail: validation.detail };
-  return { ok: true, workflow };
-};
+  }
+  const validation = validateWorkflowGraph(workflow)
+  if (!validation.ok) return { ok: false, error: validation.error, detail: validation.detail }
+  return { ok: true, workflow }
+}
 
 // ====== Re-exports from extracted modules (backward-compatible public API) ======
 
@@ -132,17 +143,15 @@ export type {
   WorkflowNodeLane,
   WorkflowPlugins,
   WorkflowReadResult,
-  WorkflowRemoteBatchPlugin,
   WorkflowRetryPolicy,
   WorkflowRoutePolicy,
   WorkflowScheduler,
   WorkflowSchedulerMode,
-  WorkflowSchedulerPlugin,
   WorkflowStorageOptions,
   WorkflowDefinitionRuntime,
   WorkflowDefinitionV3,
   WorkflowValidationResult,
-} from "./types/workflow";
+} from "./types/workflow"
 
 // I/O functions re-exported from ./workflow/io
 export {
@@ -154,20 +163,13 @@ export {
   loadPipelineTemplateWithStorage,
   savePipelineTemplate,
   savePipelineTemplateWithStorage,
-} from "./workflow/io";
-
-// Validation re-exported from ./workflow/validate
-export { validateWorkflowDefinition, validateWorkflowOutputConfig } from "./workflow/validate";
+} from "./workflow/io"
 
 // Normalize/parse re-exported from ./workflow/normalize
-export { readWorkflowDefinitionFromRaw, readWorkflowDefinitionFromRawDetailed } from "./workflow/normalize";
+export { readWorkflowDefinitionFromRaw, readWorkflowDefinitionFromRawDetailed } from "./workflow/normalize"
 
 // Pipeline output/link types
-export type {
-  WorkflowOutputConfig,
-  PipelineOutput,
-  PipelineOutputArtifactRef,
-} from "./types/pipeline-output";
+export type { WorkflowOutputConfig, PipelineOutput, PipelineOutputArtifactRef } from "./types/pipeline-output"
 
 export type {
   RunInput,
@@ -176,6 +178,6 @@ export type {
   PipelineInboundJob,
   PipelineInboundJobStatus,
   PipelineInboundQueueEvent,
-} from "./types/pipeline-link";
-export { buildJobId, isValidLinkId } from "./types/pipeline-link";
-export { buildOutputId } from "./types/pipeline-output";
+} from "./types/pipeline-link"
+export { buildJobId, isValidLinkId } from "./types/pipeline-link"
+export { buildOutputId } from "./types/pipeline-output"

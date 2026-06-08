@@ -56,11 +56,23 @@ function renderToolCard(
   onToggleToolOutputCollapsed: (key: string) => void,
 ): ReactNode {
   return (
-    <article className={`${toolCollapsed ? "w-fit min-w-[180px] max-w-[min(72%,640px)]" : "w-[min(92%,780px)]"} max-w-full min-w-0 justify-self-start border border-[rgba(142,163,179,0.14)] bg-[rgba(255,255,255,0.01)]`}>
-      <button className="flex w-full items-center justify-between gap-[10px] border-0 border-b border-[rgba(142,163,179,0.12)] bg-transparent px-[10px] py-2 text-left text-xs text-[#93a6b5] hover:bg-[rgba(142,163,179,0.04)]" type="button" onClick={() => onToggleToolCollapsed(key)}>
+    <article
+      className={`${toolCollapsed ? "w-fit min-w-[180px] max-w-[min(72%,640px)]" : "w-[min(92%,780px)]"} max-w-full min-w-0 justify-self-start border border-[rgba(142,163,179,0.14)] bg-[rgba(255,255,255,0.01)]`}
+    >
+      <button
+        className="flex w-full items-center justify-between gap-[10px] border-0 border-b border-[rgba(142,163,179,0.12)] bg-transparent px-[10px] py-2 text-left text-xs text-[#93a6b5] hover:bg-[rgba(142,163,179,0.04)]"
+        type="button"
+        onClick={() => onToggleToolCollapsed(key)}
+      >
         <span>tool {entry.toolName}</span>
         <span className="inline-flex items-center justify-center leading-none text-[#7890a1]" aria-hidden="true">
-          <svg viewBox="0 0 12 12" width="12" height="12" focusable="false" className={toolCollapsed ? "" : "rotate-90"}>
+          <svg
+            viewBox="0 0 12 12"
+            width="12"
+            height="12"
+            focusable="false"
+            className={toolCollapsed ? "" : "rotate-90"}
+          >
             <path
               d="M4 2.5L7.5 6L4 9.5"
               fill="none"
@@ -74,13 +86,26 @@ function renderToolCard(
       </button>
       {!toolCollapsed ? (
         <>
-          <div className={`${monoClassName} max-h-[220px] overflow-auto border-b border-[rgba(142,163,179,0.12)] bg-[rgba(7,12,16,0.5)] px-[10px] py-2 text-[12.5px] leading-[1.45] whitespace-pre-wrap break-words text-[#d1dbe3]`} title={entry.commandText}>
+          <div
+            className={`${monoClassName} max-h-[220px] overflow-auto border-b border-[rgba(142,163,179,0.12)] bg-[rgba(7,12,16,0.5)] px-[10px] py-2 text-[12.5px] leading-[1.45] whitespace-pre-wrap break-words text-[#d1dbe3]`}
+            title={entry.commandText}
+          >
             {entry.commandText}
           </div>
-          <button className="flex w-full items-center justify-between gap-[10px] border-0 border-b border-[rgba(142,163,179,0.12)] bg-transparent px-[10px] py-2 text-left text-xs text-[#93a6b5] hover:bg-[rgba(142,163,179,0.04)]" type="button" onClick={() => onToggleToolOutputCollapsed(key)}>
+          <button
+            className="flex w-full items-center justify-between gap-[10px] border-0 border-b border-[rgba(142,163,179,0.12)] bg-transparent px-[10px] py-2 text-left text-xs text-[#93a6b5] hover:bg-[rgba(142,163,179,0.04)]"
+            type="button"
+            onClick={() => onToggleToolOutputCollapsed(key)}
+          >
             <span>Tool output {entry.toolName}</span>
             <span className="inline-flex items-center justify-center leading-none text-[#7890a1]" aria-hidden="true">
-              <svg viewBox="0 0 12 12" width="12" height="12" focusable="false" className={toolOutputCollapsed ? "" : "rotate-90"}>
+              <svg
+                viewBox="0 0 12 12"
+                width="12"
+                height="12"
+                focusable="false"
+                className={toolOutputCollapsed ? "" : "rotate-90"}
+              >
                 <path
                   d="M4 2.5L7.5 6L4 9.5"
                   fill="none"
@@ -94,7 +119,9 @@ function renderToolCard(
           </button>
           {!toolOutputCollapsed ? (
             <div className="max-h-[260px] overflow-auto bg-[rgba(7,12,16,0.5)] px-[10px] py-2">
-              <p className="m-0 whitespace-pre-wrap break-words font-[JetBrains_Mono,monospace] text-[12.5px] leading-[1.45] text-[#b4c3cf]">{entry.outputText || "..."}</p>
+              <p className="m-0 whitespace-pre-wrap break-words font-[JetBrains_Mono,monospace] text-[12.5px] leading-[1.45] text-[#b4c3cf]">
+                {entry.outputText || "..."}
+              </p>
             </div>
           ) : null}
         </>
@@ -210,8 +237,12 @@ export const ChatHistoryPanel = memo(function ChatHistoryPanel({
         key: `history-msg:${key}`,
         estimatedHeight,
         render: () => (
-          <article className={`${item.role === "user" ? "justify-self-end border-[rgba(50,215,186,0.15)] bg-[rgba(50,215,186,0.08)]" : item.role === "assistant" ? "justify-self-start border-[var(--line)]" : item.role === "tool" ? "justify-self-stretch w-full border-[rgba(142,163,179,0.24)] bg-[linear-gradient(180deg,rgba(255,255,255,0.05)_0%,rgba(255,255,255,0.02)_100%)]" : "justify-self-start border-[var(--line)] border-dashed opacity-90"} min-w-0 max-w-full w-[min(92%,780px)] border bg-[#0f171d] px-[10px] py-2`}>
-            <header className={`${monoClassName} mb-1.5 flex items-center justify-between gap-[10px] text-xs text-[var(--muted)] ${item.role === "tool" ? "-mx-[10px] -mt-2 mb-2 border-b border-[rgba(142,163,179,0.22)] bg-[rgba(255,255,255,0.03)] px-[10px] py-[7px]" : ""}`}>
+          <article
+            className={`${item.role === "user" ? "justify-self-end border-[rgba(50,215,186,0.15)] bg-[rgba(50,215,186,0.08)]" : item.role === "assistant" ? "justify-self-start border-[var(--line)]" : item.role === "tool" ? "justify-self-stretch w-full border-[rgba(142,163,179,0.24)] bg-[linear-gradient(180deg,rgba(255,255,255,0.05)_0%,rgba(255,255,255,0.02)_100%)]" : "justify-self-start border-[var(--line)] border-dashed opacity-90"} min-w-0 max-w-full w-[min(92%,780px)] border bg-[#0f171d] px-[10px] py-2`}
+          >
+            <header
+              className={`${monoClassName} mb-1.5 flex items-center justify-between gap-[10px] text-xs text-[var(--muted)] ${item.role === "tool" ? "-mx-[10px] -mt-2 mb-2 border-b border-[rgba(142,163,179,0.22)] bg-[rgba(255,255,255,0.03)] px-[10px] py-[7px]" : ""}`}
+            >
               <span>{item.role}</span>
               <div className="inline-flex items-center gap-2">
                 {modelTag ? <span>{modelTag}</span> : null}
@@ -224,9 +255,20 @@ export const ChatHistoryPanel = memo(function ChatHistoryPanel({
                 <MarkdownViewer content={item.text} />
               </div>
             ) : (
-              <p className={item.role === "tool" ? "m-0 whitespace-pre-wrap break-words font-[JetBrains_Mono,monospace] text-[12.5px] text-[#c6d2dd]" : "m-0 whitespace-pre-wrap break-words text-[13px] leading-[1.45]"}>
+              <p
+                className={
+                  item.role === "tool"
+                    ? "m-0 whitespace-pre-wrap break-words font-[JetBrains_Mono,monospace] text-[12.5px] text-[#c6d2dd]"
+                    : "m-0 whitespace-pre-wrap break-words text-[13px] leading-[1.45]"
+                }
+              >
                 {item.text}
-                {showStreamingCaret ? <span className="ml-0.5 inline-block h-[1em] w-[6px] animate-pulse align-[-0.12em] bg-[var(--live)]" aria-hidden="true" /> : null}
+                {showStreamingCaret ? (
+                  <span
+                    className="ml-0.5 inline-block h-[1em] w-[6px] animate-pulse align-[-0.12em] bg-[var(--live)]"
+                    aria-hidden="true"
+                  />
+                ) : null}
               </p>
             )}
           </article>
@@ -269,14 +311,17 @@ export const ChatHistoryPanel = memo(function ChatHistoryPanel({
         estimatedHeight: THINKING_ESTIMATED_HEIGHT,
         render: () => (
           <article className="justify-self-start min-w-0 max-w-full w-[min(92%,780px)] border border-[var(--line)] bg-[#0f171d] px-[10px] py-2 opacity-92">
-            <header className={`${monoClassName} mb-1.5 flex items-center justify-between gap-[10px] text-xs text-[var(--muted)]`}>
+            <header
+              className={`${monoClassName} mb-1.5 flex items-center justify-between gap-[10px] text-xs text-[var(--muted)]`}
+            >
               <span>assistant</span>
               <div className="inline-flex items-center gap-2">
                 <span>{t("thinking")}</span>
               </div>
             </header>
             <p className="m-0 whitespace-pre-wrap break-words text-[13px] leading-[1.45] text-[var(--muted)]">
-              {t("thinking")}<span className="inline-block w-[0.6ch] animate-pulse text-center">.</span>
+              {t("thinking")}
+              <span className="inline-block w-[0.6ch] animate-pulse text-center">.</span>
               <span className="inline-block w-[0.6ch] animate-pulse text-center [animation-delay:0.2s]">.</span>
               <span className="inline-block w-[0.6ch] animate-pulse text-center [animation-delay:0.4s]">.</span>
             </p>
@@ -348,10 +393,7 @@ export const ChatHistoryPanel = memo(function ChatHistoryPanel({
     return { totalHeight: listHeight, visibleRows: positioned };
   }, [rows, measureVersion, historyScrollTop, historyViewportHeight]);
 
-  const visibleRowKeySignature = useMemo(
-    () => visibleRows.map((row) => row.key).join("|"),
-    [visibleRows],
-  );
+  const visibleRowKeySignature = useMemo(() => visibleRows.map((row) => row.key).join("|"), [visibleRows]);
 
   useLayoutEffect(() => {
     const canvas = canvasRef.current;

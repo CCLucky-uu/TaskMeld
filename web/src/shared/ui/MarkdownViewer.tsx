@@ -18,7 +18,7 @@ type CodeBlockProps = {
 };
 
 const markdownViewerBaseClassName =
-  "block min-w-0 max-w-full text-[13px] leading-[1.45] text-[var(--text)] [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_h1]:mt-3 [&_h1]:mb-1 [&_h1]:text-[1.6em] [&_h1]:font-semibold [&_h2]:mt-3 [&_h2]:mb-1 [&_h2]:text-[1.35em] [&_h2]:font-semibold [&_h3]:mt-3 [&_h3]:mb-1 [&_h3]:text-[1.18em] [&_h3]:font-semibold [&_h4]:mt-3 [&_h4]:mb-1 [&_h4]:font-semibold [&_h5]:mt-3 [&_h5]:mb-1 [&_h5]:font-semibold [&_h6]:mt-3 [&_h6]:mb-1 [&_h6]:font-semibold [&_p]:my-2 [&_ul]:my-2 [&_ul]:pl-5 [&_ul]:list-disc [&_ol]:my-2 [&_ol]:pl-5 [&_ol]:list-decimal [&_blockquote]:my-2 [&_blockquote]:border-l-2 [&_blockquote]:border-[var(--line)] [&_blockquote]:bg-[rgba(255,255,255,0.02)] [&_blockquote]:px-3 [&_blockquote]:py-2 [&_a]:text-[var(--live)] [&_a]:underline [&_table]:w-full [&_table]:border-collapse [&_table]:overflow-hidden [&_table]:text-sm [&_th]:border [&_th]:border-[rgba(142,163,179,0.18)] [&_th]:bg-[rgba(255,255,255,0.03)] [&_th]:px-2 [&_th]:py-1.5 [&_th]:text-left [&_td]:border [&_td]:border-[rgba(142,163,179,0.14)] [&_td]:px-2 [&_td]:py-1.5 [&_code]:rounded-none [&_code]:bg-[rgba(255,255,255,0.06)] [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:font-[JetBrains_Mono,monospace] [&_code]:text-[12px] [&_hr]:my-3 [&_hr]:border-0 [&_hr]:border-t [&_hr]:border-[var(--line)]";
+  "block min-w-0 max-w-full text-[13px] leading-[1.45] text-[var(--text)] [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_h1]:mt-3 [&_h1]:mb-1 [&_h1]:text-[1.6em] [&_h1]:font-semibold [&_h2]:mt-3 [&_h2]:mb-1 [&_h2]:text-[1.35em] [&_h2]:font-semibold [&_h3]:mt-3 [&_h3]:mb-1 [&_h3]:text-[1.18em] [&_h3]:font-semibold [&_h4]:mt-3 [&_h4]:mb-1 [&_h4]:font-semibold [&_h5]:mt-3 [&_h5]:mb-1 [&_h5]:font-semibold [&_h6]:mt-3 [&_h6]:mb-1 [&_h6]:font-semibold [&_p]:my-2 [&_ul]:my-2 [&_ul]:pl-5 [&_ul]:list-disc [&_ol]:my-2 [&_ol]:pl-5 [&_ol]:list-decimal [&_blockquote]:my-2 [&_blockquote]:mx-0 [&_blockquote]:border-l-2 [&_blockquote]:border-[var(--line)] [&_blockquote]:bg-[rgba(255,255,255,0.02)] [&_blockquote]:px-3 [&_blockquote]:py-2 [&_a]:text-[var(--live)] [&_a]:underline [&_table]:w-full [&_table]:border-collapse [&_table]:overflow-hidden [&_table]:text-sm [&_th]:border [&_th]:border-[rgba(142,163,179,0.18)] [&_th]:bg-[rgba(255,255,255,0.03)] [&_th]:px-2 [&_th]:py-1.5 [&_th]:text-left [&_td]:border [&_td]:border-[rgba(142,163,179,0.14)] [&_td]:px-2 [&_td]:py-1.5 [&_code]:rounded-none [&_code]:bg-[rgba(255,255,255,0.06)] [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:font-[JetBrains_Mono,monospace] [&_code]:text-[12px] [&_code]:text-[var(--muted)] [&_hr]:my-3 [&_hr]:border-0 [&_hr]:border-t [&_hr]:border-[var(--line)]";
 
 function MarkdownCodeBlock({ blockKey, className, children, collapsed, onToggleCollapsed }: CodeBlockProps) {
   const [copied, setCopied] = useState(false);
@@ -79,7 +79,7 @@ function MarkdownCodeBlock({ blockKey, className, children, collapsed, onToggleC
         // relying on break-words alone is unstable inside pre/code — long JSON/JS lines may still stretch to max-content.
         <pre className="m-0 block min-w-0 w-full max-w-full overflow-hidden bg-transparent p-0 whitespace-pre-wrap break-all wrap-anywhere">
           <code
-            className={`${className ?? ""} block min-w-0 w-full max-w-full whitespace-pre-wrap break-all rounded-none bg-transparent px-0 py-0 font-[JetBrains_Mono,monospace] text-[13px] leading-[1.45] text-inherit wrap-anywhere`}
+            className={`${className ?? ""} block min-w-0 w-full max-w-full whitespace-pre-wrap break-all rounded-none !bg-transparent !px-2.5 !py-2 font-[JetBrains_Mono,monospace] !text-[13px] leading-[1.45] text-inherit wrap-anywhere`}
           >
             {text}
           </code>
@@ -94,7 +94,7 @@ export function MarkdownViewer({ content, className = "" }: MarkdownViewerProps)
   const toggleCollapsed = (key: string) => {
     setCollapsedBlocks((prev) => ({
       ...prev,
-      [key]: !(prev[key] ?? true),
+      [key]: !(prev[key] ?? false),
     }));
   };
 
@@ -120,7 +120,7 @@ export function MarkdownViewer({ content, className = "" }: MarkdownViewerProps)
               <MarkdownCodeBlock
                 blockKey={blockKey}
                 className={codeClassName}
-                collapsed={collapsedBlocks[blockKey] ?? true}
+                collapsed={collapsedBlocks[blockKey] ?? false}
                 onToggleCollapsed={toggleCollapsed}
               >
                 {codeChildren}

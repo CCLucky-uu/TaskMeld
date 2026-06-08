@@ -201,10 +201,13 @@ export type WorkflowSchedulerPlugin = {
   enabled: boolean;
 };
 
-export type WorkflowPlugins = {
-  remoteBatch: WorkflowRemoteBatchPlugin;
-  scheduler: WorkflowSchedulerPlugin;
+export type WorkflowPluginInstance = {
+  pluginId: string;
+  enabled: boolean;
+  config: Record<string, unknown>;
 };
+
+export type WorkflowPlugins = WorkflowPluginInstance[];
 
 export type WorkflowNode = {
   id: string;

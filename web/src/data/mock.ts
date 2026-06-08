@@ -106,7 +106,12 @@ export const mockSnapshot: AppSnapshot = {
     },
   ],
   timeline: [
-    { ts: "20:39:18", createdAt: "2026-04-13T20:39:18.000Z", text: "Gateway handshake complete (protocol v3)", level: "info" },
+    {
+      ts: "20:39:18",
+      createdAt: "2026-04-13T20:39:18.000Z",
+      text: "Gateway handshake complete (protocol v3)",
+      level: "info",
+    },
     { ts: "20:39:20", createdAt: "2026-04-13T20:39:20.000Z", text: "Pipeline run #241 started", level: "info" },
     { ts: "20:39:33", createdAt: "2026-04-13T20:39:33.000Z", text: "Node n2 still executing", level: "warn" },
   ],

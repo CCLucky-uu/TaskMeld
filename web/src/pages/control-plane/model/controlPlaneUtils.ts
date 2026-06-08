@@ -1,16 +1,7 @@
 import { AgentItem } from "../../../entities/agent";
-import {
-  PipelineNode,
-  PipelineTemplateNode,
-  WorkflowDefinition,
-  WorkflowGroup,
-} from "../../../entities/pipeline";
+import { PipelineNode, PipelineTemplateNode, WorkflowDefinition, WorkflowGroup } from "../../../entities/pipeline";
 import { TimelineItem } from "../../../entities/timeline";
 import type { ApiError } from "../../../shared/ws-client";
-import i18n from "../../../shared/i18n";
-
-const MAINLINE_ROUTE_VALUE = "yes";
-const DEFAULT_BRANCH_ROUTE_VALUE = "no";
 
 export type InferredParallelGroup = {
   id: string;
@@ -31,9 +22,7 @@ export const dedupeEdges = (edges: Array<{ from: string; to: string; when: strin
 };
 
 export const dependsOnFromWorkflow = (workflow: WorkflowDefinition, nodeId: string) =>
-  workflow.edges
-    .filter((edge) => edge.to === nodeId && edge.when === null)
-    .map((edge) => edge.from);
+  workflow.edges.filter((edge) => edge.to === nodeId && edge.when === null).map((edge) => edge.from);
 
 export const getParallelGroupMembers = (workflow: WorkflowDefinition, groupId: string) =>
   workflow.nodes.filter((node) => (node.parallelGroupId ?? "").trim() === groupId).map((node) => node.id);
@@ -41,11 +30,7 @@ export const getParallelGroupMembers = (workflow: WorkflowDefinition, groupId: s
 export const getInferredParallelGroups = (workflow: WorkflowDefinition): InferredParallelGroup[] => {
   const explicitById = new Map(workflow.groups.map((group) => [group.id, group]));
   const groupIds = Array.from(
-    new Set(
-      workflow.nodes
-        .map((node) => (node.parallelGroupId ?? "").trim())
-        .filter(Boolean),
-    ),
+    new Set(workflow.nodes.map((node) => (node.parallelGroupId ?? "").trim()).filter(Boolean)),
   );
 
   return groupIds
@@ -87,15 +72,6 @@ export const materializeParallelGroups = (
     members: group.members,
     joinPolicy: group.joinPolicy,
   }));
-};
-
-export const rebuildWorkflowEdgesForLaneChange = (
-  workflow: WorkflowDefinition,
-  _nextNodes: WorkflowDefinition["nodes"],
-): WorkflowDefinition["edges"] => {
-  // uiLane is only for display column assignment and must not reverse-rewrite execution topology.
-  // Execution edges are generated explicitly via "upstream dependencies / route targets" editing; lane changes must keep edges unchanged.
-  return workflow.edges;
 };
 
 export const reorderWorkflowNodeWithinLane = (
@@ -148,8 +124,7 @@ export const moveWorkflowNodeWithinLane = (
   const lanePosition = laneNodeIndices.indexOf(currentIndex);
   if (lanePosition < 0) return workflow;
 
-  const swapTargetIndex =
-    direction === "up" ? laneNodeIndices[lanePosition - 1] : laneNodeIndices[lanePosition + 1];
+  const swapTargetIndex = direction === "up" ? laneNodeIndices[lanePosition - 1] : laneNodeIndices[lanePosition + 1];
   if (swapTargetIndex === undefined) return workflow;
 
   const targetNodeId = workflow.nodes[swapTargetIndex]?.id ?? "";
@@ -298,6 +273,40 @@ export const getDisallowedDependencyIdsForNode = (workflow: WorkflowDefinition, 
   return disallowed;
 };
 
+/**
+ * Topological sort of node IDs by dependency edges.
+ * Returns node IDs in execution order (upstream before downstream).
+ * Orphan nodes (no edges) are appended at the end in original order.
+ */
+export const topologicalSortNodeIds = (workflow: WorkflowDefinition): string[] => {
+  const incoming = new Map<string, number>();
+  for (const n of workflow.nodes) incoming.set(n.id, 0);
+  for (const e of workflow.edges) {
+    if (e.when === null) incoming.set(e.to, (incoming.get(e.to) ?? 0) + 1);
+  }
+  const outgoing = new Map<string, string[]>();
+  for (const n of workflow.nodes) outgoing.set(n.id, []);
+  for (const e of workflow.edges) {
+    if (e.when === null) outgoing.set(e.from, [...(outgoing.get(e.from) ?? []), e.to]);
+  }
+  const queue = workflow.nodes.filter((n) => (incoming.get(n.id) ?? 0) === 0).map((n) => n.id);
+  const sorted: string[] = [];
+  while (queue.length > 0) {
+    const id = queue.shift()!;
+    sorted.push(id);
+    for (const next of outgoing.get(id) ?? []) {
+      const deg = (incoming.get(next) ?? 1) - 1;
+      incoming.set(next, deg);
+      if (deg === 0) queue.push(next);
+    }
+  }
+  const sortedSet = new Set(sorted);
+  for (const n of workflow.nodes) {
+    if (!sortedSet.has(n.id)) sorted.push(n.id);
+  }
+  return sorted;
+};
+
 export const buildTemplateNodesFromWorkflow = (
   workflow: WorkflowDefinition | null,
   pipeline: PipelineNode[],
@@ -309,8 +318,7 @@ export const buildTemplateNodesFromWorkflow = (
       return {
         id: node.id,
         title: node.name ?? fallback?.title ?? node.id,
-        executor:
-          node.executor ??
+        executor: node.executor ??
           fallback?.executor ?? {
             agentId: "operator-main",
             role: "operator",
@@ -420,9 +428,8 @@ export const buildAgentCards = (
     const ownedNodes = pipeline.filter((node) => node.executor.agentId === agent.id);
     const busy = (timelineBusyCounts[agent.id] ?? 0) > 0;
     const lastAgentEvent =
-      timeline.find(
-        (item) => item.text.includes(`Agent ${agent.id} `) || item.text.includes(`agent:${agent.id}`),
-      )?.text ?? "";
+      timeline.find((item) => item.text.includes(`Agent ${agent.id} `) || item.text.includes(`agent:${agent.id}`))
+        ?.text ?? "";
     const lastAgentEventField = extractEventField(lastAgentEvent);
     const output = agentOutputById[agent.id];
     const lastNode = ownedNodes
@@ -470,175 +477,17 @@ const isApiErrorLike = (value: unknown): value is ApiError => {
   return typeof candidate.status === "number";
 };
 
-export const getApiErrorMessage = (error: unknown) =>
-  isApiErrorLike(error)
-    ? String(
-      (() => {
-        const body = ((error as { body?: unknown }).body as { error?: string; detail?: string } | null) ?? null;
-        if (body?.error && body?.detail) return `${body.error}: ${body.detail}`;
-        return body?.error ?? `HTTP ${(error as { status: number }).status}`;
-      })(),
-    )
-    : error instanceof Error
-      ? error.message
-      : "unknown_error";
-
-// Validation messages include node/edge/group IDs in interpolation values.
-// Evaluated for information-leak risk (L-17): these IDs are user-authored, visible
-// throughout the admin UI, and essential for the pipeline author to locate the
-// exact problem. Removing them would degrade the editing experience. Kept as-is.
-export const validateWorkflowBeforeSave = (workflow: WorkflowDefinition): { ok: true } | { ok: false; message: string } => {
-  if (workflow.version !== "3.0") {
-    return { ok: false, message: i18n.t("common:validation.versionInvalid", { version: String(workflow.version) }) };
+export const getApiErrorMessage = (error: unknown) => {
+  if (isApiErrorLike(error)) {
+    const body = (error as { body?: unknown }).body;
+    if (typeof body === "string") return body;
+    if (body && typeof body === "object") {
+      const record = body as { error?: string; detail?: string };
+      return record.detail || record.error || error.message || `HTTP ${(error as { status: number }).status}`;
+    }
+    return error.message || `HTTP ${(error as { status: number }).status}`;
   }
-  if (!Array.isArray(workflow.nodes) || !Array.isArray(workflow.edges) || !Array.isArray(workflow.groups)) {
-    return { ok: false, message: i18n.t("common:validation.mustBeArray") };
-  }
-  const nodeIds = new Set(workflow.nodes.map((node) => node.id));
-  const groupIds = new Set(workflow.groups.map((group) => group.id));
-  const entityIds = new Set<string>([...nodeIds, ...groupIds]);
-  if (nodeIds.size !== workflow.nodes.length) {
-    return { ok: false, message: i18n.t("common:validation.duplicateNodeId") };
-  }
-  if (groupIds.size !== workflow.groups.length) {
-    return { ok: false, message: i18n.t("common:validation.duplicateGroupId") };
-  }
-  const edgeSeen = new Set<string>();
-  const outgoingKindsBySource = new Map<string, Set<"dependency" | "route">>();
-  const outgoingEdgesBySource = new Map<string, Array<{ from: string; to: string; when: string | null }>>();
-  const outgoingBySource = new Map<string, string[]>();
-  const indegreeByEntity = new Map<string, number>([...entityIds].map((id) => [id, 0]));
-  for (const edge of workflow.edges) {
-    if (!entityIds.has(edge.from) || !entityIds.has(edge.to)) {
-      return { ok: false, message: i18n.t("common:validation.edgeReferencesMissing", { from: edge.from, to: edge.to }) };
-    }
-    if (edge.from === edge.to) {
-      return { ok: false, message: i18n.t("common:validation.selfLoopEdge", { from: edge.from, to: edge.to }) };
-    }
-    const key = `${edge.from}|${edge.to}|${edge.when ?? ""}`;
-    if (edgeSeen.has(key)) return { ok: false, message: i18n.t("common:validation.duplicateEdge", { from: edge.from, to: edge.to }) };
-    edgeSeen.add(key);
-    const kind: "dependency" | "route" = edge.when === null ? "dependency" : "route";
-    const kinds = outgoingKindsBySource.get(edge.from) ?? new Set<"dependency" | "route">();
-    kinds.add(kind);
-    outgoingKindsBySource.set(edge.from, kinds);
-    outgoingEdgesBySource.set(edge.from, [...(outgoingEdgesBySource.get(edge.from) ?? []), edge]);
-    outgoingBySource.set(edge.from, [...(outgoingBySource.get(edge.from) ?? []), edge.to]);
-    indegreeByEntity.set(edge.to, (indegreeByEntity.get(edge.to) ?? 0) + 1);
-  }
-  // Non-routing nodes cannot mix outgoing edge types; for routing nodes the sole unconditional edge is limited to "yes" mainline semantics.
-  for (const [sourceId, kinds] of outgoingKindsBySource.entries()) {
-    if (kinds.size <= 1) continue;
-    const sourceNode = workflow.nodes.find((node) => node.id === sourceId);
-    if (sourceNode?.routePolicy) continue;
-    return { ok: false, message: i18n.t("common:validation.mixedEdgeTypes", { nodeId: sourceId }) };
-  }
-
-  for (const node of workflow.nodes) {
-    const allowed = node.routePolicy?.allowed ?? [];
-    if (allowed.length === 0) continue;
-    if (!allowed.includes(MAINLINE_ROUTE_VALUE) || !allowed.includes(DEFAULT_BRANCH_ROUTE_VALUE)) {
-      return { ok: false, message: i18n.t("common:validation.routeMustContainYesNo", { nodeId: node.id }) };
-    }
-    const outgoingEdges = outgoingEdgesBySource.get(node.id) ?? [];
-    const dependencyEdges = outgoingEdges.filter((edge) => edge.when === null);
-    if (dependencyEdges.length > 1) {
-      return { ok: false, message: i18n.t("common:validation.yesMainlineMaxOne", { nodeId: node.id }) };
-    }
-    const routeEdgeCounts = new Map<string, number>();
-    for (const edge of outgoingEdges.filter((item) => item.when !== null)) {
-      routeEdgeCounts.set(edge.when ?? "", (routeEdgeCounts.get(edge.when ?? "") ?? 0) + 1);
-      if (edge.when === MAINLINE_ROUTE_VALUE) {
-        return { ok: false, message: i18n.t("common:validation.yesCannotBeRouteEdge", { nodeId: node.id }) };
-      }
-      if (!allowed.includes(edge.when ?? "")) {
-        return { ok: false, message: i18n.t("common:validation.undeclaredRouteEdge", { nodeId: node.id, route: edge.when }) };
-      }
-      const targetNode = workflow.nodes.find((candidate) => candidate.id === edge.to);
-      const targetGroup = workflow.groups.find((group) => group.id === edge.to);
-      const targetGroupMembers = targetGroup
-        ? targetGroup.members.map((memberId) => workflow.nodes.find((candidate) => candidate.id === memberId)).filter(Boolean)
-        : [];
-      const isBranchTarget = targetNode?.lane === "branch" || (targetGroupMembers.length > 0 && targetGroupMembers.every((member) => member?.lane === "branch"));
-      if (!isBranchTarget) {
-        return { ok: false, message: i18n.t("common:validation.routeMustTargetBranch", { nodeId: node.id, route: edge.when }) };
-      }
-    }
-    for (const route of allowed.filter((item) => item !== MAINLINE_ROUTE_VALUE)) {
-      if ((routeEdgeCounts.get(route) ?? 0) !== 1) {
-        return { ok: false, message: i18n.t("common:validation.routeTargetMustBeOne", { nodeId: node.id, route }) };
-      }
-    }
-  }
-
-  // These constraints must be enforced on the frontend; otherwise users would only see the backend rejection after submitting, making the editing experience "fix after error".
-  for (const group of workflow.groups) {
-    if (group.type !== "parallel") {
-      return { ok: false, message: i18n.t("common:validation.groupTypeInvalid", { groupId: group.id }) };
-    }
-    if (!Array.isArray(group.members) || group.members.length < 2) {
-      return { ok: false, message: i18n.t("common:validation.groupMinMembers", { groupId: group.id }) };
-    }
-    const memberSet = new Set(group.members);
-    if (memberSet.size !== group.members.length) {
-      return { ok: false, message: i18n.t("common:validation.groupDuplicateMembers", { groupId: group.id }) };
-    }
-    for (const memberId of group.members) {
-      if (!nodeIds.has(memberId)) {
-        return { ok: false, message: i18n.t("common:validation.groupMemberMissing", { groupId: group.id, memberId }) };
-      }
-    }
-  }
-
-  const explicitGroupById = new Map(workflow.groups.map((group) => [group.id, group]));
-  for (const node of workflow.nodes) {
-    const groupId = (node.parallelGroupId ?? "").trim();
-    if (!groupId) continue;
-    const group = explicitGroupById.get(groupId);
-    if (!group) {
-      return { ok: false, message: i18n.t("common:validation.nodeGroupMissing", { nodeId: node.id, groupId }) };
-    }
-    if (!group.members.includes(node.id)) {
-      return { ok: false, message: i18n.t("common:validation.nodeNotInGroup", { nodeId: node.id, groupId }) };
-    }
-  }
-
-  for (const group of workflow.groups) {
-    const memberSet = new Set(group.members);
-    const groupIncoming = new Set(
-      workflow.edges
-        .filter((edge) => edge.to === group.id)
-        .map((edge) => edge.from),
-    );
-    for (const edge of workflow.edges) {
-      if (edge.when !== null) continue;
-      if (!memberSet.has(edge.to)) continue;
-      if (edge.from === group.id) {
-        return { ok: false, message: i18n.t("common:validation.groupCannotDirectConnect", { groupId: group.id }) };
-      }
-      if (memberSet.has(edge.from)) {
-        return { ok: false, message: i18n.t("common:validation.groupMemberNoDirectDep", { groupId: group.id }) };
-      }
-      if (groupIncoming.has(edge.from)) {
-        return { ok: false, message: i18n.t("common:validation.groupEntryCannotDirectConnect", { groupId: group.id }) };
-      }
-    }
-  }
-
-  // DAG cycles must be caught on the frontend; otherwise the rejection only comes after save, making it hard for users to locate the problem.
-  const queue = [...[...entityIds].filter((id) => (indegreeByEntity.get(id) ?? 0) === 0)];
-  let visited = 0;
-  while (queue.length > 0) {
-    const current = queue.shift()!;
-    visited += 1;
-    for (const next of outgoingBySource.get(current) ?? []) {
-      const nextDegree = (indegreeByEntity.get(next) ?? 0) - 1;
-      indegreeByEntity.set(next, nextDegree);
-      if (nextDegree === 0) queue.push(next);
-    }
-  }
-  if (visited !== entityIds.size) {
-    return { ok: false, message: i18n.t("common:validation.workflowHasCycle") };
-  }
-  return { ok: true };
+  if (error instanceof Error) return error.message;
+  return "unknown_error";
 };
+

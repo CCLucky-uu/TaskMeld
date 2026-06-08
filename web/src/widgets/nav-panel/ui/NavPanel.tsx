@@ -53,14 +53,12 @@ export function NavPanel({
           // Close floating drawer on mobile after click
           onCloseDrawer?.();
         }}
-        aria-label={t('backToHome')}
-        title={t('backToHome')}
+        aria-label={t("backToHome")}
+        title={t("backToHome")}
       >
         <TaskMeldIcon className="h-7 w-7 shrink-0 text-(--live)" />
         {showLabels ? (
-          <strong className="truncate text-[18px] leading-[1.1] font-bold text-(--live)">
-            TaskMeld
-          </strong>
+          <strong className="truncate text-[18px] leading-[1.1] font-bold text-(--live)">TaskMeld</strong>
         ) : null}
       </button>
       {navItems.map(({ key, label, icon: Icon }) => (

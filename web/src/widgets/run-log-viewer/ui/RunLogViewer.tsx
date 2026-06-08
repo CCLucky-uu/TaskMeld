@@ -24,7 +24,8 @@ type RunLogViewerProps = {
 };
 
 const runLogLevelGroupClassName = "flex flex-wrap gap-2";
-const runLogLevelLabelBaseClassName = "inline-flex cursor-pointer items-center gap-1.5 rounded-none px-2 py-[2px] text-xs uppercase";
+const runLogLevelLabelBaseClassName =
+  "inline-flex cursor-pointer items-center gap-1.5 rounded-none px-2 py-[2px] text-xs uppercase";
 const runLogLevelLabelToneClassName: Record<"info" | "warn" | "error", string> = {
   info: "bg-[rgba(142,163,179,0.2)] text-[#a5b9c8]",
   warn: "bg-[rgba(255,184,77,0.16)] text-[var(--warn)]",
@@ -62,10 +63,7 @@ export function RunLogViewer({ open, runId, onClose }: RunLogViewerProps) {
     };
   }, [open]);
 
-  const detailText = useMemo(
-    () => stringifyRunLogDetail(vm.selectedItem?.detail),
-    [vm.selectedItem],
-  );
+  const detailText = useMemo(() => stringifyRunLogDetail(vm.selectedItem?.detail), [vm.selectedItem]);
   const detailHeight = useMemo(
     () => predictRunLogDetailHeight(vm.selectedItem?.detail, detailWidth),
     [vm.selectedItem, detailWidth],
@@ -73,8 +71,16 @@ export function RunLogViewer({ open, runId, onClose }: RunLogViewerProps) {
 
   return (
     <>
-      <div className={`${modalMaskBaseClassName} ${open ? modalMaskOpenClassName : modalMaskClosedClassName}`} onClick={onClose} aria-hidden={!open} />
-      <aside className={`${modalFrameBaseClassName} ${open ? modalFrameOpenClassName : modalFrameClosedClassName}`} aria-hidden={!open} onClick={onClose}>
+      <div
+        className={`${modalMaskBaseClassName} ${open ? modalMaskOpenClassName : modalMaskClosedClassName}`}
+        onClick={onClose}
+        aria-hidden={!open}
+      />
+      <aside
+        className={`${modalFrameBaseClassName} ${open ? modalFrameOpenClassName : modalFrameClosedClassName}`}
+        aria-hidden={!open}
+        onClick={onClose}
+      >
         <div
           className={`${modalPanelBaseClassName} grid max-h-[92vh] w-[min(1400px,97vw)] grid-rows-[auto_auto_auto_minmax(0,1fr)] gap-3 max-[760px]:h-screen max-[760px]:max-h-screen max-[760px]:w-screen`}
           onClick={(event) => event.stopPropagation()}
@@ -84,7 +90,12 @@ export function RunLogViewer({ open, runId, onClose }: RunLogViewerProps) {
               <h2>{t("runLog")}</h2>
               <p className={`${modalSublineClassName} ${monoClassName}`}>run={runId || "-"}</p>
             </div>
-            <button className={drawerCloseClassName} type="button" onClick={onClose} aria-label={t("common:action.close")}>
+            <button
+              className={drawerCloseClassName}
+              type="button"
+              onClick={onClose}
+              aria-label={t("common:action.close")}
+            >
               <CloseIcon />
             </button>
           </div>
@@ -104,7 +115,11 @@ export function RunLogViewer({ open, runId, onClose }: RunLogViewerProps) {
             </label>
             <label className="min-w-40 flex-[0_1_180px]">
               <span className={fieldLabelClassName}>{t("sortOrder")}</span>
-              <select className={controlInputMonoClassName} value={vm.order} onChange={(event) => vm.setOrder(event.target.value as "asc" | "desc")}>
+              <select
+                className={controlInputMonoClassName}
+                value={vm.order}
+                onChange={(event) => vm.setOrder(event.target.value as "asc" | "desc")}
+              >
                 <option value="desc">{t("sortNewestFirst")}</option>
                 <option value="asc">{t("sortOldestFirst")}</option>
               </select>
@@ -113,7 +128,10 @@ export function RunLogViewer({ open, runId, onClose }: RunLogViewerProps) {
               <span className={fieldLabelClassName}>{t("level")}</span>
               <div className={runLogLevelGroupClassName}>
                 {(["info", "warn", "error"] as const).map((level) => (
-                  <label key={level} className={`${runLogLevelLabelBaseClassName} ${runLogLevelLabelToneClassName[level]}`}>
+                  <label
+                    key={level}
+                    className={`${runLogLevelLabelBaseClassName} ${runLogLevelLabelToneClassName[level]}`}
+                  >
                     <input
                       type="checkbox"
                       checked={vm.selectedLevels.includes(level)}
@@ -125,9 +143,15 @@ export function RunLogViewer({ open, runId, onClose }: RunLogViewerProps) {
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
-              <button className={actionButtonClassName} type="button" onClick={vm.applyFilters}>{t("applyFilters")}</button>
-              <button className={actionButtonClassName} type="button" onClick={vm.resetFilters}>{t("reset")}</button>
-              <a className={actionButtonClassName} href={vm.rawUrl} target="_blank" rel="noreferrer">{t("rawNdjson")}</a>
+              <button className={actionButtonClassName} type="button" onClick={vm.applyFilters}>
+                {t("applyFilters")}
+              </button>
+              <button className={actionButtonClassName} type="button" onClick={vm.resetFilters}>
+                {t("reset")}
+              </button>
+              <a className={actionButtonClassName} href={vm.rawUrl} target="_blank" rel="noreferrer">
+                {t("rawNdjson")}
+              </a>
             </div>
           </div>
 
@@ -138,9 +162,24 @@ export function RunLogViewer({ open, runId, onClose }: RunLogViewerProps) {
           </div>
 
           <div className="grid min-h-0 gap-3 min-[761px]:grid-cols-[minmax(420px,1.2fr)_minmax(340px,0.95fr)] max-[760px]:grid-cols-1">
-            <section className="grid min-h-0 grid-rows-[minmax(0,1fr)] overflow-hidden border border-(--line) bg-[rgba(15,23,29,0.72)]" ref={listRef}>
-              {vm.error ? <div className={`${monoClassName} grid min-h-45 place-items-center p-6 text-center text-xs text-(--muted)`}>{t("loadFailed", { error: vm.error })}</div> : null}
-              {!vm.error && vm.items.length === 0 && !vm.loading ? <div className={`${monoClassName} grid min-h-45 place-items-center p-6 text-center text-xs text-(--muted)`}>{t("noMatch")}</div> : null}
+            <section
+              className="grid min-h-0 grid-rows-[minmax(0,1fr)] overflow-hidden border border-(--line) bg-[rgba(15,23,29,0.72)]"
+              ref={listRef}
+            >
+              {vm.error ? (
+                <div
+                  className={`${monoClassName} grid min-h-45 place-items-center p-6 text-center text-xs text-(--muted)`}
+                >
+                  {t("loadFailed", { error: vm.error })}
+                </div>
+              ) : null}
+              {!vm.error && vm.items.length === 0 && !vm.loading ? (
+                <div
+                  className={`${monoClassName} grid min-h-45 place-items-center p-6 text-center text-xs text-(--muted)`}
+                >
+                  {t("noMatch")}
+                </div>
+              ) : null}
               {vm.items.map((item) => (
                 <button
                   key={item.id}
@@ -155,13 +194,24 @@ export function RunLogViewer({ open, runId, onClose }: RunLogViewerProps) {
                       {t(item.level)}
                     </span>
                   </div>
-                  <p className="m-0 wrap-break-word whitespace-pre-wrap font-[JetBrains_Mono,monospace] text-[13px] leading-normal">{item.text}</p>
+                  <p className="m-0 wrap-break-word whitespace-pre-wrap font-[JetBrains_Mono,monospace] text-[13px] leading-normal">
+                    {item.text}
+                  </p>
                 </button>
               ))}
-              {vm.loading ? <div className={`${monoClassName} grid min-h-45 place-items-center p-6 text-center text-xs text-(--muted)`}>{t("loading")}</div> : null}
+              {vm.loading ? (
+                <div
+                  className={`${monoClassName} grid min-h-45 place-items-center p-6 text-center text-xs text-(--muted)`}
+                >
+                  {t("loading")}
+                </div>
+              ) : null}
             </section>
 
-            <aside className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)] border border-(--line) bg-[rgba(15,23,29,0.72)]" ref={detailRef}>
+            <aside
+              className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)] border border-(--line) bg-[rgba(15,23,29,0.72)]"
+              ref={detailRef}
+            >
               {vm.selectedItem ? (
                 <>
                   <div className="border-b border-(--line) p-3">
@@ -175,11 +225,17 @@ export function RunLogViewer({ open, runId, onClose }: RunLogViewerProps) {
                     </div>
                   </div>
                   <div className="min-h-0 overflow-auto" style={{ minHeight: `${detailHeight}px` }}>
-                    <pre className="m-0 p-3 font-[JetBrains_Mono,monospace] text-[13px] leading-normal wrap-break-word whitespace-pre-wrap text-(--text)">{detailText}</pre>
+                    <pre className="m-0 p-3 font-[JetBrains_Mono,monospace] text-[13px] leading-normal wrap-break-word whitespace-pre-wrap text-(--text)">
+                      {detailText}
+                    </pre>
                   </div>
                 </>
               ) : (
-                <div className={`${monoClassName} grid min-h-45 place-items-center p-6 text-center text-xs text-(--muted)`}>{t("selectToViewDetail")}</div>
+                <div
+                  className={`${monoClassName} grid min-h-45 place-items-center p-6 text-center text-xs text-(--muted)`}
+                >
+                  {t("selectToViewDetail")}
+                </div>
               )}
             </aside>
           </div>

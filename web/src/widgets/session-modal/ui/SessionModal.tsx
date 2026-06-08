@@ -1,10 +1,14 @@
-import { FormEvent, KeyboardEvent as ReactKeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useTranslation } from "react-i18next";
 import {
-  AgentCoreFileItem,
-  fetchAgentCoreFileContent,
-  fetchAgentCoreFiles,
-} from "../../../entities/agent";
+  FormEvent,
+  KeyboardEvent as ReactKeyboardEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { useTranslation } from "react-i18next";
+import { AgentCoreFileItem, fetchAgentCoreFileContent, fetchAgentCoreFiles } from "../../../entities/agent";
 import { SendMode, SessionItem } from "../../../entities/session";
 import { fetchSessionHistory, SessionHistoryItem } from "../../../entities/session";
 import { onWsEvent } from "../../../shared/ws-client";
@@ -493,20 +497,32 @@ export function SessionModal({
     sessionFormRef.current?.requestSubmit();
   }, []);
 
-
   return (
     <>
-      <div className={`${modalMaskBaseClassName} ${open ? modalMaskOpenClassName : modalMaskClosedClassName}`} onClick={onClose} aria-hidden={!open} />
+      <div
+        className={`${modalMaskBaseClassName} ${open ? modalMaskOpenClassName : modalMaskClosedClassName}`}
+        onClick={onClose}
+        aria-hidden={!open}
+      />
       <aside
         ref={modalRef}
         className={`${modalFrameBaseClassName} ${open ? modalFrameOpenClassName : modalFrameClosedClassName}`}
         aria-hidden={!open}
         onClick={onClose}
       >
-        <div className={`${modalPanelBaseClassName} grid h-[min(88vh,calc(100vh-24px))] max-h-[88vh] w-[min(1320px,98vw)] grid-rows-[auto_minmax(0,1fr)] overflow-hidden p-0 max-[760px]:h-screen max-[760px]:max-h-screen max-[760px]:w-screen`} onClick={(event) => event.stopPropagation()}>
+        <div
+          className={`${modalPanelBaseClassName} grid h-[min(88vh,calc(100vh-24px))] max-h-[88vh] w-[min(1320px,98vw)] grid-rows-[auto_minmax(0,1fr)] overflow-hidden p-0 max-[760px]:h-screen max-[760px]:max-h-screen max-[760px]:w-screen`}
+          onClick={(event) => event.stopPropagation()}
+        >
           <div className={`${panelHeaderClassName} px-3 pt-3`}>
             <h2>{t("sessionTools")}</h2>
-            <button className={drawerCloseClassName} type="button" onClick={onClose} aria-label={t("closeSessionModal")} title={t("cancel")}>
+            <button
+              className={drawerCloseClassName}
+              type="button"
+              onClick={onClose}
+              aria-label={t("closeSessionModal")}
+              title={t("cancel")}
+            >
               <CloseIcon />
             </button>
           </div>
@@ -519,9 +535,7 @@ export function SessionModal({
               >
                 {t("session")}
               </button>
-              <div className="mt-1 px-0.5 py-1 text-xs text-[var(--muted)]">
-                {t("coreFiles")}
-              </div>
+              <div className="mt-1 px-0.5 py-1 text-xs text-[var(--muted)]">{t("coreFiles")}</div>
               <div className="mt-0.5 grid gap-1.5 pt-2">
                 {coreFilesLoading ? <p>{t("loading")}</p> : null}
                 {!coreFilesLoading && coreFiles.length === 0 ? <p>{t("noFiles")}</p> : null}
@@ -545,7 +559,11 @@ export function SessionModal({
 
             <div className="h-full min-h-0 overflow-hidden bg-transparent px-0 pt-[10px] pb-3">
               {activePanel === "session" ? (
-                <form ref={sessionFormRef} onSubmit={handleSessionSubmit} className="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)_auto]">
+                <form
+                  ref={sessionFormRef}
+                  onSubmit={handleSessionSubmit}
+                  className="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)_auto]"
+                >
                   <div className="px-3 pb-2">
                     <div className="grid gap-[10px] grid-cols-[minmax(0,1fr)_minmax(220px,34%)] max-[760px]:grid-cols-1">
                       <div className="grid gap-1.5">
@@ -582,7 +600,9 @@ export function SessionModal({
 
                   <div className="relative h-full min-h-0 overflow-hidden">
                     {isDev ? (
-                      <div className={`${monoClassName} pointer-events-none absolute top-2 right-3 z-[3] border border-[rgba(142,163,179,0.28)] bg-[rgba(7,12,16,0.78)] px-[6px] py-[3px] text-xs leading-[1.2] text-[#9ab1c2]`}>
+                      <div
+                        className={`${monoClassName} pointer-events-none absolute top-2 right-3 z-[3] border border-[rgba(142,163,179,0.28)] bg-[rgba(7,12,16,0.78)] px-[6px] py-[3px] text-xs leading-[1.2] text-[#9ab1c2]`}
+                      >
                         rendered {virtualStats.rendered} / total {virtualStats.total}
                       </div>
                     ) : null}
@@ -611,7 +631,11 @@ export function SessionModal({
                       />
                     </div>
                     {!historyStatusText && showScrollToBottom ? (
-                      <button className="absolute bottom-3 left-1/2 z-[2] -translate-x-1/2 cursor-pointer border border-[var(--line)] bg-[rgba(15,23,29,0.92)] px-[10px] py-1 text-xs text-[var(--text)] hover:border-[var(--live)] hover:text-[var(--live)]" type="button" onClick={() => scrollHistoryToBottom("smooth")}>
+                      <button
+                        className="absolute bottom-3 left-1/2 z-[2] -translate-x-1/2 cursor-pointer border border-[var(--line)] bg-[rgba(15,23,29,0.92)] px-[10px] py-1 text-xs text-[var(--text)] hover:border-[var(--live)] hover:text-[var(--live)]"
+                        type="button"
+                        onClick={() => scrollHistoryToBottom("smooth")}
+                      >
                         {t("scrollToBottom")}
                       </button>
                     ) : null}
@@ -627,8 +651,14 @@ export function SessionModal({
                         placeholder={hasSessions ? t("inputPlaceholder") : t("inputPlaceholderNoSession")}
                         className={`${controlTextAreaMonoClassName} block min-h-[86px] max-h-[220px] resize-none pb-8 pr-11`}
                       />
-                      <button className={`${actionButtonClassName} absolute right-[10px] bottom-[10px] m-0 inline-flex h-7 w-7 min-w-7 items-center justify-center p-0`} type="submit" disabled={!hasSessions || !selectedSessionId}>
-                        <span className="absolute h-px w-px overflow-hidden whitespace-nowrap border-0 p-0 [-webkit-clip-path:inset(50%)] [clip:rect(0,0,0,0)]">{t("sendMessage")}</span>
+                      <button
+                        className={`${actionButtonClassName} absolute right-[10px] bottom-[10px] m-0 inline-flex h-7 w-7 min-w-7 items-center justify-center p-0`}
+                        type="submit"
+                        disabled={!hasSessions || !selectedSessionId}
+                      >
+                        <span className="absolute h-px w-px overflow-hidden whitespace-nowrap border-0 p-0 [-webkit-clip-path:inset(50%)] [clip:rect(0,0,0,0)]">
+                          {t("sendMessage")}
+                        </span>
                         <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false">
                           <path
                             d="M4 12h12m0 0-4-4m4 4-4 4M4 5v6"

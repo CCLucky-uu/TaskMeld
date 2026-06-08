@@ -17,14 +17,24 @@ export class ApiError extends Error {
   }
 }
 
+const extractErrorMessage = (error: unknown): string => {
+  if (!error) return "request_failed";
+  if (typeof error === "string") return error;
+  if (typeof error === "object") {
+    const record = error as Record<string, unknown>;
+    const detail = typeof record.detail === "string" ? record.detail : "";
+    const err = typeof record.error === "string" ? record.error : "";
+    return detail || err || String(error);
+  }
+  return String(error);
+};
+
 // WS request client
 type PendingRequest = {
   resolve: (payload: unknown) => void;
   reject: (error: Error) => void;
-  timer: ReturnType<typeof setTimeout>;
 };
 
-const DEFAULT_TIMEOUT_MS = 15_000;
 let requestCounter = 0;
 const pending = new Map<string, PendingRequest>();
 const eventHandlers = new Set<(event: GatewayWsEvent) => void>();
@@ -48,7 +58,10 @@ const connect = (): Promise<void> => {
   connectPromise = new Promise((resolve, reject) => {
     ws = new WebSocket(`${WS_BASE}/api/ws`);
     ws.onopen = () => {
-      if (disposed) { ws?.close(); return; }
+      if (disposed) {
+        ws?.close();
+        return;
+      }
       connectPromise = null;
       connectError = null;
       resolve();
@@ -60,13 +73,16 @@ const connect = (): Promise<void> => {
     };
     ws.onmessage = (raw) => {
       let frame: { type?: string; id?: string; ok?: boolean; payload?: unknown; error?: unknown };
-      try { frame = JSON.parse(raw.data as string); } catch { return; }
+      try {
+        frame = JSON.parse(raw.data as string);
+      } catch {
+        return;
+      }
       if (frame.type === "res" && frame.id && pending.has(frame.id)) {
         const entry = pending.get(frame.id)!;
-        clearTimeout(entry.timer);
         pending.delete(frame.id);
         if (frame.ok) entry.resolve(frame.payload);
-        else entry.reject(new ApiError(String(frame.error ?? "request_failed"), 500, frame.error));
+        else entry.reject(new ApiError(extractErrorMessage(frame.error), 500, frame.error));
         return;
       }
       const event = parseGatewayWsEvent(raw.data as string);
@@ -77,7 +93,9 @@ const connect = (): Promise<void> => {
     ws.onclose = () => {
       connectPromise = null;
       if (!disposed) {
-        reconnectTimer = setTimeout(() => { connect().catch(() => {}); }, 1000);
+        reconnectTimer = setTimeout(() => {
+          connect().catch(() => {});
+        }, 1000);
       }
     };
   });
@@ -90,23 +108,18 @@ export const disconnect = () => {
   ws?.close();
 };
 
-export const wsRequest = async <T = unknown>(
-  method: string,
-  params: Record<string, unknown> = {},
-): Promise<T> => {
+export const wsRequest = async <T = unknown>(method: string, params: Record<string, unknown> = {}): Promise<T> => {
   await connect();
   const id = `req-${++requestCounter}`;
   return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => {
-      pending.delete(id);
-      reject(new Error(`request_timeout:${method}`));
-    }, DEFAULT_TIMEOUT_MS);
-    pending.set(id, { resolve: resolve as (p: unknown) => void, reject, timer });
+    pending.set(id, { resolve: resolve as (p: unknown) => void, reject });
     ws!.send(JSON.stringify({ type: "req", id, method, params }));
   });
 };
 
 export const onWsEvent = (handler: (event: GatewayWsEvent) => void): (() => void) => {
   eventHandlers.add(handler);
-  return () => { eventHandlers.delete(handler); };
+  return () => {
+    eventHandlers.delete(handler);
+  };
 };

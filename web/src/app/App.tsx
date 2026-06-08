@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ControlPlanePage } from "../pages/control-plane/ui/ControlPlanePage";
 import type { NavKey } from "../widgets/nav-panel/model/navItem";
+import { WevraChatPanel } from "../widgets/wevra-panel/ui/WevraChatPanel";
 import i18n from "../shared/i18n";
 
 const PIPELINE_ROUTE_PATH = "/pipeline";
@@ -56,7 +57,7 @@ export default function App() {
 
   const focusPipelineId =
     currentLocation.path === PIPELINE_ROUTE_PATH
-      ? new URLSearchParams(currentLocation.search).get("pipeline")?.trim() ?? ""
+      ? (new URLSearchParams(currentLocation.search).get("pipeline")?.trim() ?? "")
       : "";
 
   const ROUTE_MAP: Record<NavKey, string> = {
@@ -72,9 +73,8 @@ export default function App() {
   const handleNavigateByNav = useCallback(
     (label: NavKey, pipelineId?: string) => {
       const path = ROUTE_MAP[label] ?? OVERVIEW_ROUTE_PATH;
-      const query = label === "pipeline" && pipelineId?.trim()
-        ? `pipeline=${encodeURIComponent(pipelineId.trim())}`
-        : "";
+      const query =
+        label === "pipeline" && pipelineId?.trim() ? `pipeline=${encodeURIComponent(pipelineId.trim())}` : "";
       navigate(path, query);
     },
     [navigate],
@@ -157,6 +157,7 @@ export default function App() {
         {t("skipToContent")}
       </a>
       {content}
+      <WevraChatPanel />
     </>
   );
 }
