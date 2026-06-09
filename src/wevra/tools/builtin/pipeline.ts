@@ -554,7 +554,37 @@ CRITICAL RULES:
 4. Normal connect creates a dependency edge. Only use the route parameter when connecting FROM a router node to a specific branch target.
 
 Node types: "task" (default), "router" (for branching with routePolicy)
-Executor roles: "planner", "coder", "tester", "reviewer", "operator"`,
+Executor roles: "planner", "coder", "tester", "reviewer", "operator"
+
+── Node Output Format (ResultEnvelope) ──
+Every node, when executed by an Agent, outputs a structured JSON receipt. When writing a node's instruction, you MUST describe the expected artifact.content structure to the executing Agent. The system handles envelope fields (runId, nodeId, requestId, sessionId) automatically.
+
+Standard ResultEnvelope (for reference — do NOT include in instruction):
+{
+  "version": "2.0",
+  "runId": "<system-provided>",
+  "nodeId": "<system-provided>",
+  "requestId": "<system-provided>",
+  "sessionId": "<system-provided>",
+  "status": "success" | "failed",
+  "artifacts": [{
+    "type": "<must match this node's outputSpec.type>",
+    "schemaVersion": <must match this node's outputSpec.schemaVersion>,
+    "name": "primary",
+    "content": <any JSON value — the actual deliverable>,
+    "meta": {}
+  }],
+  "logs": [],
+  "error": null
+}
+
+Instruction writing rules:
+- Tell the Agent WHAT to do (specific task, not vague)
+- Tell the Agent WHAT upstream data is available and its expected structure
+- Tell the Agent WHAT to put in artifact.content (give an example if non-trivial)
+- For large output: instruct Agent to save to file, put { filePath, summary } in artifact.content
+- For routing nodes: instruct Agent to output artifact.content as array with "route" field per entry
+- outputSpec.type must be a descriptive identifier (e.g. "analysis-report", "code-change", "test-result")`,
       parameters: {
         type: "object",
         properties: {

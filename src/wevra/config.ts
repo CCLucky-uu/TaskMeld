@@ -488,9 +488,6 @@ export function addProvider(
   if (!baseUrl.trim()) return { ok: false, error: "baseUrl is required" }
   if (!apiKey.trim()) return { ok: false, error: "apiKey is required" }
   const id = providerId.trim().toLowerCase()
-  if (BUILTIN_PROVIDERS[id] && !readModelsJson().providers[id]) {
-    // Overriding a built-in provider is allowed (user provides their own API key)
-  }
   const config = readModelsJson()
   const providerModels = (models ?? []).map((m) => ({
     id: m.id,

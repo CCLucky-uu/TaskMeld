@@ -1,7 +1,7 @@
 import type { WsMethodRegistry } from "./types"
 import type { WsBroker } from "../ws-broker"
 import type { WevraAgent } from "../../wevra"
-import type { StreamEvent } from "../../wevra/types"
+import type { StreamEvent, QuestionRequest, QuestionAnswer } from "../../wevra/types"
 import { formatError } from "./utils"
 import {
   invalidateModelsCache,
@@ -31,6 +31,16 @@ const confirmPendings = new Map<
   }
 >()
 
+// question 桥：toolCallId → Promise resolve
+const questionPendings = new Map<
+  string,
+  {
+    resolve: (answer: QuestionAnswer) => void
+    reject: (err: Error) => void
+    timer: ReturnType<typeof setTimeout>
+  }
+>()
+
 function createConfirmCallback(conversationId: string) {
   return (req: {
     toolCallId: string
@@ -44,6 +54,19 @@ function createConfirmCallback(conversationId: string) {
         reject(new Error("confirm_timeout"))
       }, 120_000) // 2 minutes for user to respond
       confirmPendings.set(key, { resolve, reject, timer, toolName: req.toolName })
+    })
+  }
+}
+
+function createQuestionCallback(conversationId: string) {
+  return (req: QuestionRequest): Promise<QuestionAnswer> => {
+    return new Promise<QuestionAnswer>((resolve, reject) => {
+      const key = `${conversationId}:${req.toolCallId}`
+      const timer = setTimeout(() => {
+        questionPendings.delete(key)
+        reject(new Error("question_timeout"))
+      }, 600_000) // 10 minutes for user to answer
+      questionPendings.set(key, { resolve, reject, timer })
     })
   }
 }
@@ -370,20 +393,25 @@ export const registerWevraWsMethods = (registry: WsMethodRegistry): void => {
             .updateTokenUsage(conversationId, event.usage.promptTokens, event.usage.completionTokens)
             .catch(() => {})
         }
-        brokerInstance.broadcast({
-          type: "event",
-          method: "wevra.stream",
-          payload: {
-            sessionId: conversationId,
-            stream: mapStreamType(event.type),
-            phase: mapStreamPhase(event.type),
-            content: event.content,
-            toolCall: event.toolCall,
-            toolResult: event.toolResult,
-            usage: event.usage,
-            error: event.error,
-          },
-        })
+        const evAny = event as unknown as Record<string, unknown>
+        const payload: Record<string, unknown> = {
+          sessionId: conversationId,
+          stream: mapStreamType(event.type),
+          phase: mapStreamPhase(event.type),
+          content: event.content,
+          toolCall: event.toolCall,
+          toolResult: event.toolResult,
+          usage: event.usage,
+          error: event.error,
+        }
+        // Nest question fields so frontend reads p.question.{toolCallId, questions}
+        if (event.type === "question_request") {
+          payload.question = {
+            toolCallId: evAny.toolCallId ?? "",
+            questions: evAny.questions ?? [],
+          }
+        }
+        brokerInstance.broadcast({ type: "event", method: "wevra.stream", payload })
       }
       const onDebug = (dbg: unknown) => {
         if (!brokerInstance) return
@@ -393,6 +421,7 @@ export const registerWevraWsMethods = (registry: WsMethodRegistry): void => {
         await wevraInstance!.conversations.appendMessage(conversationId, msg)
       }
       const onConfirm = createConfirmCallback(conversationId)
+      const onQuestion = createQuestionCallback(conversationId)
 
       // Broadcast busy status
       if (brokerInstance) {
@@ -410,6 +439,7 @@ export const registerWevraWsMethods = (registry: WsMethodRegistry): void => {
           onDebug,
           onMessage,
           onConfirm,
+          onQuestion,
           providerId,
           modelId,
         })
@@ -569,6 +599,31 @@ export const registerWevraWsMethods = (registry: WsMethodRegistry): void => {
     }
   })
 
+  registry.register("wevra.ask-user", async (params) => {
+    if (!wevraInstance) return { ok: false, error: "wevra_not_initialized" }
+    try {
+      const conversationId = typeof params.conversationId === "string" ? params.conversationId.trim() : ""
+      const toolCallId = typeof params.toolCallId === "string" ? params.toolCallId.trim() : ""
+      if (!conversationId || !toolCallId) return { ok: false, error: "params_required" }
+
+      // answer is either { selected: [...] } or { text: "..." }
+      const answer = params.answer as QuestionAnswer | undefined
+      if (!answer) return { ok: false, error: "answer_required" }
+
+      const key = `${conversationId}:${toolCallId}`
+      const pending = questionPendings.get(key)
+      if (!pending) return { ok: false, error: "no_pending_question" }
+
+      clearTimeout(pending.timer)
+      questionPendings.delete(key)
+      pending.resolve(answer)
+
+      return { ok: true, payload: {} }
+    } catch (error) {
+      return { ok: false, error: formatError(error) }
+    }
+  })
+
   // ── 状态 ──
 
   registry.register("wevra.status", async () => {
@@ -586,6 +641,7 @@ function mapStreamType(eventType: StreamEvent["type"]): string {
   if (eventType.startsWith("text")) return "assistant"
   if (eventType.startsWith("tool")) return "tool"
   if (eventType.startsWith("confirm")) return "confirm"
+  if (eventType.startsWith("question")) return "question"
   return "meta"
 }
 function mapStreamPhase(eventType: StreamEvent["type"]): string {

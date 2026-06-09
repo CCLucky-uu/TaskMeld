@@ -23,6 +23,7 @@ import { createSystemTools } from "./tools/builtin/system"
 import { webTools } from "./tools/builtin/web"
 import { createMemoryTools } from "./tools/builtin/memory"
 import { createSkillTools } from "./tools/builtin/skill"
+import { createQuestionTool } from "./tools/builtin/question"
 
 export class WevraAgent {
   brain: Brain | null
@@ -260,6 +261,7 @@ export class WevraAgent {
       ...createSessionTools(s?.session),
       ...createSystemTools(s),
       ...webTools,
+      ...createQuestionTool(),
     ])
       this.toolRegistry.register(tool)
     for (const tool of createMemoryTools(this.memory)) this.toolRegistry.register(tool)

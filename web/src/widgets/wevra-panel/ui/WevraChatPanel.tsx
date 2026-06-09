@@ -1,9 +1,11 @@
 import { memo, useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { wsRequest, onWsEvent } from "../../../shared/ws-client";
-import type { WevraStreamPayload, WevraChatMessage, WevraModelInfo } from "../../../entities/wevra";
+import type { WevraStreamPayload, WevraChatMessage, WevraModelInfo, WevraQuestionItem } from "../../../entities/wevra";
 import { restoreMessages, type RawMessage, type ConvMeta } from "../model/history-restore";
 import { DebugPanel } from "./DebugPanel";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { ChatInputArea } from "./ChatInputArea";
+import type { InlineQuestionHandle } from "./InlineQuestion";
 import { ModelConfigModal } from "./ModelConfigModal";
 import { debugBus } from "../lib/debug-bus";
 import { CloseIcon, MarkdownViewer, PlusIcon } from "../../../shared/ui";
@@ -172,6 +174,48 @@ export function WevraChatPanel({ open: extOpen, onClose: extClose }: { open?: bo
     name: string;
     args: Record<string, unknown>;
   }>({ id: "", name: "", args: {} });
+  const [questionOpen, setQuestionOpen] = useState(false);
+  const [questionConvId, setQuestionConvId] = useState("");
+  const [questionToolCallId, setQuestionToolCallId] = useState("");
+  const [questionItems, setQuestionItems] = useState<WevraQuestionItem[]>([]);
+  const [questionOtherActive, setQuestionOtherActive] = useState(false);
+  const [questionOtherText, setQuestionOtherText] = useState("");
+  const questionRef = useRef<InlineQuestionHandle>(null);
+  // Track if a question answer was just sent — skip clearing streamConvRef on next idle
+  const questionAnswerJustSent = useRef(false);
+
+  // Restore question from localStorage on mount (survives page refresh)
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("wevra-pending-question");
+      if (stored) {
+        const data = JSON.parse(stored);
+        // Expire after 10 minutes (backend timeout)
+        if (data.ts && Date.now() - data.ts < 600_000) {
+          setQuestionOpen(true);
+          setQuestionConvId(data.convId || "");
+          setQuestionToolCallId(data.toolCallId || "");
+          setQuestionItems(data.items || []);
+        } else {
+          localStorage.removeItem("wevra-pending-question");
+        }
+      }
+    } catch { /* ignore */ }
+  }, []);
+
+  // Persist question to localStorage when it changes
+  useEffect(() => {
+    if (questionOpen && questionConvId && questionItems.length > 0) {
+      localStorage.setItem("wevra-pending-question", JSON.stringify({
+        convId: questionConvId,
+        toolCallId: questionToolCallId,
+        items: questionItems,
+        ts: Date.now(),
+      }));
+    } else {
+      localStorage.removeItem("wevra-pending-question");
+    }
+  }, [questionOpen, questionConvId, questionToolCallId, questionItems]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const thinkTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -340,8 +384,23 @@ export function WevraChatPanel({ open: extOpen, onClose: extClose }: { open?: bo
           [p.sessionId]: p.phase === "busy",
         }));
         if (p.phase === "idle" && p.sessionId === streamConvRef.current) {
-          setStreaming(false);
-          streamConvRef.current = "";
+          // If a question answer was just sent, this idle is from the loop restart —
+          // don't clear streamConvRef so subsequent response events can pass through
+          if (questionAnswerJustSent.current) {
+            questionAnswerJustSent.current = false;
+            // Clear question state but keep streamConvRef active
+            setQuestionOpen(false);
+            setQuestionConvId("");
+            setQuestionOtherActive(false);
+            setQuestionOtherText("");
+          } else {
+            setStreaming(false);
+            streamConvRef.current = "";
+            setQuestionOpen(false);
+            setQuestionConvId("");
+            setQuestionOtherActive(false);
+            setQuestionOtherText("");
+          }
         }
         return;
       }
@@ -398,7 +457,8 @@ export function WevraChatPanel({ open: extOpen, onClose: extClose }: { open?: bo
         dispatch({ type: "appendContentToLast", content: p.content! });
       } else if (p.phase === "end") {
         setStreaming(false);
-        streamConvRef.current = "";
+        // Don't clear streamConvRef here — tool calls (e.g. ask_user) may still be pending.
+        // streamConvRef is cleared on "status idle" which fires when the entire turn completes.
         dispatch({ type: "patchLast", patch: { isStreaming: false } });
       }
     } else if (p.stream === "tool") {
@@ -437,6 +497,14 @@ export function WevraChatPanel({ open: extOpen, onClose: extClose }: { open?: bo
         setConfirmTool({ id: tc.id, name: tc.name, args: tc.arguments });
         setConfirmOpen(true);
       }
+    } else if (p.stream === "question") {
+      if (p.phase === "question_request" && (p as any).question) {
+        const q = (p as any).question;
+        setQuestionConvId(p.sessionId ?? activeId);
+        setQuestionToolCallId(String(q.toolCallId ?? ""));
+        setQuestionItems(Array.isArray(q.questions) ? q.questions : []);
+        setQuestionOpen(true);
+      }
     } else if (p.stream === "meta" && p.usage) {
       setContextUsed(p.usage.promptTokens);
     }
@@ -452,6 +520,29 @@ export function WevraChatPanel({ open: extOpen, onClose: extClose }: { open?: bo
       }).catch(() => {});
     },
     [activeId, confirmTool],
+  );
+
+  const handleQuestionAnswer = useCallback(
+    (answer: { answers: Array<{ question: string; selected: Array<{ label: string; description: string; isCustom?: boolean }> }> }) => {
+      // Re-activate stream ref BEFORE clearing question state
+      // After answer is processed, backend sends idle→busy→response,
+      // and streamConvRef must be set for response events to pass the filter
+      streamConvRef.current = activeId;
+      questionAnswerJustSent.current = true;
+      setQuestionOpen(false);
+      setQuestionConvId("");
+      setQuestionOtherActive(false);
+      setQuestionOtherText("");
+      const payload = answer.answers.length === 0
+        ? { answers: [], skipped: true }
+        : answer;
+      wsRequest("wevra.ask-user", {
+        conversationId: activeId,
+        toolCallId: questionToolCallId,
+        answer: payload,
+      }).catch(() => {});
+    },
+    [activeId, questionToolCallId],
   );
 
   const abort = useCallback(() => {
@@ -818,263 +909,51 @@ export function WevraChatPanel({ open: extOpen, onClose: extClose }: { open?: bo
                   </div>
                 )}
               </div>
-              <form ref={formRef} onSubmit={send}>
-                <div className="min-w-0 px-3 pb-3 pt-2">
-                  <div
-                    className={`group relative w-full min-w-0 rounded border bg-[#141c24] transition-[box-shadow,border-color] ${
-                      isBusy
-                        ? "border-[rgba(50,215,186,0.45)] shadow-[0_0_10px_rgba(50,215,186,0.18)]"
-                        : "border-[rgba(34,50,63,0.5)] shadow-[0_0_6px_rgba(50,215,186,0.08)] focus-within:border-[rgba(50,215,186,0.45)] focus-within:shadow-[0_0_10px_rgba(50,215,186,0.18)]"
-                    }`}
-                  >
-                    <button
-                      type="button"
-                      className="absolute top-0 right-0 z-10 h-3.5 w-3.5 bg-transparent border-none cursor-pointer p-0"
-                      onClick={() => setInputExpanded((v) => !v)}
-                      title={inputExpanded ? "Collapse" : "Expand"}
-                    >
-                      <span
-                        className={`block w-2 h-2 absolute top-0.5 right-0.5 border-t-2 border-r-2 rounded-tr-sm opacity-40 hover:opacity-80 transition-opacity ${inputExpanded ? "border-(--live)" : "border-(--muted)"}`}
-                      />
-                    </button>
-                    <textarea
-                      value={input}
-                      onChange={(e) => setInput(e.target.value)}
-                      onKeyDown={keyDown}
-                      rows={inputExpanded ? 10 : 3}
-                      placeholder="Type a message..."
-                      className={`block w-full resize-none border-0 bg-transparent px-2 py-2 text-sm text-(--text) outline-none placeholder:text-[rgba(142,163,179,0.35)] scrollbar-none [&::-webkit-scrollbar]:hidden ${inputExpanded ? "min-h-40 max-h-[50vh]" : "min-h-16 max-h-55"}`}
-                      disabled={streaming}
-                    />
-                    <div className="flex items-center justify-between px-2 pb-1">
-                      <div className="flex items-center">
-                        <button
-                          type="button"
-                          className={`h-6 px-1 text-sm rounded cursor-pointer transition-colors ${
-                            execMode === "plan"
-                              ? "text-(--live)"
-                              : execMode === "auto"
-                                ? "text-[#f5a623]"
-                                : "text-(--muted)"
-                          } hover:bg-[rgba(142,163,179,0.1)] bg-transparent border-none`}
-                          onClick={async () => {
-                            const modes: Array<"plan" | "normal" | "auto"> = ["plan", "normal", "auto"];
-                            const next = modes[(modes.indexOf(execMode) + 1) % 3];
-                            setExecMode(next);
-                            if (activeId) {
-                              await wsRequest("wevra.tool-preferences.set-mode", {
-                                conversationId: activeId,
-                                mode: next,
-                              });
-                            }
-                          }}
-                          title={`Mode: ${execMode} (click to cycle)`}
-                        >
-                          {execMode}
-                        </button>
-                        {models.some((m) => m.enabled !== false) ? (
-                          <div ref={modelRef} className="relative flex items-center">
-                            <span className="mx-1 h-3.5 w-px bg-[rgba(142,163,179,0.2)]" />
-                            <button
-                              type="button"
-                              className="h-6 px-1 text-sm rounded cursor-pointer transition-colors border-none bg-transparent text-(--muted) hover:bg-[rgba(142,163,179,0.1)] truncate max-w-[160px]"
-                              onClick={() => setShowModelDropdown((v) => !v)}
-                              title={defaultModel || "Select model"}
-                            >
-                              {defaultModel ? defaultModel.split("/").pop() : "model"}
-                            </button>
-                            {showModelDropdown && (
-                              <div className="absolute bottom-full left-0 mb-2 w-max max-w-[280px] rounded border border-(--line) bg-[#141c24] py-0.5 shadow-lg z-50">
-                                {models.filter((m) => m.enabled !== false).map((m) => {
-                                  const key = `${m.providerId}/${m.modelId}`;
-                                  return (
-                                    <button
-                                      key={key}
-                                      type="button"
-                                      className={`block w-full px-3 py-1 text-left text-xs border-none cursor-pointer transition-colors truncate ${
-                                        key === defaultModel
-                                          ? "bg-[rgba(50,215,186,0.12)] text-(--live)"
-                                          : "text-(--muted) bg-transparent hover:bg-[rgba(142,163,179,0.08)] hover:text-(--text)"
-                                      }`}
-                                      onClick={async () => {
-                                        setDefaultModel(key);
-                                        if (m.contextWindow) setContextMax(m.contextWindow);
-                                        setShowModelDropdown(false);
-                                        if (activeId) {
-                                          await wsRequest("wevra.models.set-conversation-model", {
-                                            conversationId: activeId,
-                                            providerId: m.providerId,
-                                            modelId: m.modelId,
-                                          }).catch(() => {});
-                                        }
-                                        await wsRequest("wevra.models.set-default", {
-                                          providerId: m.providerId,
-                                          modelId: m.modelId,
-                                        }).catch(() => {});
-                                      }}
-                                    >
-                                      {m.label || m.modelId}
-                                    </button>
-                                  );
-                                })}
-                                <div className="border-t border-(--line) my-0.5" />
-                                <button
-                                  type="button"
-                                  className="block w-full px-3 py-1 text-left text-xs border-none cursor-pointer text-(--live) bg-transparent hover:bg-[rgba(50,215,186,0.08)]"
-                                  onClick={() => {
-                                    setShowModelDropdown(false);
-                                    setConfigModalOpen(true);
-                                  }}
-                                >
-                                  + Add model
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <div className="flex items-center">
-                            <span className="mx-1 h-3.5 w-px bg-[rgba(142,163,179,0.2)]" />
-                            <button
-                              type="button"
-                              className="h-6 px-1 text-sm rounded cursor-pointer transition-colors border-none bg-transparent text-(--live) hover:bg-[rgba(50,215,186,0.08)]"
-                              onClick={() => setConfigModalOpen(true)}
-                              title="Add a model to get started"
-                            >
-                              + Add model
-                            </button>
-                          </div>
-                        )}
-                        {thinkingLevels.length > 0 && (
-                          <div ref={thinkingLevelRef} className="relative flex items-center">
-                            <span className="mx-1 h-3.5 w-px bg-[rgba(142,163,179,0.2)]" />
-                            <button
-                              type="button"
-                              className={`h-6 px-1 text-sm rounded cursor-pointer transition-colors border-none bg-transparent ${
-                                thinkingLevel === "off"
-                                  ? "text-[#6b8499]"
-                                  : thinkingLevel === "max"
-                                    ? "text-(--live)"
-                                    : "text-(--muted)"
-                              } hover:bg-[rgba(142,163,179,0.1)]`}
-                              onClick={() => setShowThinkingLevels((v) => !v)}
-                              title={`Thinking: ${thinkingLevel}`}
-                            >
-                              {thinkingLevel}
-                            </button>
-                            {showThinkingLevels && (
-                              <div className="absolute bottom-full left-0 mb-2 w-max rounded border border-(--line) bg-[#141c24] py-0.5 shadow-lg z-50">
-                                {thinkingLevels.map((lv) => (
-                                  <button
-                                    key={lv}
-                                    type="button"
-                                    className={`block w-full px-3 py-1 text-left text-xs border-none cursor-pointer transition-colors ${
-                                      lv === thinkingLevel
-                                        ? "bg-[rgba(50,215,186,0.12)] text-(--live)"
-                                        : lv === "off"
-                                          ? "text-[#6b8499] bg-transparent hover:bg-[rgba(142,163,179,0.08)]"
-                                          : lv === "max"
-                                            ? "text-(--text) bg-transparent hover:bg-[rgba(142,163,179,0.08)]"
-                                            : "text-(--muted) bg-transparent hover:bg-[rgba(142,163,179,0.08)] hover:text-(--text)"
-                                    }`}
-                                    onClick={async () => {
-                                      setThinkingLevel(lv);
-                                      setShowThinkingLevels(false);
-                                      if (activeId) {
-                                        await wsRequest("wevra.models.set-thinking-level", {
-                                          level: lv,
-                                          conversationId: activeId,
-                                        }).catch(() => {});
-                                      }
-                                    }}
-                                  >
-                                    {lv}
-                                  </button>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        {ctxRing && (
-                          <div ref={contextRef} className="relative">
-                            <button
-                              type="button"
-                              className="relative border-none bg-transparent cursor-pointer p-0 flex items-center justify-center"
-                              onClick={() => setShowContextDetail((v) => !v)}
-                              title={`${ctxRing.contextUsed.toLocaleString()} / ${ctxRing.contextMax.toLocaleString()} tokens (${ctxRing.pctDisplay}%)`}
-                            >
-                              <svg width="22" height="22" viewBox="0 0 22 22" className="block">
-                                <circle
-                                  cx="11"
-                                  cy="11"
-                                  r={ctxRing.r}
-                                  fill="none"
-                                  stroke="rgba(142,163,179,0.15)"
-                                  strokeWidth="2"
-                                />
-                                <circle
-                                  cx="11"
-                                  cy="11"
-                                  r={ctxRing.r}
-                                  fill="none"
-                                  stroke={ctxRing.strokeColor}
-                                  strokeWidth="2"
-                                  strokeDasharray={ctxRing.circumference}
-                                  strokeDashoffset={ctxRing.offset}
-                                  strokeLinecap="round"
-                                  transform="rotate(-90 11 11)"
-                                  className="transition-[stroke-dashoffset,stroke] duration-300"
-                                />
-                              </svg>
-                            </button>
-                            {showContextDetail && (
-                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max rounded border border-(--line) bg-[#141c24] px-2.5 py-1.5 shadow-lg z-50">
-                                <div className="text-[11px] text-(--text) font-medium text-center">
-                                  <span className="text-(--muted) font-normal">Already used: </span>
-                                  {ctxRing.pctDisplay}%
-                                </div>
-                                <div className="text-[10px] text-(--muted) text-center mt-0.5 whitespace-nowrap">
-                                  {ctxRing.contextUsed >= 1000000
-                                    ? `${(ctxRing.contextUsed / 1000000).toFixed(0)}m`
-                                    : `${(ctxRing.contextUsed / 1000).toFixed(0)}k`}{" "}
-                                  /{" "}
-                                  {ctxRing.contextMax >= 1000000
-                                    ? `${(ctxRing.contextMax / 1000000).toFixed(0)}m`
-                                    : `${(ctxRing.contextMax / 1000).toFixed(0)}k`}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                        {isBusy ? (
-                          <button
-                            className="h-6 inline-flex items-center justify-center gap-1 border-none px-2 text-sm rounded cursor-pointer transition-colors text-white bg-[#e05555] hover:bg-[#ff6b6b]"
-                            type="button"
-                            onClick={abort}
-                          >
-                            <StopIcon width="12" height="12" />
-                            Stop
-                          </button>
-                        ) : (
-                          <button
-                            className={`h-6 inline-flex items-center justify-center gap-1 border-none px-2 text-sm transition-colors ${
-                              !input.trim()
-                                ? "text-[#3a4a58] bg-transparent cursor-default rounded"
-                                : "text-white bg-[#3ac5a0] cursor-pointer hover:bg-(--live) rounded"
-                            }`}
-                            type="submit"
-                            disabled={!input.trim()}
-                          >
-                            <SendIcon width="14" height="14" />
-                            Send
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </form>
+              <ChatInputArea
+                activeId={activeId}
+                streaming={streaming}
+                isBusy={isBusy}
+                models={models}
+                defaultModel={defaultModel}
+                onDefaultModelChange={setDefaultModel}
+                onConfigModalOpen={() => setConfigModalOpen(true)}
+                thinkingLevels={thinkingLevels}
+                thinkingLevel={thinkingLevel}
+                onThinkingLevelChange={setThinkingLevel}
+                ctxRing={ctxRing}
+                onSend={(text) => {
+                  dispatch({
+                    type: "append",
+                    msg: { id: newId(), role: "user", content: text, timestamp: Date.now() },
+                  });
+                  streamConvRef.current = activeId;
+                  const [p, m] = defaultModel.split("/");
+                  wsRequest("wevra.chat", {
+                    message: text,
+                    conversationId: activeId,
+                    provider: p,
+                    model: m,
+                  }).catch((err: Error) => {
+                    streamConvRef.current = "";
+                    dispatch({
+                      type: "append",
+                      msg: { id: newId(), role: "assistant", content: `Error: ${err.message}`, timestamp: Date.now(), isError: true },
+                    });
+                  });
+                }}
+                onAbort={() => {
+                  if (activeId) wsRequest("wevra.chat.abort", { conversationId: activeId }).catch(() => {});
+                }}
+                questionOpen={questionOpen}
+                questionConvId={questionConvId}
+                questionItems={questionItems}
+                questionOtherActive={questionOtherActive}
+                onQuestionAnswer={handleQuestionAnswer}
+                onOtherChange={(info) => {
+                  setQuestionOtherActive(info.active);
+                  setQuestionOtherText(info.text);
+                }}
+              />
             </div>
             {showDebug && <DebugPanel onClose={() => setShowDebug(false)} />}
           </div>

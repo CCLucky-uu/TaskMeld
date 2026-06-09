@@ -1,4 +1,14 @@
-import type { Message, ToolCall, StreamEvent, LoopResult, ToolContext, ConfirmRequest, ToolPreferences } from "../types"
+import type {
+  Message,
+  ToolCall,
+  StreamEvent,
+  LoopResult,
+  ToolContext,
+  ConfirmRequest,
+  QuestionRequest,
+  QuestionAnswer,
+  ToolPreferences,
+} from "../types"
 import { DEFAULT_TOOL_PREFERENCES } from "../types"
 import type { Brain, DebugCallback } from "../brain"
 import type { ToolExecutor } from "../tools/executor"
@@ -22,6 +32,7 @@ export interface LoopCallbacks {
   /** Message write callback — called for each assistant/tool message produced in the loop */
   onMessage?: (message: Message) => Promise<void>
   onConfirm?: (req: ConfirmRequest) => Promise<"allow" | "deny" | "always-allow">
+  onQuestion?: (req: QuestionRequest) => Promise<QuestionAnswer>
 }
 
 export class WevraLoop {
@@ -116,10 +127,46 @@ export class WevraLoop {
       const toolCtx = this.buildToolContext(session.id, preferences ?? DEFAULT_TOOL_PREFERENCES, externalAbort)
       const results = await this.executor.executeAll(toolCalls, toolCtx)
 
-      // Handle tool calls that need user confirmation
+      // Handle tool calls that need user confirmation or structured input
       const finalResults: typeof results = []
       for (let i = 0; i < results.length; i++) {
-        if (results[i].needsConfirmation && callbacks?.onConfirm) {
+        const result = results[i]
+
+        // Handle needsUserInput: tool asks the user structured questions
+        if (result.needsUserInput && callbacks?.onQuestion) {
+          const questionMeta = result.metadata?.question
+          const questionsArray = Array.isArray(questionMeta) ? questionMeta : [questionMeta]
+          const questionReq: QuestionRequest = {
+            toolCallId: toolCalls[i].id,
+            questions: questionsArray.map((q: Record<string, unknown>) => ({
+              question: typeof q.question === "string" ? q.question : "",
+              header: typeof q.header === "string" ? q.header : undefined,
+              options: Array.isArray(q.options) ? q.options : [],
+              multiSelect: q.multiSelect === true,
+            })),
+          }
+
+          callbacks.onStream?.({ type: "question_request", ...questionReq } as StreamEvent)
+
+          try {
+            const answer = await callbacks.onQuestion(questionReq)
+            callbacks.onStream?.({ type: "question_response", content: JSON.stringify(answer) })
+            finalResults.push({ output: JSON.stringify(answer), isError: false })
+          } catch (err) {
+            // Timeout or other failure — emit error result so the conversation
+            // history stays valid (every tool_call needs a matching tool message).
+            const errMsg = err instanceof Error ? err.message : String(err)
+            callbacks.onStream?.({ type: "question_response", content: `Error: ${errMsg}` })
+            finalResults.push({
+              output: `Question timed out or failed: ${errMsg}. The user did not answer in time. Ask again or proceed without the answer.`,
+              isError: false,
+            })
+          }
+          continue
+        }
+
+        // Handle needsConfirmation
+        if (result.needsConfirmation && callbacks?.onConfirm) {
           callbacks?.onStream?.({
             type: "confirm_request",
             toolCall: {
@@ -146,13 +193,13 @@ export class WevraLoop {
           }
           const [singleResult] = await this.executor.executeAll([toolCalls[i]], toolCtx, { skipPermission: true })
           finalResults.push(singleResult)
-        } else if (results[i].needsConfirmation) {
+        } else if (result.needsConfirmation) {
           finalResults.push({
             output: `Confirmation required for "${toolCalls[i].name}" but no confirm handler available.`,
             isError: true,
           })
         } else {
-          finalResults.push(results[i])
+          finalResults.push(result)
         }
       }
 

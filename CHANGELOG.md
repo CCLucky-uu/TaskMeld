@@ -2,6 +2,55 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.2] - 2026-06-08
+
+### Added
+
+- **`ask_user` tool**: Structured question tool for Wevra Agent to gather user input with predefined options
+  - Multi-question support: batch multiple questions in a single tool call with tab navigation
+  - Per-tab "Other" option: users can always type a custom answer alongside predefined choices
+  - Single-select auto-advance: selecting an option automatically jumps to the next unanswered question
+  - Full answer context returned to LLM: question text + option label + description (not just labels)
+  - Skip all: user can skip the entire question set, returning a "user declined" response
+  - Question timeout: 10 minutes, with graceful recovery (tool result injected, conversation continues)
+  - localStorage persistence: pending questions survive page refresh
+- **`InlineQuestion` component**: Inline question UI rendered above the input area
+  - Tab bar for multi-question navigation with per-tab answered status indicators
+  - Flat option list with horizontal dividers (project design language)
+  - "Other..." option with textarea integration into the shared input area
+  - Confirm button disabled until all questions answered (matches Send button style)
+  - Skip button to decline all questions
+- **`ChatInputArea` component**: Extracted input area from WevraChatPanel (textarea, toolbar, question UI)
+- **`wevra.ask-user` WebSocket method**: New WS endpoint for submitting question answers
+- **`question_request` / `question_response` stream events**: New stream event types for question flow
+- **Pipeline Design Protocol**: Comprehensive `pipeline-management` skill replacing the previous 6-line version
+  - 5-phase protocol: Goal Discovery → Architecture Proposal → Agent Assignment → Artifact Design → Incremental Build
+  - Node output format documentation (ResultEnvelope structure, artifact.content constraints)
+  - 26 red lines covering requirements, architecture, agent binding, artifacts, and execution
+  - Artifact content strategy: inline JSON for small data, file path references for large/binary content
+  - Anti-patterns with correct alternatives
+
+### Changed
+
+- **`pipeline_node` tool description**: Added ResultEnvelope structure reference and instruction writing guidelines
+- **Question timeout**: Increased from 2 minutes to 10 minutes
+- **Input area architecture**: WevraChatPanel input area extracted into standalone `ChatInputArea` component
+
+### Fixed
+
+- **Question timeout crash**: Agent loop now catches timeout errors and injects a valid tool result instead of crashing the conversation (fixes "insufficient tool messages" LLM error)
+- **Stream events lost after question answer**: `streamConvRef` preserved across the idle→busy→response cycle after answering a question
+- **Page refresh stuck busy**: Pending question state persisted in localStorage, restored on reconnect
+- **Other state leaking across tabs**: Per-tab Other tracking with `localOtherActive` state in ChatInputArea
+- **Textarea not hiding on option change**: Selecting a non-Other option in single-select mode now properly hides the input area
+- **Other button not working on first tab**: Added direct ref-based communication (`otherToggleRef`) bypassing callback chain closures
+- **Confirm button initial state**: Button starts disabled via mount-time `onAnswersChange(false)` notification
+- **Expand button visibility**: Hidden when question is active and Other is not selected
+
+### Removed
+
+- **`QuestionDialog.tsx`**: Replaced by `InlineQuestion` inline component
+
 ## [0.2.1] - 2026-06-08
 
 ### Fixed
@@ -118,6 +167,7 @@ All notable changes to this project will be documented in this file.
 - OpenClaw Gateway WebSocket client integration
 - MIT License
 
+[0.2.2]: https://github.com/CCLucky-uu/TaskMeld/releases/tag/v0.2.2
 [0.2.1]: https://github.com/CCLucky-uu/TaskMeld/releases/tag/v0.2.1
 [0.2.0]: https://github.com/CCLucky-uu/TaskMeld/releases/tag/v0.2.0
 [0.1.50]: https://github.com/CCLucky-uu/TaskMeld/releases/tag/v0.1.50

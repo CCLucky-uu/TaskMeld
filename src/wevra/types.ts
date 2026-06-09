@@ -31,6 +31,27 @@ export interface ConfirmRequest {
   toolArgs: Record<string, unknown>
 }
 
+export interface QuestionOption {
+  label: string
+  description: string
+}
+
+export interface QuestionItem {
+  question: string
+  header?: string
+  options: QuestionOption[]
+  multiSelect: boolean
+}
+
+export interface QuestionRequest {
+  toolCallId: string
+  questions: QuestionItem[]
+}
+
+export type QuestionAnswer = {
+  answers: Array<{ question: string; selected: Array<{ label: string; description: string; isCustom?: boolean }> }>
+}
+
 export interface ToolDefinition {
   name: string
   description: string
@@ -49,6 +70,7 @@ export interface ToolResult {
   output: string
   isError: boolean
   needsConfirmation?: boolean
+  needsUserInput?: boolean
   toolCallId?: string
   metadata?: Record<string, unknown>
   attachments?: Attachment[]
@@ -133,6 +155,8 @@ export type StreamEventType =
   | "step_finish"
   | "confirm_request"
   | "confirm_response"
+  | "question_request"
+  | "question_response"
   | "error"
 
 export interface StreamEvent {
@@ -253,7 +277,7 @@ export interface SkillDef {
 
 // ── Agent Loop ──
 
-export type LoopResultType = "text" | "confirm" | "error" | "max_iterations"
+export type LoopResultType = "text" | "confirm" | "question" | "error" | "max_iterations"
 
 export interface LoopResult {
   type: LoopResultType

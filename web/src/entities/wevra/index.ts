@@ -1,14 +1,32 @@
-export type WevraStreamPhase = "start" | "delta" | "end" | "confirm_request" | "busy" | "idle";
+export type WevraStreamPhase = "start" | "delta" | "end" | "confirm_request" | "question_request" | "busy" | "idle";
 
 export type WevraStreamPayload = {
   sessionId: string;
-  stream: "thinking" | "assistant" | "tool" | "meta" | "confirm" | "status";
+  stream: "thinking" | "assistant" | "tool" | "meta" | "confirm" | "question" | "status";
   phase: WevraStreamPhase;
   content?: string;
   toolCall?: { id: string; name: string; arguments: Record<string, unknown> };
   toolResult?: { output: string; isError: boolean; toolCallId?: string; metadata?: Record<string, unknown> };
   usage?: { promptTokens: number; completionTokens: number; totalTokens: number; reasoningTokens?: number };
   error?: string;
+  question?: WevraQuestionPayload;
+};
+
+export type WevraQuestionOption = {
+  label: string;
+  description: string;
+};
+
+export type WevraQuestionItem = {
+  question: string;
+  header?: string;
+  options: WevraQuestionOption[];
+  multiSelect: boolean;
+};
+
+export type WevraQuestionPayload = {
+  toolCallId: string;
+  questions: WevraQuestionItem[];
 };
 
 export type WevraChatMessage = {
