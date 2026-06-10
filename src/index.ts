@@ -67,9 +67,18 @@ if (require.main === module) {
     })
     const app = appContext.app
 
+    let gatewayConnectedOnce = false
     appContext.gateway.setHandlers({
-      onStatus: (_status) => {
-        // silence intermediate status transitions
+      onStatus: (status) => {
+        if (status.status === "ready") {
+          if (gatewayConnectedOnce) {
+            console.log(`gateway-reconnected  proto=v${status.protocol ?? "?"}`)
+          } else {
+            gatewayConnectedOnce = true
+          }
+        } else if (status.status.startsWith("failed")) {
+          console.warn(`gateway-status: ${status.status}  error=${status.lastError ?? "?"}`)
+        }
       },
       onError: (error) => {
         console.error("gateway-error", error)

@@ -94,6 +94,7 @@ export const createAppContext = (options: CreateAppContextOptions = {}): AppCont
 
   let appRef: PipelineRegistry | null = null
   let clientRef: GatewayClient | null = null
+  let hasConnectedOnce = false
   const ensureGatewayClient = (): GatewayClient => {
     if (clientRef) return clientRef
 
@@ -107,6 +108,19 @@ export const createAppContext = (options: CreateAppContextOptions = {}): AppCont
       onStatus: (status) => {
         gatewayHandlers.onStatus(status)
         appRef?.onGatewayStatus(status)
+
+        // When reconnected (status transitions back to "ready" after the first successful connect),
+        // replay the gateway-ready notification so the app layer refreshes hello payload, session cache, etc.
+        if (status.status === "ready") {
+          if (hasConnectedOnce) {
+            const hello = clientRef?.getHello() ?? null
+            if (hello) {
+              appRef?.onGatewayReady(hello)
+            }
+          } else {
+            hasConnectedOnce = true
+          }
+        }
       },
       onFrame: (frame) => {
         gatewayHandlers.onFrame(frame)
@@ -138,6 +152,7 @@ export const createAppContext = (options: CreateAppContextOptions = {}): AppCont
         scopes: [...config.gatewayScopes],
       },
     getSocket: () => clientRef?.getSocket() ?? null,
+    getHello: () => clientRef?.getHello() ?? null,
   }
 
   const app = createPipelineRegistry({

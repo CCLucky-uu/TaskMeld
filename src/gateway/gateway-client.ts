@@ -82,6 +82,7 @@ export type GatewayClient = {
   onEvent: (handler: (event: GatewayEventFrame) => void) => () => void
   getStatus: () => GatewayConnectionInfo
   getSocket: () => WebSocket | null
+  getHello: () => HelloOkPayload | null
 }
 
 const base64UrlEncode = (data: Buffer) =>
@@ -192,6 +193,7 @@ export const createGatewayClient = (options: GatewayClientOptions): GatewayClien
   let activeScopes = [...(options.scopes ?? ["operator.read", "operator.write"])]
   let isManualClose = false
   let reconnectAttempt = 0
+  let lastHello: HelloOkPayload | null = null
   let reconnectTimer: NodeJS.Timeout | null = null
   let challengeTimer: NodeJS.Timeout | null = null
   let helloTimer: NodeJS.Timeout | null = null
@@ -386,6 +388,7 @@ export const createGatewayClient = (options: GatewayClientOptions): GatewayClien
 
     protocol = nextProtocol
     lastHelloAt = Date.now()
+    lastHello = payload
     reconnectAttempt = 0
     connectRequestId = null
     updateStatus("ready", null)
@@ -609,5 +612,6 @@ export const createGatewayClient = (options: GatewayClientOptions): GatewayClien
     onEvent,
     getStatus,
     getSocket: () => socket,
+    getHello: () => lastHello,
   }
 }
