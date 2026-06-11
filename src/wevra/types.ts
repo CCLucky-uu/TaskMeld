@@ -77,7 +77,7 @@ export interface ToolResult {
 }
 
 export interface Attachment {
-  type: "image" | "file"
+  type: "image" | "file" | "blueprint"
   mimeType: string
   data: string
   name?: string
@@ -94,6 +94,7 @@ export interface Tool extends ToolDefinition {
 
 export interface ToolContext {
   sessionId: string
+  conversationId: string
   messageId: string
   preferences: ToolPreferences
   abortSignal: AbortSignal

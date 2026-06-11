@@ -13,7 +13,7 @@ export function createPipelineTools(
     {
       name: "pipeline_list",
       description:
-        "List all pipelines with their basic info (id, name, description, status). Use this to see what pipelines exist before creating or modifying one.",
+        "List all pipelines with their basic info (id, name, description, status).",
       parameters: { type: "object", properties: {}, required: [] },
       annotations: { readOnly: true, destructive: false, requiresConfirmation: false, idempotent: true },
       permission: "auto",
@@ -34,7 +34,7 @@ export function createPipelineTools(
     {
       name: "pipeline_get",
       description:
-        "Get detailed information about a specific pipeline including its nodes and edges. Use the pipeline ID from pipeline_list.",
+        "Get detailed information about a specific pipeline including its nodes and edges.",
       parameters: {
         type: "object",
         properties: {
@@ -297,7 +297,11 @@ export function createPipelineTools(
     },
     {
       name: "pipeline_run",
-      description: "Start running a pipeline. The pipeline must have at least one node.",
+      description:
+        "Start running a pipeline. \n\n" +
+        "IMPORTANT: Only call this when the user explicitly asks to run a pipeline. Never run a pipeline autonomously.\n" +
+        "MANDATORY: You MUST run pipeline_validate first and confirm it passes (valid: true) before calling pipeline_run. " +
+        "If validation fails, fix the issues and re-validate. Do NOT skip validation.",
       parameters: {
         type: "object",
         properties: {

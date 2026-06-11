@@ -266,7 +266,7 @@ export const webTools: Tool[] = [
   {
     name: "web_search",
     description:
-      "Search the internet using DuckDuckGo. Returns search results with titles, URLs, and snippets. Use this when you need to find current information, documentation, or answers to factual questions.",
+      "Search the internet using DuckDuckGo. Returns search results with titles, URLs, and snippets.",
     parameters: {
       type: "object",
       properties: {
@@ -282,7 +282,7 @@ export const webTools: Tool[] = [
   {
     name: "web_fetch",
     description:
-      "Fetch and read the content of a web page. Returns the main text content extracted from the HTML. Use this after web_search to read the full content of a relevant result.",
+      "Fetch and read the content of a web page. Returns the main text content extracted from the HTML.",
     parameters: {
       type: "object",
       properties: {

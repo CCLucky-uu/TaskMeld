@@ -291,6 +291,18 @@ export const registerWevraWsMethods = (registry: WsMethodRegistry): void => {
     }
   })
 
+  registry.register("wevra.blueprint.get", async (params) => {
+    if (!wevraInstance) return { ok: false, error: "wevra_not_initialized" }
+    try {
+      const conversationId = typeof params.conversationId === "string" ? params.conversationId.trim() : ""
+      if (!conversationId) return { ok: false, error: "conversation_id_required" }
+      const blueprint = await wevraInstance.loadBlueprint(conversationId)
+      return { ok: true, payload: { blueprint } }
+    } catch (error) {
+      return { ok: false, error: formatError(error) }
+    }
+  })
+
   registry.register("wevra.conversations.new", async () => {
     if (!wevraInstance) return { ok: false, error: "wevra_not_initialized" }
     try {

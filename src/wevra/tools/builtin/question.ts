@@ -4,22 +4,12 @@ export function createQuestionTool(): Tool[] {
   return [
     {
       name: "ask_user",
-      description: `Ask the user one or more structured questions with predefined options.
-The user picks from your options, or selects "Other" to type a custom answer.
-
-Use cases:
-- Pipeline design: ask about goals, node structure, agent assignment
-- Ambiguous requirements: clarify what the user actually wants
-- Architecture decisions: let the user choose between alternatives
-- Gathering multiple inputs in a single interaction (batch questions)
-
-Return value: { "answers": [...] } — an array matching the questions order, each containing the question text and full selected option details (label + description).
+      description: `Ask the user structured questions with predefined options. The user picks or types a custom answer.
 
 IMPORTANT:
-- Do NOT use this tool for simple yes/no confirmations on tool execution.
-- Do NOT use this tool for open-ended questions with no predefined choices. Just ask in plain text — the user will reply in chat.
-- Always provide 2-4 clear options per question. An "Other" option is always available automatically.
-- Group related questions into a single call rather than making multiple separate calls.`,
+- Do NOT use this for simple yes/no confirmations. Use plain text for open-ended questions.
+- Provide 2-4 clear options per question. "Other" is always available automatically.
+- Group related questions into a single call.`,
       parameters: {
         type: "object",
         properties: {

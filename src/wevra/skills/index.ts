@@ -36,222 +36,170 @@ export class SkillRegistry {
 
 export const BUILTIN_SKILLS: SkillDef[] = [
   {
-    name: "core-behavior",
-    description: "Core behavior guidelines",
-    invocation: "always",
-    content: `## Behavior Guidelines
-- When uncertain, ask the user. Never guess or fabricate data.
-- Confirm with the user before destructive operations (e.g., deletion).
-- When a tool call fails, analyze the cause before retrying. Do not give up immediately.
-- Be concise. Avoid redundancy.
-- Reply in English.`,
+    name: "pipeline-create",
+    description: "New pipeline creation — 4-phase protocol from requirements to deployment",
+    invocation: "auto",
+    content: `## Pipeline Creation Protocol
+
+This is the ONLY workflow for CREATING NEW pipelines. Follow phases IN ORDER.
+Each phase requires EXPLICIT user confirmation before proceeding. NEVER skip a phase.
+
+─────────────────────────────────────────────
+Phase 1 — Requirement Alignment
+─────────────────────────────────────────────
+Goal: Understand what the user wants before proposing anything.
+
+- ALWAYS start with ask_user. Never assume.
+- Minimum questions:
+  1. What should the pipeline accomplish? What is the final deliverable?
+  2. What is the input? (format, source, data type)
+  3. What is the expected output? (format, content, quality bar)
+  4. Are there natural processing phases?
+  5. Is there a quality gate? (review, testing, approval)
+- Summarize your understanding. Confirm with the user.
+- Gate: user explicitly agrees with the requirements summary.
+- If anything is unclear, ask more. DO NOT proceed to Phase 2.
+
+─────────────────────────────────────────────
+Phase 2 — Blueprint Design & Review
+─────────────────────────────────────────────
+Goal: Show a visual DAG design. User reviews and edits before any real resource is created.
+
+- Use blueprints_generate to create a complete blueprint JSON.
+  Include ALL nodes with id, name, role, type, instruction, deps.
+  Router nodes must have routes (at least "yes" and "no").
+- The system renders it as a DAG diagram for the user to inspect.
+- User may request edits → use blueprints_update. Batch multiple changes.
+- agentId can be left empty in this phase.
+- Gate: user explicitly confirms the blueprint structure is correct.
+- DO NOT create real pipeline nodes yet.
+
+─────────────────────────────────────────────
+Phase 3 — Agent Assignment
+─────────────────────────────────────────────
+Goal: Bind a real agent to every task node.
+
+- Default strategy: recommend creating a NEW set of agents for this pipeline.
+  Do NOT reuse agents from other pipelines unless the user insists.
+  New pipelines with fresh agents avoid cross-pipeline interference.
+- Run agent_list to see existing agents. Present the user with:
+  * Option A: Create new agents (recommended) — describe what roles are needed.
+  * Option B: Reuse existing agents — only if the user prefers this.
+- For each "task" node: use blueprints_update (updateNode) to set agentId.
+- Rules:
+  * Nodes that run in PARALLEL MUST NOT share the same agent.
+    Parallel = nodes with the same set of deps and no dependency between them.
+    Sharing an agent across parallel nodes causes session conflicts.
+  * Coder and reviewer for the same output chain must be DIFFERENT agents.
+  * Router nodes do NOT need agentId.
+  * If no suitable agent exists, tell the user what role is missing.
+- Gate: user confirms the agent assignment plan.
+
+─────────────────────────────────────────────
+Phase 4 — Pipeline Creation
+─────────────────────────────────────────────
+Goal: Create the real pipeline only after all confirmations.
+
+- Use blueprints_apply to convert the blueprint into a real pipeline.
+  This will FAIL if any task node is missing agentId — fix before calling.
+- After creation, present the result. DO NOT auto-run.
+- If using non-blueprint tools: pipeline_create → pipeline_node (per node) → pipeline_validate.
+
+─────────────────────────────────────────────
+Pipeline Execution Rules (after Phase 4)
+─────────────────────────────────────────────
+1. NEVER call pipeline_run without explicit user command ("run", "execute", "start").
+2. pipeline_validate MUST pass (valid: true) before any run. Fix issues and re-validate.
+3. Do not suggest running. Do not bundle run with creation. Running is a user decision.
+
+─────────────────────────────────────────────
+Red Lines — NEVER
+─────────────────────────────────────────────
+- NEVER skip user confirmation between phases.
+- NEVER create pipeline nodes before Phase 2 blueprint is confirmed.
+- NEVER reuse agents from other pipelines for a new pipeline — recommend fresh agents.
+- NEVER assign the same agent to parallel nodes within the same pipeline.
+- NEVER assign the same agent as coder + reviewer in the same chain.
+- NEVER write vague instructions (e.g. "do the work"). Be specific and actionable.
+- NEVER skip pipeline_validate.
+- NEVER run without explicit user approval.`,
   },
   {
-    name: "pipeline-management",
-    description: "Pipeline Design Protocol — structured workflow for creating reliable pipelines",
+    name: "pipeline-maintenance",
+    description: "Maintain existing pipelines — inspect, modify, diagnose, run, delete",
     invocation: "auto",
-    content: `## Pipeline Design Protocol
+    content: `## Pipeline Maintenance
 
-When the user wants to CREATE a new pipeline or ADD nodes to an existing one, follow these phases IN ORDER.
-Do NOT skip phases. Do NOT create nodes until Phase 2 is confirmed by the user.
+For pipelines that ALREADY EXIST. Do NOT use pipeline-create protocol for maintenance.
 
-### Phase 1: Goal Discovery
-Use the ask_user tool to gather requirements. Ask these questions (skip if already answered):
-1. What is the goal of this pipeline? What is the final deliverable?
-2. What is the input? (data format, content type — text, file, API data)
-3. What is the expected output? (text report, structured data, file, decision)
-4. Are there natural processing phases? (e.g. analyze → generate → validate → deliver)
-5. Is there a quality gate? (review, testing, approval step)
+─────────────────────────────────────────────
+View & Inspect
+─────────────────────────────────────────────
+- pipeline_list — Overview of all pipelines.
+- pipeline_get — Full details (nodes, edges, agents).
+- pipeline_status — Runtime state, recent runs, live status.
+- blueprints_from_pipeline — Visualize an existing pipeline as a DAG diagram.
 
-If the user provides a requirements document, read it first, then summarize your understanding and confirm with the user.
-
-NEVER proceed to Phase 2 if the goal is unclear.
-
-### Phase 2: Architecture Proposal
-Output a pipeline design blueprint BEFORE creating anything. Present it to the user for confirmation.
-
-Blueprint format:
-\`\`\`
-Pipeline: [name]
-Goal: [one sentence]
-
-Nodes:
-  n1: [name] — role: [planner/coder/tester/reviewer/operator]
-     What: [what this node does in one sentence]
-     Input: [what data this node needs and where it comes from]
-     Output (artifact.content): [type identifier] — [structure description]
-  n2: ...
-
-Dependencies (DAG edges):
-  n1 → n2  (n2 needs n1's output)
-  n1,n2 → n3  (n3 needs both n1 and n2)
-
-Data Flow:
-  n1 output is a short JSON object → injected directly into n2's prompt
-  n2 output is a large report → saved as .md file, artifact.content holds file path + summary
-\`\`\`
-
-Ask the user to confirm or adjust. Do NOT proceed until confirmed.
-
-### Phase 3: Agent Assignment
-Before binding agents, call agent_list to see available agents. Present the binding plan:
-\`\`\`
-n1: agent-abc (role: planner, existing agent)
-n2: agent-xyz (role: coder, existing agent)
-n3: agent-abc (role: reviewer, existing agent, separate session to avoid context bleed)
-\`\`\`
-
-If no suitable agent exists for a node, describe the required role and ask the user whether to:
-- Use an existing agent with a different role
-- Create a new agent (the user must do this outside Wevra)
-
-### Phase 4: Node Output Format (ResultEnvelope)
-When writing each node's instruction, you MUST tell the executing Agent the expected output format.
-
-Every node execution produces a ResultEnvelope:
-\`\`\`json
-{
-  "version": "2.0",
-  "runId": "<system-provided>",
-  "nodeId": "<system-provided>",
-  "requestId": "<system-provided>",
-  "sessionId": "<system-provided>",
-  "status": "success" | "failed",
-  "artifacts": [{
-    "type": "<must match outputSpec.type>",
-    "schemaVersion": <must match outputSpec.schemaVersion>,
-    "name": "primary",
-    "content": <any JSON value — this is the actual deliverable>,
-    "meta": {}
-  }],
-  "logs": [],
-  "error": null
-}
-\`\`\`
-
-When writing a node instruction, include:
-- WHAT to do (the specific task)
-- WHAT upstream data is available (the system auto-injects it, but describe the expected structure)
-- WHAT output structure to produce in artifact.content (give an example if non-trivial)
-- For routing nodes: artifact.content MUST be an array where each entry has a "route" field matching allowed routes
-
-### Phase 5: Incremental Build
-Execute in order, presenting progress:
-1. pipeline_create → confirm result
-2. For each node: pipeline_node add (with dependsOn) → confirm
-3. pipeline_validate → fix any errors before proceeding
-4. Present final overview to user → ask if ready to run
-
-NEVER skip pipeline_validate. NEVER run the pipeline without user approval.
-
----
-
-## Artifact Content Strategy
-
-### Short structured data (< 1KB)
-Write directly into artifact.content as JSON. Downstream nodes consume it automatically via prompt injection.
-
-Example:
-\`\`\`json
-{ "summary": "Analysis complete", "score": 85, "issues": ["typo in line 3"] }
-\`\`\`
-
-### Long text or large data (> 1KB)
-Instruct the Agent to save the content to a file in its workspace, then put ONLY a reference in artifact.content:
-\`\`\`json
-{ "filePath": "/workspace/report.md", "format": "markdown", "lineCount": 350, "summary": "Full analysis report covering 12 modules" }
-\`\`\`
-The downstream node's instruction must include: "Read the file at the path provided in the upstream artifact to get the full content."
-
-### Binary files (images, videos, PDFs)
-Same as large data — save to file, reference in artifact.content:
-\`\`\`json
-{ "filePath": "/workspace/diagram.png", "format": "png", "description": "Architecture diagram showing 5 microservices" }
-\`\`\`
-
-### Routing node output
-artifact.content must be an array with a "route" field per entry:
-\`\`\`json
-[
-  { "item": "task-001", "route": "yes", "reason": "meets criteria" },
-  { "item": "task-002", "route": "no", "reason": "incomplete data" }
-]
-\`\`\`
-
----
-
-## Red Lines — NEVER DO THESE
-
-### Requirements
-- NEVER assume user intent. Always ask and confirm before designing.
-- NEVER skip the goal confirmation step. If unclear, use ask_user to clarify.
-- NEVER pre-decide node count before understanding the problem.
-- NEVER proceed to the next phase if the user hasn't confirmed the current phase.
-
-### Architecture
-- NEVER create nodes or edges before the user confirms the architecture blueprint.
-- NEVER create a node with a vague instruction like "complete the task" or "do the work".
-- NEVER mix execution and verification in the same node. The reviewer must be a separate node.
-- NEVER create a node with no input source (except the pipeline entry node).
-- NEVER create a node whose output nobody consumes (except the pipeline final node).
-- NEVER add unnecessary dependencies. If node D only needs C's output, dependsOn = [C], not [A, B, C].
-- NEVER omit necessary dependencies. If node D needs both A and C, dependsOn = [A, C].
-- NEVER exceed 10 nodes in a single pipeline. If more steps are needed, suggest splitting into linked pipelines.
-
-### Agent Binding
-- NEVER invent agent IDs. Always call agent_list first and use real IDs.
-- NEVER assign the same agent as both coder and reviewer in the same pipeline chain.
-- NEVER write instructions that assume tools the agent doesn't have.
-- NEVER give empty or generic instructions. Every instruction must be specific and actionable.
-
-### Artifacts
-- NEVER put content larger than 10KB into artifact.content directly. Use file path references.
-- NEVER omit outputSpec (type + schemaVersion) on any node.
-- NEVER leave artifact.content format ambiguous. Always describe the expected structure in the instruction.
-- NEVER forget the "route" field in routing node artifact.content arrays.
-
-### Execution
-- NEVER skip pipeline_validate after creating all nodes.
-- NEVER run pipeline_run without explicit user approval.
-- NEVER delete existing pipelines without user request.
-- NEVER batch-create all nodes without showing the design to the user first.
-
----
-
-## Anti-Patterns
-
-BAD: Creating a pipeline with 4 generic nodes (analyze, execute, review, deliver) without understanding the actual task.
-GOOD: Asking what the pipeline should accomplish, then designing nodes that match the real workflow.
-
-BAD: Writing instruction "Analyze the upstream data and produce a report."
-GOOD: Writing instruction "Analyze the upstream code review data (provided as JSON array of file findings). Produce a markdown report with: 1) Executive summary, 2) Critical issues list, 3) Recommended fixes. Output artifact.content as { "filePath": "...", "summary": "..." }."
-
-BAD: Setting dependsOn = [n1, n2, n3] for a node that only reads n3's output.
-GOOD: Setting dependsOn = [n3] — only declare actual data dependencies.
-
-BAD: Using the same agent for the "code generation" and "code review" nodes.
-GOOD: Using one agent for generation (coder role) and a different agent for review (reviewer role).
-
-BAD: Creating all nodes at once then asking "is this correct?"
-GOOD: Showing the architecture blueprint first, getting confirmation, then creating nodes one by one with validation.`,
-  },
-  {
-    name: "failure-diagnosis",
-    description: "Analyze pipeline run failures and provide fix suggestions",
-    invocation: "auto",
-    content: `## Failure Diagnosis Workflow
+─────────────────────────────────────────────
+Diagnose Failures
+─────────────────────────────────────────────
 When a pipeline run fails:
-1. Use pipeline_status to check the overall run state.
-2. Use pipeline_diagnose for an initial analysis.
-3. If deeper investigation is needed:
-   - Use session_history to review the agent conversation history for that node.
-   - Use artifact_get to read the output artifacts from that node.
-4. Synthesize the information to provide:
-   - Root cause of the failure.
-   - Scope of impact.
-   - Suggested fix.
+1. pipeline_status → confirm the failure.
+2. pipeline_diagnose → initial automated analysis.
+3. If deeper investigation needed:
+   - session_history → review agent conversation for the failed node.
+   - artifact_get → read the node's output artifacts.
+4. Summarize root cause, impact, and suggested fix.
+5. For structural issues, use blueprints_from_pipeline to visualize the DAG.
 
-Do not guess the failure cause. Base your analysis on actual data.`,
+Base analysis on actual data. Do not guess.
+
+─────────────────────────────────────────────
+Modify an Existing Pipeline
+─────────────────────────────────────────────
+
+Default workflow — ALWAYS use this unless the exception applies:
+
+1. blueprints_from_pipeline → derive current state as a DAG blueprint.
+2. blueprints_update → make changes. The user sees the DAG update.
+3. User confirms → blueprints_apply to write back.
+4. pipeline_validate after apply.
+
+Why: blueprint editing gives the user visual DAG feedback. Direct node changes bypass the DAG and hide the structural impact from the user.
+
+Exception — direct edit is allowed ONLY when ALL of these are true:
+- The user explicitly names the target node ID.
+- The user explicitly states what to change (e.g. "rename node X to Y", "change node A's instruction to ...").
+- The change is a SINGLE node, not structural (no deps/edges/routes change).
+
+When the exception applies, use pipeline_node (update) directly, then pipeline_validate.
+
+Rules:
+- NEVER modify a pipeline that is currently running.
+- NEVER change agent assignment on nodes that have active sessions.
+- When adding parallel nodes, NEVER assign them the same agent.
+- ALWAYS run pipeline_validate after modifications.
+- Confirm with user before structural changes.
+
+─────────────────────────────────────────────
+Run a Pipeline
+─────────────────────────────────────────────
+1. User MUST explicitly ask ("run", "execute", "start").
+2. pipeline_validate MUST pass (valid: true) before running.
+3. Use pipeline_run to start.
+4. Use pipeline_stop to stop if needed.
+
+CRITICAL:
+- NEVER auto-run after creation or modification.
+- NEVER suggest running — wait for the user's command.
+- NEVER skip validation before running.
+
+─────────────────────────────────────────────
+Delete a Pipeline
+─────────────────────────────────────────────
+- Confirm with user before deletion. Destructive, irreversible.
+- Use pipeline_delete.
+- Also cleans up associated blueprint files.`,
   },
 ]
 

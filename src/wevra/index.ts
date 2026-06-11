@@ -24,6 +24,7 @@ import { webTools } from "./tools/builtin/web"
 import { createMemoryTools } from "./tools/builtin/memory"
 import { createSkillTools } from "./tools/builtin/skill"
 import { createQuestionTool } from "./tools/builtin/question"
+import { createBlueprintTools } from "./tools/builtin/blueprint"
 
 export class WevraAgent {
   brain: Brain | null
@@ -90,6 +91,14 @@ export class WevraAgent {
       },
       this.currentThinkingLevel,
     )
+
+    // Blueprint tools need ConversationManager — register after conversations init
+    for (const tool of createBlueprintTools(
+      this.conversations,
+      this.services?.pipeline,
+      this.app,
+    ))
+      this.toolRegistry.register(tool)
 
     this.toolExecutor = new ToolExecutor(this.toolRegistry, this.config)
     this.loop = new WevraLoop(this.brain, this.toolExecutor, this.toolRegistry, this.skills, this.memory, this.config)
@@ -195,6 +204,9 @@ export class WevraAgent {
   }
   async viewConversation(id: string) {
     return this.conversations.viewConversation(id)
+  }
+  async loadBlueprint(convId: string) {
+    return this.conversations.loadBlueprint(convId)
   }
 
   getAvailableModels() {

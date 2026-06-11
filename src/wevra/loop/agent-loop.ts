@@ -124,7 +124,7 @@ export class WevraLoop {
       }
 
       // Execute tool calls
-      const toolCtx = this.buildToolContext(session.id, preferences ?? DEFAULT_TOOL_PREFERENCES, externalAbort)
+      const toolCtx = this.buildToolContext(session.id, session.conversationId, preferences ?? DEFAULT_TOOL_PREFERENCES, externalAbort)
       const results = await this.executor.executeAll(toolCalls, toolCtx)
 
       // Handle tool calls that need user confirmation or structured input
@@ -235,6 +235,7 @@ export class WevraLoop {
 
   private buildToolContext(
     sessionId: string,
+    conversationId: string,
     preferences: ToolPreferences,
     externalAbort?: AbortController,
   ): ToolContext {
@@ -246,6 +247,7 @@ export class WevraLoop {
 
     return {
       sessionId,
+      conversationId,
       preferences,
       messageId: generateMessageId(),
       abortSignal: merged.signal,

@@ -6,7 +6,7 @@ export function createSkillTools(skills: SkillRegistry): Tool[] {
     {
       name: "skill_load",
       description:
-        "Load a skill instruction into the conversation. Use this when you identify a task that matches a known skill from the skill list.",
+        "Load a skill into the conversation. Call this when a task matches a skill from the Available Skills list.",
       parameters: {
         type: "object",
         properties: {

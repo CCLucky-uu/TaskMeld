@@ -277,7 +277,7 @@ export function createAgentTools(agent?: AgentService, session?: SessionService)
     {
       name: "agent_send",
       description:
-        "Send a message to an agent and wait for its reply. Use this for synchronous agent-to-agent communication.",
+        "Send a message to an agent and wait for its reply.",
       parameters: {
         type: "object",
         properties: {

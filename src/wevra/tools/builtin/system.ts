@@ -31,7 +31,7 @@ export function createSystemTools(services?: ReadonlyServices | null): Tool[] {
     {
       name: "system_time",
       description:
-        "Get the current local date and time. Use this when you need to know what time it is, check deadlines, or timestamp actions.",
+        "Get the current local date and time.",
       parameters: { type: "object", properties: {}, required: [] },
       annotations: { readOnly: true, destructive: false, requiresConfirmation: false, idempotent: true },
       permission: "auto",

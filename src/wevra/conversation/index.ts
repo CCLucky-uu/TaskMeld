@@ -68,6 +68,9 @@ export class ConversationManager {
   private getConvPath(id: string) {
     return join(this.dataDir, "conversations", `${id}.jsonl`)
   }
+  private getBlueprintPath(id: string) {
+    return join(this.dataDir, "conversations", `${id}.blueprint.json`)
+  }
 
   // ── Index operations ──
 
@@ -380,6 +383,37 @@ export class ConversationManager {
     await this.flushIndex()
     // Delete the JSONL file
     const path = this.getConvPath(convId)
+    if (existsSync(path)) {
+      await unlink(path).catch(() => {})
+    }
+    // Delete the blueprint file
+    const bpPath = this.getBlueprintPath(convId)
+    if (existsSync(bpPath)) {
+      await unlink(bpPath).catch(() => {})
+    }
+  }
+
+  // ── Blueprint persistence ──
+
+  async saveBlueprint(convId: string, blueprint: unknown): Promise<void> {
+    const path = this.getBlueprintPath(convId)
+    await mkdir(dirname(path), { recursive: true })
+    await writeFile(path, JSON.stringify(blueprint, null, 2))
+  }
+
+  async loadBlueprint(convId: string): Promise<unknown | null> {
+    const path = this.getBlueprintPath(convId)
+    if (!existsSync(path)) return null
+    try {
+      const raw = await readFile(path, "utf-8")
+      return JSON.parse(raw)
+    } catch {
+      return null
+    }
+  }
+
+  async deleteBlueprint(convId: string): Promise<void> {
+    const path = this.getBlueprintPath(convId)
     if (existsSync(path)) {
       await unlink(path).catch(() => {})
     }

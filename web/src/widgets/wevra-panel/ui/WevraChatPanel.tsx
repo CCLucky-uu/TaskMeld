@@ -5,19 +5,20 @@ import { restoreMessages, type RawMessage, type ConvMeta } from "../model/histor
 import { DebugPanel } from "./DebugPanel";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { ChatInputArea } from "./ChatInputArea";
+import { BlueprintPreviewPanel } from "./BlueprintPreviewPanel";
+import type { BlueprintData } from "./BlueprintFlow";
 import type { InlineQuestionHandle } from "./InlineQuestion";
 import { ModelConfigModal } from "./ModelConfigModal";
 import { debugBus } from "../lib/debug-bus";
 import { CloseIcon, MarkdownViewer, PlusIcon } from "../../../shared/ui";
 import MessageCircleIcon from "@iconify-react/lucide/message-circle";
-import MaximizeIcon from "@iconify-react/lucide/maximize";
-import MinimizeIcon from "@iconify-react/lucide/minimize";
 import SendIcon from "@iconify-react/lucide/send";
 import StopIcon from "@iconify-react/lucide/square";
 import BrainIcon from "@iconify-react/lucide/brain";
 import WrenchIcon from "@iconify-react/lucide/wrench";
 import ChevronRightIcon from "@iconify-react/lucide/chevron-right";
 import ArrowDownIcon from "@iconify-react/lucide/arrow-down";
+import PanelLeftIcon from "@iconify-react/lucide/panel-left";
 import {
   modalFrameBaseClassName,
   modalFrameClosedClassName,
@@ -136,6 +137,7 @@ export function WevraChatPanel({ open: extOpen, onClose: extClose }: { open?: bo
   const [internalOpen, setInternalOpen] = useState(false);
   const open = extOpen ?? internalOpen;
   const close = () => {
+    setBlueprint(null);
     if (extOpen !== undefined) {
       extClose?.();
     } else {
@@ -147,7 +149,7 @@ export function WevraChatPanel({ open: extOpen, onClose: extClose }: { open?: bo
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [showDebug, setShowDebug] = useState(false);
-  const [fullscreen, setFullscreen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [execMode, setExecMode] = useState<"plan" | "normal" | "auto">("normal");
   const [thinkingLevels, setThinkingLevels] = useState<string[]>([]);
   const [thinkingLevel, setThinkingLevel] = useState("high");
@@ -174,6 +176,7 @@ export function WevraChatPanel({ open: extOpen, onClose: extClose }: { open?: bo
     name: string;
     args: Record<string, unknown>;
   }>({ id: "", name: "", args: {} });
+  const [blueprint, setBlueprint] = useState<BlueprintData | null>(null);
   const [questionOpen, setQuestionOpen] = useState(false);
   const [questionConvId, setQuestionConvId] = useState("");
   const [questionToolCallId, setQuestionToolCallId] = useState("");
@@ -362,7 +365,14 @@ export function WevraChatPanel({ open: extOpen, onClose: extClose }: { open?: bo
     if (!open || !activeId) return;
     dispatch({ type: "reset", msgs: [] });
     setContextUsed(0);
+    setBlueprint(null);
     loadConv(activeId);
+    // Restore blueprint from persistent storage
+    wsRequest("wevra.blueprint.get", { conversationId: activeId })
+      .then((r: any) => {
+        if (r?.blueprint) setBlueprint(r.blueprint as BlueprintData);
+      })
+      .catch(() => {});
   }, [activeId, open]);
 
   // WS
@@ -490,6 +500,15 @@ export function WevraChatPanel({ open: extOpen, onClose: extClose }: { open?: bo
             isStreaming: false,
           },
         });
+        // Detect blueprint attachments
+        const atts = p.toolResult?.attachments;
+        if (atts && atts.length > 0 && atts[0].type === "blueprint") {
+          try {
+            const bp = JSON.parse(atts[0].data) as BlueprintData;
+            const convId = streamConvRef.current;
+            setBlueprint(bp);
+          } catch { /* ignore parse errors */ }
+        }
       }
     } else if (p.stream === "confirm") {
       if (p.phase === "confirm_request" && p.toolCall) {
@@ -624,6 +643,7 @@ export function WevraChatPanel({ open: extOpen, onClose: extClose }: { open?: bo
       if (r?.conversation) {
         setConvs((prev) => [r.conversation!, ...prev]);
         setActiveId(r.conversation.id);
+        setBlueprint(null);
         if (globalDefaultRef.current) setDefaultModel(globalDefaultRef.current);
         dispatch({ type: "reset", msgs: [] });
         setContextUsed(0);
@@ -635,6 +655,7 @@ export function WevraChatPanel({ open: extOpen, onClose: extClose }: { open?: bo
 
   const selectConv = useCallback((id: string) => {
     setActiveId(id);
+    setBlueprint(null);
   }, []);
   const dblClick = useCallback((id: string, t: string) => {
     setEditingId(id);
@@ -728,7 +749,7 @@ export function WevraChatPanel({ open: extOpen, onClose: extClose }: { open?: bo
         onClick={close}
       >
         <div
-          className={`${modalPanelBaseClassName} grid ${fullscreen ? "h-screen max-h-none w-screen rounded-none" : "h-[min(88vh,calc(100vh-24px))] max-h-[88vh] w-[min(1100px,98vw)]"} grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden p-0 max-[760px]:h-screen max-[760px]:max-h-screen max-[760px]:w-screen`}
+          className={`${modalPanelBaseClassName} grid h-screen max-h-none w-screen rounded-none grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden p-0`}
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-center justify-between px-3 pt-2.5 pb-2">
@@ -741,13 +762,6 @@ export function WevraChatPanel({ open: extOpen, onClose: extClose }: { open?: bo
                 DEBUG
               </button>
               <button
-                onClick={() => setFullscreen((v) => !v)}
-                className="h-6 w-6 inline-flex items-center justify-center rounded p-0 text-(--muted) hover:text-(--text) hover:bg-[rgba(142,163,179,0.1)] bg-transparent border-none cursor-pointer transition-colors"
-                title={fullscreen ? "Exit fullscreen" : "Fullscreen"}
-              >
-                {fullscreen ? <MinimizeIcon width="14" height="14" /> : <MaximizeIcon width="14" height="14" />}
-              </button>
-              <button
                 className="h-6 w-6 inline-flex items-center justify-center rounded p-0 text-(--muted) hover:text-(--text) hover:bg-[rgba(142,163,179,0.1)] bg-transparent border-none cursor-pointer transition-colors"
                 type="button"
                 onClick={close}
@@ -758,10 +772,18 @@ export function WevraChatPanel({ open: extOpen, onClose: extClose }: { open?: bo
             </div>
           </div>
 
-          <div className="flex min-h-0 flex-1 border-t border-(--line) overflow-hidden bg-[rgba(15,23,29,0.45)]">
-            {/* 侧边栏 */}
-            <nav className="w-50 shrink-0 grid min-h-0 content-start overflow-hidden overflow-y-auto border-r border-(--line) bg-transparent p-0 max-[760px]:max-h-[42vh] max-[760px]:border-r-0 max-[760px]:border-b">
-              <div className="flex items-center justify-between py-1">
+          <div className="relative flex min-h-0 flex-1 border-t border-(--line) overflow-hidden bg-[rgba(15,23,29,0.45)]">
+            {/* Sidebar drawer */}
+            {sidebarOpen && (
+              <div
+                className="absolute inset-0 z-10 bg-black/30"
+                onClick={() => setSidebarOpen(false)}
+              />
+            )}
+            <nav
+              className={`absolute top-0 left-0 bottom-0 z-20 w-[260px] grid min-h-0 content-start overflow-hidden overflow-y-auto border-r border-(--line) bg-[var(--panel)] p-0 transition-transform duration-200 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
+            >
+              <div className="flex items-center justify-between py-1 px-2">
                 <div className={sectionTitle}>Global</div>
                 <button
                   type="button"
@@ -781,7 +803,10 @@ export function WevraChatPanel({ open: extOpen, onClose: extClose }: { open?: bo
                     busy={!!busyConvs[c.id]}
                     editingId={editingId}
                     editTitle={editTitle}
-                    onSelect={selectConv}
+                    onSelect={(id) => {
+                      selectConv(id);
+                      setSidebarOpen(false);
+                    }}
                     onDoubleClick={dblClick}
                     onRenameSubmit={renameDone}
                     onEditTitleChange={setEditTitle}
@@ -792,7 +817,7 @@ export function WevraChatPanel({ open: extOpen, onClose: extClose }: { open?: bo
               </div>
               {gArch.length > 0 && (
                 <>
-                  <div className={`${sectionTitle} pt-2`}>History</div>
+                  <div className={`${sectionTitle} pt-2 px-2`}>History</div>
                   {gArch.map((c) => (
                     <ConvBtn
                       key={c.id}
@@ -801,7 +826,10 @@ export function WevraChatPanel({ open: extOpen, onClose: extClose }: { open?: bo
                       busy={!!busyConvs[c.id]}
                       editingId={editingId}
                       editTitle={editTitle}
-                      onSelect={selectConv}
+                      onSelect={(id) => {
+                        selectConv(id);
+                        setSidebarOpen(false);
+                      }}
                       onDoubleClick={dblClick}
                       onRenameSubmit={renameDone}
                       onEditTitleChange={setEditTitle}
@@ -813,7 +841,7 @@ export function WevraChatPanel({ open: extOpen, onClose: extClose }: { open?: bo
               )}
               {pipeGroups.map(({ name, fresh, arch }) => (
                 <div key={name}>
-                  <div className={`${sectionTitle} pt-3`}>{name}</div>
+                  <div className={`${sectionTitle} pt-3 px-2`}>{name}</div>
                   {fresh.map((c) => (
                     <ConvBtn
                       key={c.id}
@@ -822,7 +850,10 @@ export function WevraChatPanel({ open: extOpen, onClose: extClose }: { open?: bo
                       busy={!!busyConvs[c.id]}
                       editingId={editingId}
                       editTitle={editTitle}
-                      onSelect={selectConv}
+                      onSelect={(id) => {
+                        selectConv(id);
+                        setSidebarOpen(false);
+                      }}
                       onDoubleClick={dblClick}
                       onRenameSubmit={renameDone}
                       onEditTitleChange={setEditTitle}
@@ -832,7 +863,7 @@ export function WevraChatPanel({ open: extOpen, onClose: extClose }: { open?: bo
                   ))}
                   {arch.length > 0 && (
                     <>
-                      <div className={`${sectionTitle}`}>History</div>
+                      <div className={`${sectionTitle} px-2`}>History</div>
                       {arch.map((c) => (
                         <ConvBtn
                           key={c.id}
@@ -841,7 +872,10 @@ export function WevraChatPanel({ open: extOpen, onClose: extClose }: { open?: bo
                           busy={!!busyConvs[c.id]}
                           editingId={editingId}
                           editTitle={editTitle}
-                          onSelect={selectConv}
+                          onSelect={(id) => {
+                            selectConv(id);
+                            setSidebarOpen(false);
+                          }}
                           onDoubleClick={dblClick}
                           onRenameSubmit={renameDone}
                           onEditTitleChange={setEditTitle}
@@ -856,6 +890,21 @@ export function WevraChatPanel({ open: extOpen, onClose: extClose }: { open?: bo
             </nav>
 
             <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+              {/* Chat top bar */}
+              <div className="flex items-center gap-2 px-2 h-9 border-b border-(--line) shrink-0">
+                <button
+                  className="h-6 w-6 inline-flex items-center justify-center rounded p-0 text-(--muted) hover:text-(--text) hover:bg-[rgba(142,163,179,0.1)] bg-transparent border-none cursor-pointer transition-colors"
+                  onClick={() => setSidebarOpen((v) => !v)}
+                  title={sidebarOpen ? "Close sidebar" : "Open sidebar"}
+                >
+                  <PanelLeftIcon width="14" height="14" />
+                </button>
+                {activeId && (
+                  <span className="text-xs text-(--muted) truncate flex-1">
+                    {convs.find((c) => c.id === activeId)?.title ?? activeId}
+                  </span>
+                )}
+              </div>
               <div className="relative flex-1 min-h-0">
                 <div ref={scrollRef} className="absolute inset-0 overflow-auto overflow-x-hidden px-3 pb-8 pt-2.5">
                   {msgs.length === 0 && (
@@ -955,6 +1004,9 @@ export function WevraChatPanel({ open: extOpen, onClose: extClose }: { open?: bo
                 }}
               />
             </div>
+            {blueprint && (
+              <BlueprintPreviewPanel blueprint={blueprint} />
+            )}
             {showDebug && <DebugPanel onClose={() => setShowDebug(false)} />}
           </div>
         </div>
