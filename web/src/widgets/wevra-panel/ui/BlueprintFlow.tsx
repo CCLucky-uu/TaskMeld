@@ -116,7 +116,7 @@ export function BlueprintFlow({ blueprint, selectedNodeId, onNodeClick }: Bluepr
     const el = containerRef.current
     if (!el) return
 
-    const handleWheel = (e: WheelEvent) => {
+    const handleWheel = (e: globalThis.WheelEvent) => {
       e.preventDefault()
       const rect = el.getBoundingClientRect()
       if (!rect) return

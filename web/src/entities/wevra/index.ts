@@ -6,7 +6,7 @@ export type WevraStreamPayload = {
   phase: WevraStreamPhase;
   content?: string;
   toolCall?: { id: string; name: string; arguments: Record<string, unknown> };
-  toolResult?: { output: string; isError: boolean; toolCallId?: string; metadata?: Record<string, unknown> };
+  toolResult?: { output: string; isError: boolean; toolCallId?: string; metadata?: Record<string, unknown>; attachments?: Array<{ type: string; data: string }> };
   usage?: { promptTokens: number; completionTokens: number; totalTokens: number; reasoningTokens?: number };
   error?: string;
   question?: WevraQuestionPayload;
