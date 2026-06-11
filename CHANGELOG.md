@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.3] - 2026-06-11
+
+### Added
+
+- **Blueprint preview and visualization tool**: Interactive flow diagram for pipeline blueprints
+  - `blueprint` tool for Wevra Agent to generate and visualize pipelines
+  - `BlueprintPreviewPanel` with sidebar drawer toggle and fullscreen mode
+  - `BlueprintFlow` component with interactive node graph and dependency visualization
+  - `BlueprintNodeCard` component for individual node rendering
+  - Automatic layout algorithm based on dependency graph and routing paths
+  - Wheel zoom support for flow diagram navigation
+
+### Fixed
+
+- **Gateway reconnection not propagated to app layer**: App layer now detects successful reconnections and refreshes runtime state
+  - `gateway-client`: Store `lastHello` payload and expose `getHello()` getter
+  - `create-app-context`: Detect status→ready transition after first connect, replay `onGatewayReady(hello)` to refresh runtime state and broadcast to frontends
+  - `index.ts`: Log `gateway-reconnected` / `gateway-status` failures for observability
+
 ## [0.2.2] - 2026-06-08
 
 ### Added
@@ -167,6 +186,7 @@ All notable changes to this project will be documented in this file.
 - OpenClaw Gateway WebSocket client integration
 - MIT License
 
+[0.2.3]: https://github.com/CCLucky-uu/TaskMeld/releases/tag/v0.2.3
 [0.2.2]: https://github.com/CCLucky-uu/TaskMeld/releases/tag/v0.2.2
 [0.2.1]: https://github.com/CCLucky-uu/TaskMeld/releases/tag/v0.2.1
 [0.2.0]: https://github.com/CCLucky-uu/TaskMeld/releases/tag/v0.2.0
