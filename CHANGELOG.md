@@ -2,6 +2,32 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.4] - 2026-06-12
+
+### Added
+
+- **Openclaw Gateway agent/skill/session tools**: Wevra Agent now manages Openclaw agents through the gateway instead of local abstractions
+  - `gateway.ts`: `agent_list`, `agent_create`, `agent_update`, `agent_delete`, `gateway_session` tools
+  - `gateway-skill-service.ts`: `skills.install` RPC supporting clawhub/upload/installer modes
+  - `gateway_skill_install` and `skills_list` tools in `skill.ts`
+  - `pipeline_node` tool validates `agentId` references against registered Openclaw agents
+  - Prompt builder loads gateway skills context for LLM awareness of available skills
+  - `docs/gateway-rpc-discovery.md`: reverse-engineered gateway RPC schemas reference
+
+### Changed
+
+- **Agent tools architecture**: removed built-in `agent.ts` (353 lines), replaced with `gateway.ts` (588 lines) routing all agent operations through Openclaw Gateway
+- **Session tools**: now route through gateway for session history and config retrieval
+- **Agent loop**: removed hard `maxIterations=25` cap; loop terminates naturally when LLM produces no tool calls
+- **Model config**: inherit `contextWindow`/`maxTokens` from `BUILTIN_PROVIDERS` when missing from persisted config
+- **`getModelsConfigPublic()`**: returns `templates` field with full provider metadata as single source of truth
+- **Frontend model config**: `ModelConfigModal` uses backend templates instead of duplicated `PROVIDER_TEMPLATES` constant
+- **Deprecated models removed**: dropped Xiaomi MiMo V2 Flash, MiMo V2 Pro, MiMo V2 Omni
+
+### Fixed
+
+- **Typecheck script**: generate `version.ts` before running `tsc` to prevent missing module errors
+
 ## [0.2.3] - 2026-06-11
 
 ### Added
@@ -186,6 +212,7 @@ All notable changes to this project will be documented in this file.
 - OpenClaw Gateway WebSocket client integration
 - MIT License
 
+[0.2.4]: https://github.com/CCLucky-uu/TaskMeld/releases/tag/v0.2.4
 [0.2.3]: https://github.com/CCLucky-uu/TaskMeld/releases/tag/v0.2.3
 [0.2.2]: https://github.com/CCLucky-uu/TaskMeld/releases/tag/v0.2.2
 [0.2.1]: https://github.com/CCLucky-uu/TaskMeld/releases/tag/v0.2.1

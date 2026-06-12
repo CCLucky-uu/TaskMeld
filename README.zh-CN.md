@@ -44,7 +44,7 @@
 │  │  • 节点级重试和产物追踪                                  │   │
 │  └──────────────────────────────────────────────────────┘   │
 │  ┌──────────────────────────────────────────────────────┐   │
-│  │ Wevra Agent (28 工具 · ReAct 循环 · 记忆)           │   │
+│  │ Wevra Agent (40 工具 · ReAct 循环 · 记忆)           │   │
 │  │  • 流水线 CRUD 和监控                                  │   │
 │  │  • Agent 生命周期管理                                   │   │
 │  │  • 故障诊断和优化                                       │   │
@@ -121,9 +121,9 @@ OpenClaw 支持 Agent 之间直接通信，为什么还需要 TaskMeld？
 
 ### 🤖 Wevra Agent
 
-- **28 个内置工具** — 流水线 CRUD、Agent 管理、系统监控、记忆、技能
+- **40 个内置工具** — 流水线 CRUD、通过 Gateway 管理 Agent、系统监控、记忆、技能
 - **自然语言接口** — "列出所有流水线"、"运行数据处理流水线"、"上次运行哪里失败了？"
-- **多 LLM 提供商支持** — DeepSeek、OpenAI、小米 MiMo 和自定义提供商
+- **多 LLM 提供商支持** — DeepSeek、OpenAI 和自定义提供商
 - **ReAct 循环** — 标准的推理 + 行动模式，用于智能任务执行
 - **实时流式传输** — 基于 WebSocket 的思考过程和执行结果流式传输
 - **权限控制** — 三种模式：Plan（只读）、Normal（确认写入）、Auto（完全访问）
@@ -298,7 +298,7 @@ Wevra：流水线已启动。正在监控 OpenClaw Agent 执行...
 ### ✅ Phase 1 — 基础架构完成
 - 流水线引擎（DAG、调度器、状态机）
 - OpenClaw Gateway 集成
-- Wevra Agent（28 工具、ReAct 循环）
+- Wevra Agent（40 工具、ReAct 循环）
 - CLI 和 WebSocket API
 - Web 控制台，含 DAG 可视化
 
@@ -311,6 +311,7 @@ Wevra：流水线已启动。正在监控 OpenClaw Agent 执行...
 ### ✅ Phase 3 — 真实工具集成完成
 - 所有 Pipeline 工具（12 个）连接 ✅
 - 所有 Agent 工具（6 个）连接（通过 OpenClaw Gateway 的 CRUD + 发送） ✅
+- Gateway 技能/会话工具（12 个）连接 ✅
 - 所有只读工具连接 ✅
 
 ### 🔶 Phase 4 — 进行中
@@ -348,7 +349,7 @@ npm run dev:web      # 启动前端开发服务器（Vite HMR）
 
 ### 当前
 - ✅ DAG 流水线引擎，含 OpenClaw Agent 执行
-- ✅ Wevra Agent，28 个工具
+- ✅ Wevra Agent，40 个工具
 - ✅ 通过 OpenClaw Gateway 管理 Agent 生命周期
 - ✅ CLI、WebSocket API 和 Web 控制台
 

@@ -44,7 +44,7 @@
 │  │  • Per-node retry & artifact tracking                │   │
 │  └──────────────────────────────────────────────────────┘   │
 │  ┌──────────────────────────────────────────────────────┐   │
-│  │ Wevra Agent (28 tools · ReAct loop · Memory)      │   │
+│  │ Wevra Agent (40 tools · ReAct loop · Memory)      │   │
 │  │  • Pipeline CRUD & monitoring                        │   │
 │  │  • Agent lifecycle management                        │   │
 │  │  • Failure diagnosis & optimization                  │   │
@@ -121,9 +121,9 @@ OpenClaw supports direct agent-to-agent communication, so why add TaskMeld?
 
 ### 🤖 Wevra Agent
 
-- **28 Built-in Tools** — Pipeline CRUD, Agent management, System monitoring, Memory, Skills
+- **40 Built-in Tools** — Pipeline CRUD, Agent management via Gateway, System monitoring, Memory, Skills
 - **Natural Language Interface** — "List all pipelines", "Run the data processing pipeline", "What failed in the last run?"
-- **Multi-Provider LLM Support** — DeepSeek, OpenAI, Xiaomi MiMo, and custom providers
+- **Multi-Provider LLM Support** — DeepSeek, OpenAI, and custom providers
 - **ReAct Loop** — Standard Reasoning + Acting pattern for intelligent task execution
 - **Real-time Streaming** — WebSocket-based streaming of thinking process and execution results
 - **Permission Control** — Three modes: Plan (read-only), Normal (confirm writes), Auto (full access)
@@ -292,6 +292,7 @@ Wevra: Pipeline started. Monitoring OpenClaw agent execution...
 ### ✅ Phase 3 — Real Tool Integration Complete
 - All Pipeline tools (12) connected ✅
 - All Agent tools (6) connected (CRUD + send via OpenClaw Gateway) ✅
+- Gateway skill/session tools (12) connected ✅
 - All read-only tools connected ✅
 
 ### 🔶 Phase 4 — In Progress
@@ -329,7 +330,7 @@ npm run dev:web      # Start frontend dev server (Vite HMR)
 
 ### Current
 - ✅ DAG pipeline engine with OpenClaw agent execution
-- ✅ Wevra Agent with 28 tools
+- ✅ Wevra Agent with 40 tools
 - ✅ Agent lifecycle management via OpenClaw Gateway
 - ✅ CLI, WebSocket API, and Web console
 
