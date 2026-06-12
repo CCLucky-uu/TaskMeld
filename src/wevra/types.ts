@@ -278,7 +278,7 @@ export interface SkillDef {
 
 // ── Agent Loop ──
 
-export type LoopResultType = "text" | "confirm" | "question" | "error" | "max_iterations"
+export type LoopResultType = "text" | "confirm" | "question" | "error"
 
 export interface LoopResult {
   type: LoopResultType

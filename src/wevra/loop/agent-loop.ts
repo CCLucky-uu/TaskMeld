@@ -57,7 +57,7 @@ export class WevraLoop {
     const allTools = session.frozenTools
     let iterations = 0
 
-    while (iterations < this.config.maxIterations) {
+    while (true) {
       iterations++
 
       // Check external abort
@@ -124,7 +124,12 @@ export class WevraLoop {
       }
 
       // Execute tool calls
-      const toolCtx = this.buildToolContext(session.id, session.conversationId, preferences ?? DEFAULT_TOOL_PREFERENCES, externalAbort)
+      const toolCtx = this.buildToolContext(
+        session.id,
+        session.conversationId,
+        preferences ?? DEFAULT_TOOL_PREFERENCES,
+        externalAbort,
+      )
       const results = await this.executor.executeAll(toolCalls, toolCtx)
 
       // Handle tool calls that need user confirmation or structured input
@@ -224,12 +229,6 @@ export class WevraLoop {
       }
 
       // Loop back to top — fullHistory is already updated in memory, no reload needed
-    }
-
-    return {
-      type: "max_iterations",
-      content: "Reached maximum iterations.",
-      iterations,
     }
   }
 

@@ -136,51 +136,6 @@ const BUILTIN_PROVIDERS: Record<string, ProviderProfile> = {
           extraBodyThinkingToggle: false,
         },
       },
-      {
-        id: "mimo-v2-flash",
-        name: "MiMo V2 Flash",
-        contextWindow: 262_144,
-        maxTokens: 8_192,
-        reasoning: false,
-        compat: {
-          supportsReasoningEffort: false,
-          supportsUsageInStreaming: true,
-          maxTokensField: "max_tokens",
-          requiresReasoningContentPassthrough: false,
-          temperatureIgnoredInThinking: false,
-          extraBodyThinkingToggle: false,
-        },
-      },
-      {
-        id: "mimo-v2-pro",
-        name: "MiMo V2 Pro",
-        contextWindow: 1_048_576,
-        maxTokens: 32_000,
-        reasoning: true,
-        compat: {
-          supportsReasoningEffort: true,
-          supportsUsageInStreaming: true,
-          maxTokensField: "max_tokens",
-          requiresReasoningContentPassthrough: false,
-          temperatureIgnoredInThinking: false,
-          extraBodyThinkingToggle: false,
-        },
-      },
-      {
-        id: "mimo-v2-omni",
-        name: "MiMo V2 Omni",
-        contextWindow: 262_144,
-        maxTokens: 32_000,
-        reasoning: true,
-        compat: {
-          supportsReasoningEffort: true,
-          supportsUsageInStreaming: true,
-          maxTokensField: "max_tokens",
-          requiresReasoningContentPassthrough: false,
-          temperatureIgnoredInThinking: false,
-          extraBodyThinkingToggle: false,
-        },
-      },
     ],
   },
 }
@@ -196,7 +151,6 @@ export interface WevraConfig {
   llm: LLMConfig
   permissions: "default" | "permissive" | "strict" | "bypass"
   permissionRules?: PermissionRule[]
-  maxIterations: number
   toolTimeoutMs: number
   llmTimeoutMs: number
   maxToolOutputChars: number
@@ -221,7 +175,6 @@ export function loadConfig(overrides?: Partial<WevraConfig>): WevraConfig {
       },
     },
     permissions: "default",
-    maxIterations: 25,
     toolTimeoutMs: 30_000,
     llmTimeoutMs: 120_000,
     maxToolOutputChars: 30_000,
@@ -314,14 +267,17 @@ function loadModels(): { models: RuntimeModelConfig[]; defaultModel: string } {
         if (p.apiKey) existing.apiKey = p.apiKey
         // Model list: user config fully replaces
         if (p.models?.length) {
-          existing.models = p.models.map((m) => ({
-            id: m.id,
-            name: m.name,
-            contextWindow: m.contextWindow,
-            maxTokens: m.maxTokens,
-            reasoning: m.reasoning ?? false,
-            compat: m.compat ?? BUILTIN_PROVIDERS[id]?.models.find((bm) => bm.id === m.id)?.compat ?? ({} as any),
-          }))
+          existing.models = p.models.map((m) => {
+            const builtinMatch = BUILTIN_PROVIDERS[id]?.models.find((bm) => bm.id === m.id)
+            return {
+              id: m.id,
+              name: m.name,
+              contextWindow: m.contextWindow ?? builtinMatch?.contextWindow ?? 128_000,
+              maxTokens: m.maxTokens ?? builtinMatch?.maxTokens ?? 16_384,
+              reasoning: m.reasoning ?? builtinMatch?.reasoning ?? false,
+              compat: m.compat ?? builtinMatch?.compat ?? ({} as any),
+            }
+          })
         }
       } else {
         // Custom provider
@@ -332,8 +288,8 @@ function loadModels(): { models: RuntimeModelConfig[]; defaultModel: string } {
           models: (p.models ?? []).map((m) => ({
             id: m.id,
             name: m.name,
-            contextWindow: m.contextWindow,
-            maxTokens: m.maxTokens,
+            contextWindow: m.contextWindow ?? 128_000,
+            maxTokens: m.maxTokens ?? 16_384,
             reasoning: m.reasoning ?? false,
             compat: m.compat ?? ({} as any),
           })),
@@ -489,14 +445,17 @@ export function addProvider(
   if (!apiKey.trim()) return { ok: false, error: "apiKey is required" }
   const id = providerId.trim().toLowerCase()
   const config = readModelsJson()
-  const providerModels = (models ?? []).map((m) => ({
-    id: m.id,
-    name: m.name ?? m.id,
-    contextWindow: m.contextWindow ?? 128_000,
-    maxTokens: m.maxTokens ?? 16_384,
-    reasoning: false,
-    compat: defaultCompat(),
-  }))
+  const providerModels = (models ?? []).map((m) => {
+    const builtinModel = BUILTIN_PROVIDERS[id]?.models.find((bm) => bm.id === m.id)
+    return {
+      id: m.id,
+      name: m.name ?? m.id,
+      contextWindow: m.contextWindow ?? builtinModel?.contextWindow ?? 128_000,
+      maxTokens: m.maxTokens ?? builtinModel?.maxTokens ?? 16_384,
+      reasoning: builtinModel?.reasoning ?? false,
+      compat: builtinModel?.compat ?? defaultCompat(),
+    }
+  })
   // If no models specified, inherit from built-in provider if it exists
   const finalModels =
     providerModels.length > 0
@@ -626,6 +585,17 @@ export function getModelsConfigPublic(): {
     modelCount: number
     readonly: boolean
   }>
+  templates: Array<{
+    id: string
+    name: string
+    baseUrl: string
+    models: Array<{
+      id: string
+      name: string
+      contextWindow: number
+      maxTokens: number
+    }>
+  }>
 } {
   const config = readModelsJson()
   const enabledSet = new Set(config.enabledModels ?? [])
@@ -708,21 +678,35 @@ export function getModelsConfigPublic(): {
     })
     for (const m of p.models) {
       const key = `${pid}/${m.id}`
+      const builtinMeta = BUILTIN_PROVIDERS[pid]?.models.find((bm) => bm.id === m.id)
       models.push({
         providerId: pid,
         modelId: m.id,
         label: `${p.name} · ${m.name}`,
-        contextWindow: m.contextWindow,
+        contextWindow: m.contextWindow ?? builtinMeta?.contextWindow ?? 128_000,
         readonly: pid === "env",
         enabled: enabledSet.has(key),
       })
     }
   }
 
+  const templates = Object.entries(BUILTIN_PROVIDERS).map(([id, p]) => ({
+    id,
+    name: p.name,
+    baseUrl: p.baseUrl,
+    models: p.models.map((m) => ({
+      id: m.id,
+      name: m.name,
+      contextWindow: m.contextWindow,
+      maxTokens: m.maxTokens,
+    })),
+  }))
+
   return {
     models,
     default: getDefaultModelId(),
     thinkingLevels: THINKING_LEVELS,
     providers,
+    templates,
   }
 }
