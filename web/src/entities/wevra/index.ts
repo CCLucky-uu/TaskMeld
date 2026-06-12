@@ -6,7 +6,13 @@ export type WevraStreamPayload = {
   phase: WevraStreamPhase;
   content?: string;
   toolCall?: { id: string; name: string; arguments: Record<string, unknown> };
-  toolResult?: { output: string; isError: boolean; toolCallId?: string; metadata?: Record<string, unknown>; attachments?: Array<{ type: string; data: string }> };
+  toolResult?: {
+    output: string;
+    isError: boolean;
+    toolCallId?: string;
+    metadata?: Record<string, unknown>;
+    attachments?: Array<{ type: string; data: string }>;
+  };
   usage?: { promptTokens: number; completionTokens: number; totalTokens: number; reasoningTokens?: number };
   error?: string;
   question?: WevraQuestionPayload;
@@ -59,9 +65,22 @@ export type WevraModelProvider = {
   readonly: boolean;
 };
 
+export type WevraProviderTemplate = {
+  id: string;
+  name: string;
+  baseUrl: string;
+  models: Array<{
+    id: string;
+    name: string;
+    contextWindow: number;
+    maxTokens: number;
+  }>;
+};
+
 export type WevraConfigResponse = {
   models: WevraModelInfo[];
   default: string;
   thinkingLevels: string[];
   providers: WevraModelProvider[];
+  templates: WevraProviderTemplate[];
 };

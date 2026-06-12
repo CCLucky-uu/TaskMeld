@@ -1,57 +1,19 @@
 import { useState, useCallback, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { wsRequest } from "../../../shared/ws-client";
-import type { WevraConfigResponse, WevraModelProvider, WevraModelInfo } from "../../../entities/wevra";
-import { CloseIcon, PlusIcon } from "../../../shared/ui";
+import type {
+  WevraConfigResponse,
+  WevraModelProvider,
+  WevraModelInfo,
+  WevraProviderTemplate,
+} from "../../../entities/wevra";
+import { CloseIcon } from "../../../shared/ui";
 
 type ModelConfigModalProps = {
   open: boolean;
   onClose: () => void;
   onConfigUpdate: (config: WevraConfigResponse) => void;
 };
-
-type ModelEntry = { id: string; name: string };
-
-type ProviderTemplate = {
-  id: string;
-  name: string;
-  baseUrl: string;
-  models: ModelEntry[];
-};
-
-const PROVIDER_TEMPLATES: ProviderTemplate[] = [
-  {
-    id: "deepseek",
-    name: "DeepSeek",
-    baseUrl: "https://api.deepseek.com",
-    models: [
-      { id: "deepseek-v4-flash", name: "DeepSeek V4 Flash" },
-      { id: "deepseek-v4-pro", name: "DeepSeek V4 Pro" },
-    ],
-  },
-  {
-    id: "openai",
-    name: "OpenAI",
-    baseUrl: "https://api.openai.com",
-    models: [
-      { id: "gpt-5.4-mini", name: "GPT-5.4 Mini" },
-      { id: "gpt-5.4", name: "GPT-5.4" },
-      { id: "gpt-5.5", name: "GPT-5.5" },
-    ],
-  },
-  {
-    id: "xiaomi",
-    name: "Xiaomi MiMo",
-    baseUrl: "https://token-plan-cn.xiaomimimo.com/v1",
-    models: [
-      { id: "mimo-v2.5", name: "MiMo V2.5" },
-      { id: "mimo-v2.5-pro", name: "MiMo V2.5 Pro" },
-      { id: "mimo-v2-flash", name: "MiMo V2 Flash" },
-      { id: "mimo-v2-pro", name: "MiMo V2 Pro" },
-      { id: "mimo-v2-omni", name: "MiMo V2 Omni" },
-    ],
-  },
-];
 
 const inputCls =
   "block w-full min-w-0 border border-[#29414f] bg-[rgba(18,31,38,0.9)] px-2 py-1.5 text-sm text-(--text) outline-none focus-visible:border-[#3b5868] focus-visible:outline focus-visible:outline-1 focus-visible:outline-[var(--live)] focus-visible:outline-offset-1";
@@ -60,66 +22,61 @@ const labelCls = "block text-xs text-(--muted) mb-1";
 export function ModelConfigModal({ open, onClose, onConfigUpdate }: ModelConfigModalProps) {
   const [config, setConfig] = useState<WevraConfigResponse | null>(null);
   const [tab, setTab] = useState<"add" | "models">("add");
-  const [selectedTemplate, setSelectedTemplate] = useState<ProviderTemplate | null>(() => PROVIDER_TEMPLATES[0]);
-  const [baseUrl, setBaseUrl] = useState(() => PROVIDER_TEMPLATES[0].baseUrl);
+  const [selectedTemplateId, setSelectedTemplateId] = useState("");
+  const [baseUrl, setBaseUrl] = useState("");
   const [apiKey, setApiKey] = useState("");
-  const [models, setModels] = useState<ModelEntry[]>(() => [...PROVIDER_TEMPLATES[0].models]);
   const [editing, setEditing] = useState<WevraModelProvider | null>(null);
   const [editUrl, setEditUrl] = useState("");
   const [editKey, setEditKey] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const templates = config?.templates ?? [];
+  const selectedTemplate = templates.find((t) => t.id === selectedTemplateId) ?? templates[0];
+
   const resetForm = useCallback(() => {
-    setSelectedTemplate(PROVIDER_TEMPLATES[0]);
-    setBaseUrl(PROVIDER_TEMPLATES[0].baseUrl);
+    if (templates.length > 0) {
+      setSelectedTemplateId(templates[0].id);
+      setBaseUrl(templates[0].baseUrl);
+    }
     setApiKey("");
-    setModels([...PROVIDER_TEMPLATES[0].models]);
     setEditing(null);
     setEditUrl("");
     setEditKey("");
-  }, []);
+  }, [templates]);
 
   useEffect(() => {
     if (!open) return;
     (async () => {
       try {
         const cfg = (await wsRequest("wevra.config.get", {})) as WevraConfigResponse;
-        if (cfg?.providers) setConfig(cfg);
-      } catch { /* */ }
+        if (cfg?.providers) {
+          setConfig(cfg);
+          if (cfg.templates?.length && !selectedTemplateId) {
+            setSelectedTemplateId(cfg.templates[0].id);
+            setBaseUrl(cfg.templates[0].baseUrl);
+          }
+        }
+      } catch {
+        /* */
+      }
     })();
   }, [open]);
 
   if (!open) return null;
 
-  const handleTemplateSelect = (t: ProviderTemplate) => {
-    setSelectedTemplate(t);
+  const handleTemplateSelect = (t: WevraProviderTemplate) => {
+    setSelectedTemplateId(t.id);
     setBaseUrl(t.baseUrl);
-    setModels([...t.models]);
-  };
-
-  const addModel = () => {
-    setModels((prev) => [...prev, { id: "", name: "" }]);
-  };
-
-  const removeModel = (idx: number) => {
-    setModels((prev) => prev.filter((_, i) => i !== idx));
-  };
-
-  const updateModel = (idx: number, field: "id" | "name", value: string) => {
-    setModels((prev) => prev.map((m, i) => (i === idx ? { ...m, [field]: value } : m)));
   };
 
   const handleAdd = async () => {
     if (!selectedTemplate || !baseUrl.trim() || !apiKey.trim()) return;
-    const validModels = models.filter((m) => m.id.trim());
-    if (validModels.length === 0) return;
     setLoading(true);
     try {
       const cfg = (await wsRequest("wevra.models.add-provider", {
         providerId: selectedTemplate.id,
         baseUrl: baseUrl.trim(),
         apiKey: apiKey.trim(),
-        models: validModels.map((m) => ({ id: m.id.trim(), name: (m.name || m.id).trim() })),
       })) as WevraConfigResponse;
       if (cfg?.providers) {
         setConfig(cfg);
@@ -127,7 +84,9 @@ export function ModelConfigModal({ open, onClose, onConfigUpdate }: ModelConfigM
         resetForm();
         setTab("models");
       }
-    } catch { /* */ }
+    } catch {
+      /* */
+    }
     setLoading(false);
   };
 
@@ -144,7 +103,9 @@ export function ModelConfigModal({ open, onClose, onConfigUpdate }: ModelConfigM
         onConfigUpdate(cfg);
         resetForm();
       }
-    } catch { /* */ }
+    } catch {
+      /* */
+    }
     setLoading(false);
   };
 
@@ -156,7 +117,9 @@ export function ModelConfigModal({ open, onClose, onConfigUpdate }: ModelConfigM
         setConfig(cfg);
         onConfigUpdate(cfg);
       }
-    } catch { /* */ }
+    } catch {
+      /* */
+    }
     setLoading(false);
   };
 
@@ -172,7 +135,9 @@ export function ModelConfigModal({ open, onClose, onConfigUpdate }: ModelConfigM
         setConfig(cfg);
         onConfigUpdate(cfg);
       }
-    } catch { /* */ }
+    } catch {
+      /* */
+    }
   };
 
   const handleToggleEnabled = async (m: WevraModelInfo) => {
@@ -190,7 +155,9 @@ export function ModelConfigModal({ open, onClose, onConfigUpdate }: ModelConfigM
           setConfig(res);
           onConfigUpdate(res);
         }
-      } catch { /* */ }
+      } catch {
+        /* */
+      }
     } else {
       // Enable
       try {
@@ -202,7 +169,9 @@ export function ModelConfigModal({ open, onClose, onConfigUpdate }: ModelConfigM
           setConfig(cfg);
           onConfigUpdate(cfg);
         }
-      } catch { /* */ }
+      } catch {
+        /* */
+      }
     }
   };
 
@@ -234,16 +203,30 @@ export function ModelConfigModal({ open, onClose, onConfigUpdate }: ModelConfigM
             <button
               type="button"
               className="text-xs pb-1 bg-transparent border-none cursor-pointer"
-              style={tab === "add" ? { color: "var(--live)", borderBottom: "2px solid var(--live)" } : { color: "var(--muted)" }}
-              onClick={() => { setTab("add"); resetForm(); }}
+              style={
+                tab === "add"
+                  ? { color: "var(--live)", borderBottom: "2px solid var(--live)" }
+                  : { color: "var(--muted)" }
+              }
+              onClick={() => {
+                setTab("add");
+                resetForm();
+              }}
             >
               Add Provider
             </button>
             <button
               type="button"
               className="text-xs pb-1 bg-transparent border-none cursor-pointer"
-              style={tab === "models" ? { color: "var(--live)", borderBottom: "2px solid var(--live)" } : { color: "var(--muted)" }}
-              onClick={() => { setTab("models"); resetForm(); }}
+              style={
+                tab === "models"
+                  ? { color: "var(--live)", borderBottom: "2px solid var(--live)" }
+                  : { color: "var(--muted)" }
+              }
+              onClick={() => {
+                setTab("models");
+                resetForm();
+              }}
             >
               Models
             </button>
@@ -267,7 +250,7 @@ export function ModelConfigModal({ open, onClose, onConfigUpdate }: ModelConfigM
                   <div>
                     <label className={labelCls}>Provider</label>
                     <div className="flex flex-wrap gap-1.5">
-                      {PROVIDER_TEMPLATES.map((t) => (
+                      {templates.map((t) => (
                         <button
                           key={t.id}
                           type="button"
@@ -292,41 +275,25 @@ export function ModelConfigModal({ open, onClose, onConfigUpdate }: ModelConfigM
                       </div>
                       <div>
                         <label className={labelCls}>API Key</label>
-                        <input type="password" className={inputCls} value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="sk-..." />
+                        <input
+                          type="password"
+                          className={inputCls}
+                          value={apiKey}
+                          onChange={(e) => setApiKey(e.target.value)}
+                          placeholder="sk-..."
+                        />
                       </div>
                       <div>
-                        <div className="flex items-center justify-between mb-1">
-                          <label className={labelCls + " mb-0"}>Models</label>
-                          <button
-                            type="button"
-                            className="inline-flex items-center gap-0.5 text-xs text-(--live) bg-transparent border-none cursor-pointer hover:underline"
-                            onClick={addModel}
-                          >
-                            <PlusIcon size={12} /> Add
-                          </button>
-                        </div>
-                        <div className="space-y-1.5">
-                          {models.map((m, idx) => (
-                            <div key={idx} className="flex items-center gap-1.5">
-                              <input
-                                className={inputCls + " flex-1"}
-                                value={m.id}
-                                onChange={(e) => updateModel(idx, "id", e.target.value)}
-                                placeholder="model-id"
-                              />
-                              <input
-                                className={inputCls + " flex-1"}
-                                value={m.name}
-                                onChange={(e) => updateModel(idx, "name", e.target.value)}
-                                placeholder="Display name"
-                              />
-                              <button
-                                type="button"
-                                className="h-[30px] w-[30px] shrink-0 inline-flex items-center justify-center text-[#ff6b6b] hover:text-[#ff4444] bg-transparent border-none cursor-pointer text-sm"
-                                onClick={() => removeModel(idx)}
-                              >
-                                x
-                              </button>
+                        <label className={labelCls}>Models (inherited from backend)</label>
+                        <div className="space-y-1">
+                          {selectedTemplate.models.map((m, idx) => (
+                            <div key={idx} className="text-xs text-(--muted) px-2 py-0.5">
+                              {m.name}
+                              <span className="ml-2 text-[10px] opacity-60">
+                                {m.contextWindow >= 1_000_000
+                                  ? `${(m.contextWindow / 1_000_000).toFixed(0)}M ctx`
+                                  : `${(m.contextWindow / 1_000).toFixed(0)}K ctx`}
+                              </span>
                             </div>
                           ))}
                         </div>
@@ -335,7 +302,7 @@ export function ModelConfigModal({ open, onClose, onConfigUpdate }: ModelConfigM
                         type="button"
                         className="w-full px-3 py-1.5 text-sm rounded border border-(--live) bg-[rgba(50,215,186,0.12)] text-(--live) hover:bg-[rgba(50,215,186,0.2)] cursor-pointer disabled:opacity-50"
                         onClick={handleAdd}
-                        disabled={loading || !apiKey.trim() || models.filter((m) => m.id.trim()).length === 0}
+                        disabled={loading || !apiKey.trim()}
                       >
                         {loading ? "Adding..." : "Add Provider"}
                       </button>
@@ -379,7 +346,9 @@ export function ModelConfigModal({ open, onClose, onConfigUpdate }: ModelConfigM
                                     onClick={() => isEnabled && handleSetDefault(m)}
                                     title={isDefault ? "Default model" : "Set as default"}
                                   />
-                                  <span className={`flex-1 text-xs truncate ${isDefault ? "text-(--text)" : "text-(--muted)"}`}>
+                                  <span
+                                    className={`flex-1 text-xs truncate ${isDefault ? "text-(--text)" : "text-(--muted)"}`}
+                                  >
                                     {m.label?.split("·").pop()?.trim() || m.modelId}
                                   </span>
                                   {isDefault && (
@@ -398,7 +367,9 @@ export function ModelConfigModal({ open, onClose, onConfigUpdate }: ModelConfigM
                                     onClick={() => {
                                       if (!isDefault) handleToggleEnabled(m);
                                     }}
-                                    title={isDefault ? "Cannot disable default model" : isEnabled ? "Disable" : "Enable"}
+                                    title={
+                                      isDefault ? "Cannot disable default model" : isEnabled ? "Disable" : "Enable"
+                                    }
                                   >
                                     <span
                                       className={`absolute top-[3px] w-2.5 h-2.5 rounded-full bg-white transition-all duration-200 ${
@@ -418,40 +389,84 @@ export function ModelConfigModal({ open, onClose, onConfigUpdate }: ModelConfigM
                   {/* Provider management */}
                   {config.providers.filter((p) => !p.readonly).length > 0 && (
                     <div className="border-t border-(--line) pt-3 mt-3">
-                      <div className="text-[10px] font-semibold text-(--muted) uppercase tracking-wider mb-2">Provider Settings</div>
-                      {config.providers.filter((p) => !p.readonly).map((p) => (
-                        <div key={p.id} className="border border-(--line) rounded px-3 py-2 mb-2">
-                          {editing?.id === p.id ? (
-                            <div className="space-y-2">
-                              <div>
-                                <label className={labelCls}>Base URL</label>
-                                <input className={inputCls} value={editUrl} onChange={(e) => setEditUrl(e.target.value)} placeholder={p.baseUrl} />
-                              </div>
-                              <div>
-                                <label className={labelCls}>API Key</label>
-                                <input type="password" className={inputCls} value={editKey} onChange={(e) => setEditKey(e.target.value)} placeholder="Enter new key" />
-                              </div>
-                              <div className="flex gap-2 justify-end">
-                                <button type="button" className="px-2.5 py-1 text-xs rounded border border-(--line) bg-transparent text-(--muted) hover:text-(--text) cursor-pointer" onClick={resetForm}>Cancel</button>
-                                <button type="button" className="px-2.5 py-1 text-xs rounded border border-(--live) bg-transparent text-(--live) hover:bg-[rgba(50,215,186,0.1)] cursor-pointer" onClick={handleUpdate} disabled={loading}>Save</button>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <div className="text-xs text-(--text)">{p.name}</div>
-                                <div className="text-[10px] text-(--muted) mt-0.5">
-                                  {p.baseUrl} · {p.modelCount} model{p.modelCount !== 1 ? "s" : ""}
+                      <div className="text-[10px] font-semibold text-(--muted) uppercase tracking-wider mb-2">
+                        Provider Settings
+                      </div>
+                      {config.providers
+                        .filter((p) => !p.readonly)
+                        .map((p) => (
+                          <div key={p.id} className="border border-(--line) rounded px-3 py-2 mb-2">
+                            {editing?.id === p.id ? (
+                              <div className="space-y-2">
+                                <div>
+                                  <label className={labelCls}>Base URL</label>
+                                  <input
+                                    className={inputCls}
+                                    value={editUrl}
+                                    onChange={(e) => setEditUrl(e.target.value)}
+                                    placeholder={p.baseUrl}
+                                  />
+                                </div>
+                                <div>
+                                  <label className={labelCls}>API Key</label>
+                                  <input
+                                    type="password"
+                                    className={inputCls}
+                                    value={editKey}
+                                    onChange={(e) => setEditKey(e.target.value)}
+                                    placeholder="Enter new key"
+                                  />
+                                </div>
+                                <div className="flex gap-2 justify-end">
+                                  <button
+                                    type="button"
+                                    className="px-2.5 py-1 text-xs rounded border border-(--line) bg-transparent text-(--muted) hover:text-(--text) cursor-pointer"
+                                    onClick={resetForm}
+                                  >
+                                    Cancel
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="px-2.5 py-1 text-xs rounded border border-(--live) bg-transparent text-(--live) hover:bg-[rgba(50,215,186,0.1)] cursor-pointer"
+                                    onClick={handleUpdate}
+                                    disabled={loading}
+                                  >
+                                    Save
+                                  </button>
                                 </div>
                               </div>
-                              <div className="flex gap-1.5">
-                                <button type="button" className="px-2 py-1 text-xs rounded border border-(--line) bg-transparent text-(--muted) hover:text-(--text) cursor-pointer" onClick={() => { setEditing(p); setEditUrl(p.baseUrl); setEditKey(""); }}>Edit</button>
-                                <button type="button" className="px-2 py-1 text-xs rounded border border-[rgba(255,107,107,0.3)] bg-transparent text-[#ff6b6b] hover:bg-[rgba(255,107,107,0.08)] cursor-pointer" onClick={() => handleDelete(p.id)}>Delete</button>
+                            ) : (
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <div className="text-xs text-(--text)">{p.name}</div>
+                                  <div className="text-[10px] text-(--muted) mt-0.5">
+                                    {p.baseUrl} · {p.modelCount} model{p.modelCount !== 1 ? "s" : ""}
+                                  </div>
+                                </div>
+                                <div className="flex gap-1.5">
+                                  <button
+                                    type="button"
+                                    className="px-2 py-1 text-xs rounded border border-(--line) bg-transparent text-(--muted) hover:text-(--text) cursor-pointer"
+                                    onClick={() => {
+                                      setEditing(p);
+                                      setEditUrl(p.baseUrl);
+                                      setEditKey("");
+                                    }}
+                                  >
+                                    Edit
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="px-2 py-1 text-xs rounded border border-[rgba(255,107,107,0.3)] bg-transparent text-[#ff6b6b] hover:bg-[rgba(255,107,107,0.08)] cursor-pointer"
+                                    onClick={() => handleDelete(p.id)}
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
                               </div>
-                            </div>
-                          )}
-                        </div>
-                      ))}
+                            )}
+                          </div>
+                        ))}
                     </div>
                   )}
                 </div>

@@ -4,8 +4,9 @@ import type { SessionService } from "../../../services/session-service"
 export function createSessionTools(session?: SessionService): Tool[] {
   return [
     {
-      name: "session_list",
-      description: "List active agent sessions from the OpenClaw Gateway.",
+      name: "gateway_session_list",
+      description:
+        "List active OpenClaw agent execution sessions from the Gateway. These are external sessions living in the OpenClaw Gateway where agents execute pipeline nodes — NOT Wevra's internal conversation sessions.",
       parameters: { type: "object", properties: {}, required: [] },
       annotations: { readOnly: true, destructive: false, requiresConfirmation: false, idempotent: true },
       permission: "auto",
@@ -34,11 +35,12 @@ export function createSessionTools(session?: SessionService): Tool[] {
       },
     },
     {
-      name: "session_get",
-      description: "Get details of a specific session.",
+      name: "gateway_session_get",
+      description:
+        "Get details of a specific OpenClaw agent execution session. These are external sessions living in the OpenClaw Gateway — NOT Wevra's internal conversation sessions.",
       parameters: {
         type: "object",
-        properties: { sessionId: { type: "string", description: "The session ID" } },
+        properties: { sessionId: { type: "string", description: "The OpenClaw agent session ID" } },
         required: ["sessionId"],
       },
       annotations: { readOnly: true, destructive: false, requiresConfirmation: false, idempotent: true },
@@ -60,11 +62,12 @@ export function createSessionTools(session?: SessionService): Tool[] {
       },
     },
     {
-      name: "session_history",
-      description: "Get the conversation history of a session. Returns messages with role, content, and timestamp.",
+      name: "gateway_session_history",
+      description:
+        "Get the conversation history of an OpenClaw agent execution session. This reads the agent's execution log from the OpenClaw Gateway — NOT Wevra's chat history.",
       parameters: {
         type: "object",
-        properties: { sessionId: { type: "string", description: "The session ID" } },
+        properties: { sessionId: { type: "string", description: "The OpenClaw agent session ID" } },
         required: ["sessionId"],
       },
       annotations: { readOnly: true, destructive: false, requiresConfirmation: false, idempotent: true },

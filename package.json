@@ -20,7 +20,7 @@
     "dev:cli": "npx tsx src/cli/index.ts",
     "prebuild": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
     "build": "tsx scripts/gen-version.ts && tsc -p tsconfig.json",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsx scripts/gen-version.ts && tsc --noEmit",
     "lint": "eslint \"src/**/*.ts\" \"test/**/*.ts\"",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\"",

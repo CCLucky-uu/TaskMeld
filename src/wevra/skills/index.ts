@@ -82,7 +82,7 @@ Goal: Bind a real agent to every task node.
 - Default strategy: recommend creating a NEW set of agents for this pipeline.
   Do NOT reuse agents from other pipelines unless the user insists.
   New pipelines with fresh agents avoid cross-pipeline interference.
-- Run agent_list to see existing agents. Present the user with:
+- Run gateway_agent_list to see existing agents. Present the user with:
   * Option A: Create new agents (recommended) — describe what roles are needed.
   * Option B: Reuse existing agents — only if the user prefers this.
 - For each "task" node: use blueprints_update (updateNode) to set agentId.
@@ -147,7 +147,7 @@ When a pipeline run fails:
 1. pipeline_status → confirm the failure.
 2. pipeline_diagnose → initial automated analysis.
 3. If deeper investigation needed:
-   - session_history → review agent conversation for the failed node.
+   - gateway_session_history → review agent conversation for the failed node.
    - artifact_get → read the node's output artifacts.
 4. Summarize root cause, impact, and suggested fix.
 5. For structural issues, use blueprints_from_pipeline to visualize the DAG.

@@ -17,6 +17,7 @@ import { resolveTaskMeldDataPath } from "./app/data-dir"
 import { createPipelineService } from "./services/pipeline-service"
 import { createSchedulerService } from "./services/scheduler-service"
 import { createReadonlyServices } from "./services/read-services"
+import { createGatewaySkillService } from "./services/gateway-skill-service"
 import { createBuiltinPluginRegistry } from "./pipeline/plugins/builtin"
 import { createRunLogService } from "./logs/run-log-service"
 
@@ -132,8 +133,9 @@ if (require.main === module) {
 
     // Initialize Wevra Agent
     const wevraServices = createReadonlyServices(app)
+    const gatewaySkill = createGatewaySkillService(app)
     const wevraPluginRegistry = createBuiltinPluginRegistry()
-    const wevraAgent = new WevraAgent(undefined, wevraServices, app, wevraPluginRegistry)
+    const wevraAgent = new WevraAgent(undefined, wevraServices, gatewaySkill, app, wevraPluginRegistry)
     initWevraWs(wevraAgent, wsBroker)
     await wevraAgent.init() // 恢复对话
     console.log(
