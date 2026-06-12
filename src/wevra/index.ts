@@ -11,12 +11,12 @@ import { WevraLoop, type LoopCallbacks } from "./loop/agent-loop"
 import { buildGlobalPrompt } from "./loop/prompt-builder"
 import { loadUserPreferences, resolvePreferences, saveUserPreferences } from "./preferences"
 import type { ReadonlyServices } from "../services/read-services"
+import type { GatewaySkillService } from "../services/gateway-skill-service"
 import type { PipelineRegistry } from "../app/pipeline-registry"
 import type { PluginRegistry } from "../pipeline/plugins/registry"
 
 // Builtin tools
 import { createPipelineTools, createPipelinePluginTool, createPipelineNodeTool } from "./tools/builtin/pipeline"
-import { createAgentTools } from "./tools/builtin/agent"
 import { createArtifactTools } from "./tools/builtin/artifact"
 import { createSessionTools } from "./tools/builtin/session"
 import { createSystemTools } from "./tools/builtin/system"
@@ -25,6 +25,7 @@ import { createMemoryTools } from "./tools/builtin/memory"
 import { createSkillTools } from "./tools/builtin/skill"
 import { createQuestionTool } from "./tools/builtin/question"
 import { createBlueprintTools } from "./tools/builtin/blueprint"
+import { createGatewayTools } from "./tools/builtin/gateway"
 
 export class WevraAgent {
   brain: Brain | null
@@ -41,17 +42,20 @@ export class WevraAgent {
   private userGlobalPrefs: ToolPreferences = { ...DEFAULT_TOOL_PREFERENCES }
   private activeChats = new Map<string, AbortController>()
   private services: ReadonlyServices | null
+  private gatewaySkill: GatewaySkillService | null
   private app: PipelineRegistry | null
   private pluginRegistry: PluginRegistry | null
 
   constructor(
     configOverrides?: Partial<WevraConfig> & { model?: RuntimeModelConfig },
     services?: ReadonlyServices,
+    gatewaySkill?: GatewaySkillService,
     app?: PipelineRegistry,
     pluginRegistry?: PluginRegistry,
   ) {
     this.config = loadConfig(configOverrides)
     this.services = services ?? null
+    this.gatewaySkill = gatewaySkill ?? null
     this.app = app ?? null
     this.pluginRegistry = pluginRegistry ?? null
     this.toolRegistry = new ToolRegistry()
@@ -93,11 +97,7 @@ export class WevraAgent {
     )
 
     // Blueprint tools need ConversationManager — register after conversations init
-    for (const tool of createBlueprintTools(
-      this.conversations,
-      this.services?.pipeline,
-      this.app,
-    ))
+    for (const tool of createBlueprintTools(this.conversations, this.services?.pipeline, this.app))
       this.toolRegistry.register(tool)
 
     this.toolExecutor = new ToolExecutor(this.toolRegistry, this.config)
@@ -268,7 +268,7 @@ export class WevraAgent {
       ...createPipelineTools(s?.pipeline, this.app, this.pluginRegistry),
       ...createPipelinePluginTool(this.app, this.pluginRegistry),
       ...createPipelineNodeTool(this.app),
-      ...createAgentTools(s?.agent, s?.session),
+      ...createGatewayTools(s?.agent, s?.session, this.gatewaySkill ?? undefined),
       ...createArtifactTools(s?.artifact),
       ...createSessionTools(s?.session),
       ...createSystemTools(s),

@@ -12,8 +12,7 @@ export function createPipelineTools(
   return [
     {
       name: "pipeline_list",
-      description:
-        "List all pipelines with their basic info (id, name, description, status).",
+      description: "List all pipelines with their basic info (id, name, description, status).",
       parameters: { type: "object", properties: {}, required: [] },
       annotations: { readOnly: true, destructive: false, requiresConfirmation: false, idempotent: true },
       permission: "auto",
@@ -33,8 +32,7 @@ export function createPipelineTools(
     },
     {
       name: "pipeline_get",
-      description:
-        "Get detailed information about a specific pipeline including its nodes and edges.",
+      description: "Get detailed information about a specific pipeline including its nodes and edges.",
       parameters: {
         type: "object",
         properties: {
@@ -554,7 +552,7 @@ Actions:
 CRITICAL RULES:
 1. When the user asks to change, fix, reconfigure, or adjust an existing node, ALWAYS use "update". NEVER delete and recreate a node to modify it — this would lose execution history and break downstream references.
 2. To change a node's upstream dependencies, use "update" with dependsOn (full replacement of all upstreams). To add a single dependency without replacing others, use "connect" instead.
-3. Before adding a node, call agent_list to discover available agents and use their ID for agentId.
+3. Before adding a node, call gateway_agent_list to discover available agents and use their ID for agentId.
 4. Normal connect creates a dependency edge. Only use the route parameter when connecting FROM a router node to a specific branch target.
 
 Node types: "task" (default), "router" (for branching with routePolicy)
@@ -612,7 +610,8 @@ Instruction writing rules:
           },
           agentId: {
             type: "string",
-            description: "Agent ID to execute this node (required). Call agent_list first to see available agents.",
+            description:
+              "Agent ID to execute this node (required). Call gateway_agent_list first to see available agents.",
           },
           type: { type: "string", enum: ["task", "router"], description: 'Node type (for add, default "task")' },
           routePolicy: {
@@ -685,7 +684,7 @@ Instruction writing rules:
             if (!agentId?.trim())
               return {
                 output:
-                  "agentId is required. Call agent_list first to see available agents, then specify which agent should execute this node.",
+                  "agentId is required. Call gateway_agent_list first to see available agents, then specify which agent should execute this node.",
                 isError: true,
               }
 

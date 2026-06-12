@@ -6,7 +6,7 @@ export function createSkillTools(skills: SkillRegistry): Tool[] {
     {
       name: "skill_load",
       description:
-        "Load a skill into the conversation. Call this when a task matches a skill from the Available Skills list.",
+        "Load a Wevra skill (protocol/guide) into this conversation. This operates on TaskMeld's local skill registry, NOT OpenClaw's skill system. Use gateway_skill_* tools for OpenClaw skills.",
       parameters: {
         type: "object",
         properties: {

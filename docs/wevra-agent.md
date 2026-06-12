@@ -10,7 +10,7 @@ Wevra is TaskMeld's built-in agent for natural language pipeline management. It 
 - [Architecture](#architecture)
 - [Tools Reference](#tools-reference)
   - [Pipeline Tools](#pipeline-tools) (12 tools)
-  - [Agent Tools](#agent-tools) (6 tools)
+  - [Gateway Agent Tools](#gateway-agent-tools) (6 tools)
   - [System Tools](#system-tools) (3 tools)
   - [Memory Tools](#memory-tools) (2 tools)
   - [Skill Tools](#skill-tools) (1 tool)
@@ -29,6 +29,7 @@ Wevra is TaskMeld's built-in agent for natural language pipeline management. It 
 Wevra operates as a single agent instance that interacts with TaskMeld services through a tool-based architecture. The LLM calls tools via function calling; tools call services internally.
 
 **Key characteristics:**
+
 - Zero-dependency framework using native `fetch` for OpenAI-compatible APIs
 - 28 built-in tools across 8 categories
 - ReAct (Reasoning + Acting) loop for multi-turn execution
@@ -68,6 +69,7 @@ List all registered pipelines.
 **Parameters:** None
 
 **Example:**
+
 ```
 What pipelines do I have?
 ```
@@ -82,11 +84,12 @@ View full details of a specific pipeline.
 
 **Parameters:**
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `pipelineId` | string | Yes | Pipeline ID |
+| Parameter    | Type   | Required | Description |
+| ------------ | ------ | -------- | ----------- |
+| `pipelineId` | string | Yes      | Pipeline ID |
 
 **Example:**
+
 ```
 Show me the data processing pipeline
 ```
@@ -101,12 +104,13 @@ Create a new pipeline.
 
 **Parameters:**
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `name` | string | Yes | Pipeline name |
-| `description` | string | No | Pipeline description |
+| Parameter     | Type   | Required | Description          |
+| ------------- | ------ | -------- | -------------------- |
+| `name`        | string | Yes      | Pipeline name        |
+| `description` | string | No       | Pipeline description |
 
 **Example:**
+
 ```
 Create a pipeline called "Daily Sales Report"
 ```
@@ -123,13 +127,14 @@ Update an existing pipeline.
 
 **Parameters:**
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `pipelineId` | string | Yes | Pipeline ID |
-| `name` | string | No | New name |
-| `description` | string | No | New description |
+| Parameter     | Type   | Required | Description     |
+| ------------- | ------ | -------- | --------------- |
+| `pipelineId`  | string | Yes      | Pipeline ID     |
+| `name`        | string | No       | New name        |
+| `description` | string | No       | New description |
 
 **Example:**
+
 ```
 Rename pipeline A to "Production Data Sync"
 ```
@@ -146,11 +151,12 @@ Delete a pipeline permanently.
 
 **Parameters:**
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `pipelineId` | string | Yes | Pipeline ID |
+| Parameter    | Type   | Required | Description |
+| ------------ | ------ | -------- | ----------- |
+| `pipelineId` | string | Yes      | Pipeline ID |
 
 **Example:**
+
 ```
 Delete the old test pipeline
 ```
@@ -167,11 +173,12 @@ Get current execution status of a pipeline.
 
 **Parameters:**
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `pipelineId` | string | Yes | Pipeline ID |
+| Parameter    | Type   | Required | Description |
+| ------------ | ------ | -------- | ----------- |
+| `pipelineId` | string | Yes      | Pipeline ID |
 
 **Example:**
+
 ```
 What's the status of the data processing pipeline?
 ```
@@ -186,11 +193,12 @@ Analyze pipeline failures and suggest fixes.
 
 **Parameters:**
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `pipelineId` | string | Yes | Pipeline ID |
+| Parameter    | Type   | Required | Description |
+| ------------ | ------ | -------- | ----------- |
+| `pipelineId` | string | Yes      | Pipeline ID |
 
 **Example:**
+
 ```
 Why did the sales pipeline fail?
 ```
@@ -205,11 +213,12 @@ Start a pipeline execution.
 
 **Parameters:**
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `pipelineId` | string | Yes | Pipeline ID |
+| Parameter    | Type   | Required | Description |
+| ------------ | ------ | -------- | ----------- |
+| `pipelineId` | string | Yes      | Pipeline ID |
 
 **Example:**
+
 ```
 Run the data processing pipeline
 ```
@@ -226,11 +235,12 @@ Stop a running pipeline.
 
 **Parameters:**
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `pipelineId` | string | Yes | Pipeline ID |
+| Parameter    | Type   | Required | Description |
+| ------------ | ------ | -------- | ----------- |
+| `pipelineId` | string | Yes      | Pipeline ID |
 
 **Example:**
+
 ```
 Stop the data processing pipeline
 ```
@@ -247,14 +257,15 @@ Manage pipeline plugins (scheduler, batch runner).
 
 **Parameters:**
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `pipelineId` | string | Yes | Pipeline ID |
-| `action` | string | Yes | Action: `list`, `get`, `enable`, `disable`, `config` |
-| `pluginId` | string | No | Plugin ID (required for get/enable/disable/config) |
-| `config` | object | No | Plugin configuration (for config action) |
+| Parameter    | Type   | Required | Description                                          |
+| ------------ | ------ | -------- | ---------------------------------------------------- |
+| `pipelineId` | string | Yes      | Pipeline ID                                          |
+| `action`     | string | Yes      | Action: `list`, `get`, `enable`, `disable`, `config` |
+| `pluginId`   | string | No       | Plugin ID (required for get/enable/disable/config)   |
+| `config`     | object | No       | Plugin configuration (for config action)             |
 
 **Example:**
+
 ```
 Enable the scheduler plugin for pipeline A
 ```
@@ -271,14 +282,15 @@ Manage pipeline nodes (add, update, delete, connect).
 
 **Parameters:**
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `pipelineId` | string | Yes | Pipeline ID |
-| `action` | string | Yes | Action: `add`, `update`, `delete`, `connect` |
-| `nodeId` | string | No | Node ID (required for update/delete/connect) |
-| `config` | object | No | Node configuration (for add/update) |
+| Parameter    | Type   | Required | Description                                  |
+| ------------ | ------ | -------- | -------------------------------------------- |
+| `pipelineId` | string | Yes      | Pipeline ID                                  |
+| `action`     | string | Yes      | Action: `add`, `update`, `delete`, `connect` |
+| `nodeId`     | string | No       | Node ID (required for update/delete/connect) |
+| `config`     | object | No       | Node configuration (for add/update)          |
 
 **Example:**
+
 ```
 Add a new node to pipeline A
 ```
@@ -295,11 +307,12 @@ Validate pipeline configuration before running.
 
 **Parameters:**
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `pipelineId` | string | Yes | Pipeline ID |
+| Parameter    | Type   | Required | Description |
+| ------------ | ------ | -------- | ----------- |
+| `pipelineId` | string | Yes      | Pipeline ID |
 
 **Example:**
+
 ```
 Validate the data processing pipeline before running
 ```
@@ -308,19 +321,20 @@ Validate the data processing pipeline before running
 
 ---
 
-### Agent Tools
+### Gateway Agent Tools
 
-#### agent_list
+#### gateway_agent_list
 
 List all registered OpenClaw agents.
 
 **Parameters:**
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `includeInactive` | boolean | No | Include agents inactive >24 hours (default: true) |
+| Parameter         | Type    | Required | Description                                       |
+| ----------------- | ------- | -------- | ------------------------------------------------- |
+| `includeInactive` | boolean | No       | Include agents inactive >24 hours (default: true) |
 
 **Example:**
+
 ```
 List all agents
 Show only active agents
@@ -330,18 +344,19 @@ Show only active agents
 
 ---
 
-#### agent_get
+#### gateway_agent_get
 
 Get detailed information about a specific agent.
 
 **Parameters:**
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `agentId` | string | Yes | Agent ID |
-| `includeSessions` | boolean | No | Include active sessions (default: false) |
+| Parameter         | Type    | Required | Description                              |
+| ----------------- | ------- | -------- | ---------------------------------------- |
+| `agentId`         | string  | Yes      | Agent ID                                 |
+| `includeSessions` | boolean | No       | Include active sessions (default: false) |
 
 **Example:**
+
 ```
 Show me details for the DataCollector agent
 ```
@@ -350,18 +365,19 @@ Show me details for the DataCollector agent
 
 ---
 
-#### agent_create
+#### gateway_agent_create
 
 Create a new OpenClaw agent.
 
 **Parameters:**
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `name` | string | Yes | Agent name |
-| `workspace` | string | No | Workspace path (auto-generated if not provided) |
+| Parameter   | Type   | Required | Description                                     |
+| ----------- | ------ | -------- | ----------------------------------------------- |
+| `name`      | string | Yes      | Agent name                                      |
+| `workspace` | string | No       | Workspace path (auto-generated if not provided) |
 
 **Example:**
+
 ```
 Create an agent called "DataValidator"
 ```
@@ -372,19 +388,20 @@ Create an agent called "DataValidator"
 
 ---
 
-#### agent_update
+#### gateway_agent_update
 
 Update an existing agent configuration.
 
 **Parameters:**
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `agentId` | string | Yes | Agent ID |
-| `name` | string | No | New name |
-| `workspace` | string | No | New workspace path |
+| Parameter   | Type   | Required | Description        |
+| ----------- | ------ | -------- | ------------------ |
+| `agentId`   | string | Yes      | Agent ID           |
+| `name`      | string | No       | New name           |
+| `workspace` | string | No       | New workspace path |
 
 **Example:**
+
 ```
 Rename agent A to "Production Validator"
 ```
@@ -395,18 +412,19 @@ Rename agent A to "Production Validator"
 
 ---
 
-#### agent_delete
+#### gateway_agent_delete
 
 Delete an agent permanently.
 
 **Parameters:**
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `agentId` | string | Yes | Agent ID |
-| `deleteFiles` | boolean | No | Delete workspace files (default: false) |
+| Parameter     | Type    | Required | Description                             |
+| ------------- | ------- | -------- | --------------------------------------- |
+| `agentId`     | string  | Yes      | Agent ID                                |
+| `deleteFiles` | boolean | No       | Delete workspace files (default: false) |
 
 **Example:**
+
 ```
 Delete the test agent
 ```
@@ -417,20 +435,21 @@ Delete the test agent
 
 ---
 
-#### agent_send
+#### gateway_agent_send
 
 Send a message to an agent and wait for reply.
 
 **Parameters:**
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `agentId` | string | Yes | Agent ID |
-| `message` | string | Yes | Message to send |
-| `sessionId` | string | No | Session ID (default: "main") |
-| `timeoutMs` | number | No | Timeout in ms (default: 120000, max: 300000) |
+| Parameter   | Type   | Required | Description                                  |
+| ----------- | ------ | -------- | -------------------------------------------- |
+| `agentId`   | string | Yes      | Agent ID                                     |
+| `message`   | string | Yes      | Message to send                              |
+| `sessionId` | string | No       | Session ID (default: "main")                 |
+| `timeoutMs` | number | No       | Timeout in ms (default: 120000, max: 300000) |
 
 **Example:**
+
 ```
 Ask the DataCollector about today's data volume
 ```
@@ -450,6 +469,7 @@ Get system health and status.
 **Parameters:** None
 
 **Example:**
+
 ```
 What's the system status?
 ```
@@ -465,6 +485,7 @@ Get OpenClaw Gateway connection details.
 **Parameters:** None
 
 **Example:**
+
 ```
 Show me the gateway connection status
 ```
@@ -480,6 +501,7 @@ Query current system time.
 **Parameters:** None
 
 **Example:**
+
 ```
 What time is it?
 ```
@@ -496,13 +518,14 @@ Search memory for relevant information.
 
 **Parameters:**
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `query` | string | Yes | Search query |
-| `scope` | string | No | Scope: `global` or `pipeline` (default: global) |
-| `topK` | number | No | Number of results (default: 5) |
+| Parameter | Type   | Required | Description                                     |
+| --------- | ------ | -------- | ----------------------------------------------- |
+| `query`   | string | Yes      | Search query                                    |
+| `scope`   | string | No       | Scope: `global` or `pipeline` (default: global) |
+| `topK`    | number | No       | Number of results (default: 5)                  |
 
 **Example:**
+
 ```
 What do you remember about API rate limits?
 ```
@@ -517,15 +540,16 @@ Store information in memory.
 
 **Parameters:**
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `content` | string | Yes | Memory content |
-| `type` | string | No | Type: `fact`, `preference`, `event`, `summary` (default: fact) |
-| `scope` | string | No | Scope: `global` or `pipeline` (default: global) |
-| `importance` | number | No | Importance: 0-1 (default: 0.5) |
-| `tags` | string[] | No | Tags for categorization |
+| Parameter    | Type     | Required | Description                                                    |
+| ------------ | -------- | -------- | -------------------------------------------------------------- |
+| `content`    | string   | Yes      | Memory content                                                 |
+| `type`       | string   | No       | Type: `fact`, `preference`, `event`, `summary` (default: fact) |
+| `scope`      | string   | No       | Scope: `global` or `pipeline` (default: global)                |
+| `importance` | number   | No       | Importance: 0-1 (default: 0.5)                                 |
+| `tags`       | string[] | No       | Tags for categorization                                        |
 
 **Example:**
+
 ```
 Remember that our API has rate limits of 100 requests per minute
 ```
@@ -542,11 +566,12 @@ Load a skill definition.
 
 **Parameters:**
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `skillName` | string | Yes | Skill name |
+| Parameter   | Type   | Required | Description |
+| ----------- | ------ | -------- | ----------- |
+| `skillName` | string | Yes      | Skill name  |
 
 **Example:**
+
 ```
 Load the pipeline management skill
 ```
@@ -554,6 +579,7 @@ Load the pipeline management skill
 **Returns:** Full skill content
 
 **Available skills:**
+
 - `core-behavior` — Basic behavior guidelines (always active)
 - `pipeline-management` — Pipeline creation workflow
 - `failure-diagnosis` — Failure analysis workflow
@@ -568,11 +594,12 @@ List pipeline artifacts.
 
 **Parameters:**
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `pipelineId` | string | No | Filter by pipeline ID |
+| Parameter    | Type   | Required | Description           |
+| ------------ | ------ | -------- | --------------------- |
+| `pipelineId` | string | No       | Filter by pipeline ID |
 
 **Example:**
+
 ```
 Show me artifacts from the data processing pipeline
 ```
@@ -587,11 +614,12 @@ Get artifact content.
 
 **Parameters:**
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `artifactId` | string | Yes | Artifact ID |
+| Parameter    | Type   | Required | Description |
+| ------------ | ------ | -------- | ----------- |
+| `artifactId` | string | Yes      | Artifact ID |
 
 **Example:**
+
 ```
 Show me the content of artifact A
 ```
@@ -609,6 +637,7 @@ List all agent sessions.
 **Parameters:** None
 
 **Example:**
+
 ```
 List all sessions
 ```
@@ -623,11 +652,12 @@ Get session details.
 
 **Parameters:**
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `sessionId` | string | Yes | Session ID |
+| Parameter   | Type   | Required | Description |
+| ----------- | ------ | -------- | ----------- |
+| `sessionId` | string | Yes      | Session ID  |
 
 **Example:**
+
 ```
 Show me details for session A
 ```
@@ -642,11 +672,12 @@ Get session conversation history.
 
 **Parameters:**
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `sessionId` | string | Yes | Session ID |
+| Parameter   | Type   | Required | Description |
+| ----------- | ------ | -------- | ----------- |
+| `sessionId` | string | Yes      | Session ID  |
 
 **Example:**
+
 ```
 Show me the conversation history for session A
 ```
@@ -663,11 +694,12 @@ Search the web using DuckDuckGo.
 
 **Parameters:**
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `query` | string | Yes | Search query |
+| Parameter | Type   | Required | Description  |
+| --------- | ------ | -------- | ------------ |
+| `query`   | string | Yes      | Search query |
 
 **Example:**
+
 ```
 Search for OpenClaw documentation
 ```
@@ -682,11 +714,12 @@ Fetch and extract content from a URL.
 
 **Parameters:**
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `url` | string | Yes | URL to fetch |
+| Parameter | Type   | Required | Description  |
+| --------- | ------ | -------- | ------------ |
+| `url`     | string | Yes      | URL to fetch |
 
 **Example:**
+
 ```
 Fetch the content from https://example.com
 ```
@@ -721,14 +754,14 @@ Fetch the content from https://example.com
 
 Wevra exposes 19 WebSocket methods:
 
-| Category | Methods |
-|----------|---------|
-| Core | `wevra.chat`, `wevra.status`, `wevra.debug` |
+| Category      | Methods                                                                                                                                                                         |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Core          | `wevra.chat`, `wevra.status`, `wevra.debug`                                                                                                                                     |
 | Conversations | `wevra.conversations.create`, `wevra.conversations.rename`, `wevra.conversations.archive`, `wevra.conversations.delete`, `wevra.conversations.list`, `wevra.conversations.view` |
-| Models | `wevra.models`, `wevra.models.reload`, `wevra.models.set-thinking-level` |
-| Config | `wevra.config.get`, `wevra.models.add-provider`, `wevra.models.update-provider`, `wevra.models.remove-provider`, `wevra.models.set-default` |
-| Preferences | `wevra.tool-preferences.get`, `wevra.tool-preferences.set-mode`, `wevra.tool-preferences.always-allow`, `wevra.tool-preferences.revoke`, `wevra.tool-preferences.save-global` |
-| Confirmation | `wevra.confirm` |
+| Models        | `wevra.models`, `wevra.models.reload`, `wevra.models.set-thinking-level`                                                                                                        |
+| Config        | `wevra.config.get`, `wevra.models.add-provider`, `wevra.models.update-provider`, `wevra.models.remove-provider`, `wevra.models.set-default`                                     |
+| Preferences   | `wevra.tool-preferences.get`, `wevra.tool-preferences.set-mode`, `wevra.tool-preferences.always-allow`, `wevra.tool-preferences.revoke`, `wevra.tool-preferences.save-global`   |
+| Confirmation  | `wevra.confirm`                                                                                                                                                                 |
 
 ---
 
@@ -736,12 +769,12 @@ Wevra exposes 19 WebSocket methods:
 
 ### Environment Variables
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `WEVRA_LLM_BASE_URL` | LLM API base URL | `https://api.deepseek.com` |
-| `WEVRA_LLM_API_KEY` | LLM API key | `sk-xxx` |
-| `WEVRA_LLM_MODEL` | Default model ID | `deepseek-v4-flash` |
-| `WEVRA_THINKING_LEVEL` | Default thinking level | `medium` |
+| Variable               | Description            | Example                    |
+| ---------------------- | ---------------------- | -------------------------- |
+| `WEVRA_LLM_BASE_URL`   | LLM API base URL       | `https://api.deepseek.com` |
+| `WEVRA_LLM_API_KEY`    | LLM API key            | `sk-xxx`                   |
+| `WEVRA_LLM_MODEL`      | Default model ID       | `deepseek-v4-flash`        |
+| `WEVRA_THINKING_LEVEL` | Default thinking level | `medium`                   |
 
 ### Configuration File
 
@@ -754,10 +787,7 @@ Location: `~/.taskmeld/wevra/models.json`
     "provider": "deepseek",
     "model": "deepseek-v4-flash"
   },
-  "enabledModels": [
-    "deepseek/deepseek-v4-flash",
-    "openai/gpt-5.4-mini"
-  ],
+  "enabledModels": ["deepseek/deepseek-v4-flash", "openai/gpt-5.4-mini"],
   "providers": {
     "deepseek": {
       "apiKey": "sk-xxx"
@@ -781,12 +811,12 @@ Location: `~/.taskmeld/wevra/models.json`
 
 ### Supported Providers
 
-| Provider | Models | Context | Reasoning |
-|----------|--------|---------|-----------|
-| DeepSeek | V4 Flash, V4 Pro | 1M | Yes |
-| OpenAI | GPT-5.4, GPT-5.5 | 1M | Yes |
-| Xiaomi | MiMo V2, V2.5 | 1M | Yes |
-| Custom | Any OpenAI-compatible | Varies | Configurable |
+| Provider | Models                | Context | Reasoning    |
+| -------- | --------------------- | ------- | ------------ |
+| DeepSeek | V4 Flash, V4 Pro      | 1M      | Yes          |
+| OpenAI   | GPT-5.4, GPT-5.5      | 1M      | Yes          |
+| Xiaomi   | MiMo V2, V2.5         | 1M      | Yes          |
+| Custom   | Any OpenAI-compatible | Varies  | Configurable |
 
 ---
 
@@ -797,23 +827,27 @@ Location: `~/.taskmeld/wevra/models.json`
 **WevraAgent** — Facade class that assembles all subsystems
 
 **Brain** — LLM reasoning engine
+
 - Native `fetch` implementation
 - Multi-provider compatibility
 - SSE streaming support
 - Timeout protection (120s default)
 
 **WevraLoop** — ReAct pattern implementation
+
 - Multi-turn reasoning loop
 - Maximum 25 iterations per turn
 - Mode injection (plan/normal/auto)
 
 **ToolExecutor** — Tool execution engine
+
 - 5-step lifecycle: Lookup → Validate → Permission → Execute → Truncate
 - Parallel execution via `Promise.all()`
 - 30s timeout per tool
 - 30K character output limit
 
 **ConversationManager** — JSONL-based persistence
+
 - One file per conversation
 - Message cache for fast access
 - Crash recovery (interrupted tool chain repair)
@@ -823,23 +857,23 @@ Location: `~/.taskmeld/wevra/models.json`
 
 Each tool declares properties that control permission behavior:
 
-| Property | Description |
-|----------|-------------|
-| `readOnly` | Read-only operation |
-| `destructive` | Destructive operation |
+| Property               | Description                |
+| ---------------------- | -------------------------- |
+| `readOnly`             | Read-only operation        |
+| `destructive`          | Destructive operation      |
 | `requiresConfirmation` | Requires user confirmation |
-| `idempotent` | Idempotent operation |
+| `idempotent`           | Idempotent operation       |
 
 ### Permission Decision Matrix (Normal Mode)
 
-| Condition | Decision |
-|-----------|----------|
-| `readOnly=true` | Allow |
-| `destructive=true` | Confirm |
-| `requiresConfirmation=true` | Confirm |
-| In `alwaysDeny` list | Deny |
-| In `alwaysAllow` list | Allow |
-| Otherwise | Allow |
+| Condition                   | Decision |
+| --------------------------- | -------- |
+| `readOnly=true`             | Allow    |
+| `destructive=true`          | Confirm  |
+| `requiresConfirmation=true` | Confirm  |
+| In `alwaysDeny` list        | Deny     |
+| In `alwaysAllow` list       | Allow    |
+| Otherwise                   | Allow    |
 
 ---
 

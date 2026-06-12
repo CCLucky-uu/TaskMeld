@@ -84,18 +84,18 @@ This project is a pipeline-based agent collaboration execution platform. The bac
 
 **File**: `http-handler.ts`
 
-| Function | Description |
-|------|------|
-| `createApiHandler(options)` | Creates HTTP request handler |
-| `serveStatic(req, res)` | Serves static files from `web/dist/` with SPA fallback |
+| Function                    | Description                                            |
+| --------------------------- | ------------------------------------------------------ |
+| `createApiHandler(options)` | Creates HTTP request handler                           |
+| `serveStatic(req, res)`     | Serves static files from `web/dist/` with SPA fallback |
 
 **HTTP Endpoints**:
 
-| Method | Path | Description |
-|------|------|------|
-| `GET` | `/api/health` | Health check (returns serverId/pid/port) |
-| `OPTIONS` | `*` | CORS preflight |
-| `GET` | `*` | Static file serving (SPA fallback to index.html) |
+| Method    | Path          | Description                                      |
+| --------- | ------------- | ------------------------------------------------ |
+| `GET`     | `/api/health` | Health check (returns serverId/pid/port)         |
+| `OPTIONS` | `*`           | CORS preflight                                   |
+| `GET`     | `*`           | Static file serving (SPA fallback to index.html) |
 
 > [!NOTE]
 > All business API endpoints have been migrated to WebSocket RPC. See `src/transport/ws-methods/` for the WS method registry.
@@ -114,16 +114,16 @@ This project is a pipeline-based agent collaboration execution platform. The bac
 
 Defines all core data structures for pipeline runtime:
 
-| Type | Description |
-|------|------|
-| `TimelineItem` | Timeline entry (id, ts, text, level) |
-| `NodeRun` | Node run state (id, executor, instruction, status, artifacts, dependsOn, rejectFeedbacks...) |
-| `NodeItemRun` | Node item run state (cross-execution of node × itemKey in batch run scenarios) |
-| `GroupRun` | Parallel group run state (members, joinPolicy, status) |
-| `GroupItemRun` | Parallel group item run state |
-| `Run` | Single run aggregation (id, status, nodes, itemRuns, groups, groupItemRuns) |
-| `ArtifactManifest` | Artifact manifest (type, schemaVersion, path, hash, sourceNodeId) |
-| `NormalizedSession` | Normalized session (id, title, raw) |
+| Type                | Description                                                                                  |
+| ------------------- | -------------------------------------------------------------------------------------------- |
+| `TimelineItem`      | Timeline entry (id, ts, text, level)                                                         |
+| `NodeRun`           | Node run state (id, executor, instruction, status, artifacts, dependsOn, rejectFeedbacks...) |
+| `NodeItemRun`       | Node item run state (cross-execution of node × itemKey in batch run scenarios)               |
+| `GroupRun`          | Parallel group run state (members, joinPolicy, status)                                       |
+| `GroupItemRun`      | Parallel group item run state                                                                |
+| `Run`               | Single run aggregation (id, status, nodes, itemRuns, groups, groupItemRuns)                  |
+| `ArtifactManifest`  | Artifact manifest (type, schemaVersion, path, hash, sourceNodeId)                            |
+| `NormalizedSession` | Normalized session (id, title, raw)                                                          |
 
 **Node state machine**:
 
@@ -137,6 +137,7 @@ waiting → queued
 ```
 
 **Key functions**:
+
 - `seedRun(templateNodes)` — Initialize Run from template nodes
 - `seedRunWithItems(templateNodes, itemKeys)` — Initialize with itemKeys
 - `touchRun(run)` — Update run timestamp and status aggregation
@@ -150,19 +151,20 @@ waiting → queued
 
 Defines core types and read/write logic for pipeline DAG structures:
 
-| Type | Description |
-|------|------|
-| `NodeExecutor` | Executor definition (agentId, role, fallbackAgentId, sessionId) |
-| `OutputSpec` | Output specification (type, schemaVersion) |
-| `PipelineTemplateNode` | Template node (id, title, executor, instruction, dependsOn, allowReject...) |
-| `WorkflowNode` | Workflow node (includes additional metadata: lane, parallelGroupId, routePolicy, retryPolicy...) |
-| `WorkflowEdge` | Workflow edge (from, to, when) — when is null for dependency edges, non-null for routing edges |
-| `WorkflowGroup` | Parallel group (type: "parallel", members, joinPolicy) |
-| `WorkflowDefinitionRuntime` | Complete workflow definition (version "3.0", scheduler, plugins, nodes, edges, groups) |
-| `WorkflowPlugins` | Plugin configuration (remoteBatch, scheduler) |
-| `WorkflowScheduler` | Scheduler configuration (enabled, mode, dispatchBy, maxConcurrency, loopGuard) |
+| Type                        | Description                                                                                      |
+| --------------------------- | ------------------------------------------------------------------------------------------------ |
+| `NodeExecutor`              | Executor definition (agentId, role, fallbackAgentId, sessionId)                                  |
+| `OutputSpec`                | Output specification (type, schemaVersion)                                                       |
+| `PipelineTemplateNode`      | Template node (id, title, executor, instruction, dependsOn, allowReject...)                      |
+| `WorkflowNode`              | Workflow node (includes additional metadata: lane, parallelGroupId, routePolicy, retryPolicy...) |
+| `WorkflowEdge`              | Workflow edge (from, to, when) — when is null for dependency edges, non-null for routing edges   |
+| `WorkflowGroup`             | Parallel group (type: "parallel", members, joinPolicy)                                           |
+| `WorkflowDefinitionRuntime` | Complete workflow definition (version "3.0", scheduler, plugins, nodes, edges, groups)           |
+| `WorkflowPlugins`           | Plugin configuration (remoteBatch, scheduler)                                                    |
+| `WorkflowScheduler`         | Scheduler configuration (enabled, mode, dispatchBy, maxConcurrency, loopGuard)                   |
 
 **Validation rules** (`validateWorkflowGraph`):
+
 - nodes cannot be empty and ids must be unique
 - edges references must exist in nodeIds/groups
 - self-loop edges and duplicate edges are forbidden
@@ -171,6 +173,7 @@ Defines core types and read/write logic for pipeline DAG structures:
 - the DAG must not contain cycles (topological sort validation)
 
 **Persistence**:
+
 - Workflow definitions stored as `workflow.json`
 - Template nodes stored as `pipeline-template.json` (deprecated, now unified under workflow)
 - Read/write functions support custom `workflowFilePath` for multi-pipeline isolation
@@ -196,6 +199,7 @@ Provides runtime indexing and querying for `WorkflowDefinitionRuntime`:
 Core execution logic, responsible for driving the execution of a single node or an entire parallel group:
 
 **Dependencies**:
+
 - `GatewayClient` — Used to send structured output instructions to Agents
 - `RuntimeStore` — Runtime state reads/writes
 - `WorkflowGraph` — Workflow graph queries
@@ -203,11 +207,11 @@ Core execution logic, responsible for driving the execution of a single node or 
 
 **Core methods**:
 
-| Method | Description |
-|------|------|
-| `executeNode(node, opts?)` | Execute a single node (resolve session, send structured output request, wait for receipt) |
+| Method                         | Description                                                                                             |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------- |
+| `executeNode(node, opts?)`     | Execute a single node (resolve session, send structured output request, wait for receipt)               |
 | `executeNodeItem(item, opts?)` | Execute a single node item (check retry limit first, skip disabled nodes, adapter/structured branching) |
-| `executeGroupItem(item)` | Execute parallel group item (execute all member node items in parallel, aggregate artifacts) |
+| `executeGroupItem(item)`       | Execute parallel group item (execute all member node items in parallel, aggregate artifacts)            |
 
 **Execution flow** (executeNode):
 
@@ -235,13 +239,13 @@ Manages automatic/manual scheduling of pipeline nodes:
 
 **Core methods**:
 
-| Method | Description |
-|------|------|
-| `drainPipeline(reason)` | Main scheduling loop, repeatedly picks queued nodes to execute until no candidates remain or iteration cap is reached |
-| `retryNodeExecution(nodeId, itemKey?)` | Manually retry a node (reset downstream, re-evaluate dependencies, trigger execution) |
-| `startBatchRun(items, batchSize, opts?)` | Start a keyword pool batch run |
-| `stopBatchRun()` | Request batch run stop (stops after current batch finishes) |
-| `cancelBatchRun()` | Immediately cancel batch run (used when plugin shuts down) |
+| Method                                   | Description                                                                                                           |
+| ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `drainPipeline(reason)`                  | Main scheduling loop, repeatedly picks queued nodes to execute until no candidates remain or iteration cap is reached |
+| `retryNodeExecution(nodeId, itemKey?)`   | Manually retry a node (reset downstream, re-evaluate dependencies, trigger execution)                                 |
+| `startBatchRun(items, batchSize, opts?)` | Start a keyword pool batch run                                                                                        |
+| `stopBatchRun()`                         | Request batch run stop (stops after current batch finishes)                                                           |
+| `cancelBatchRun()`                       | Immediately cancel batch run (used when plugin shuts down)                                                            |
 
 **Scheduling loop** (`drainPipeline`):
 
@@ -274,29 +278,33 @@ Manages batched shard execution of keyword pools:
 
 **Path**: `src/pipeline/structured-output/`
 
-| File | Responsibility |
-|------|------|
-| `contract.ts` | Defines `ResultEnvelope` receipt structure and validation logic (`validateEnvelope`) |
-| `parser.ts` | Receipt parsing, extracts JSON from Agent response `<structured_output>` tags |
-| `waiter.ts` | Polling wait for Agent to produce structured output receipt (based on Gateway event frames) |
-| `prompt.ts` | Builds structured output prompt template sent to Agent |
-| `index.ts` | Unified exports |
+| File          | Responsibility                                                                              |
+| ------------- | ------------------------------------------------------------------------------------------- |
+| `contract.ts` | Defines `ResultEnvelope` receipt structure and validation logic (`validateEnvelope`)        |
+| `parser.ts`   | Receipt parsing, extracts JSON from Agent response `<structured_output>` tags               |
+| `waiter.ts`   | Polling wait for Agent to produce structured output receipt (based on Gateway event frames) |
+| `prompt.ts`   | Builds structured output prompt template sent to Agent                                      |
+| `index.ts`    | Unified exports                                                                             |
 
 **ResultEnvelope structure**:
 
 ```typescript
 type ResultEnvelope = {
-  version: "2.0";
-  runId: string; nodeId: string; requestId: string; sessionId: string;
-  status: "success" | "failed";
-  artifacts: ResultArtifact[];
-  control?: { sleepUntil?: string; retryFromNodeId?: string };
-  logs?: string[];
-  error?: unknown;
-};
+  version: "2.0"
+  runId: string
+  nodeId: string
+  requestId: string
+  sessionId: string
+  status: "success" | "failed"
+  artifacts: ResultArtifact[]
+  control?: { sleepUntil?: string; retryFromNodeId?: string }
+  logs?: string[]
+  error?: unknown
+}
 ```
 
 **Validation flow** (`validateEnvelope`):
+
 - Validates runId/nodeId/requestId/sessionId match
 - success status must have artifacts
 - Each artifact's type and schemaVersion must match outputSpec
@@ -304,23 +312,23 @@ type ResultEnvelope = {
 
 #### 2.2.8 Execution Sub-modules (`execution/`)
 
-| File | Responsibility |
-|------|------|
-| `session-registry.ts` | Manages executor → agent session mapping and caching |
-| `readiness-state.ts` | Dependency readiness evaluation (`canPromoteToQueuedByDependency`) |
-| `run-state-helpers.ts` | Runtime state helpers (getNodeById, getItemRun, collectDownstreamSubgraph, resetNodeForReplay...) |
-| `structured-node-runner.ts` | Structured node runner: send instruction → poll wait → parse receipt |
-| `route-item-manager.ts` | Route item management: handles route edge branching after node success |
+| File                        | Responsibility                                                                                    |
+| --------------------------- | ------------------------------------------------------------------------------------------------- |
+| `session-registry.ts`       | Manages executor → agent session mapping and caching                                              |
+| `readiness-state.ts`        | Dependency readiness evaluation (`canPromoteToQueuedByDependency`)                                |
+| `run-state-helpers.ts`      | Runtime state helpers (getNodeById, getItemRun, collectDownstreamSubgraph, resetNodeForReplay...) |
+| `structured-node-runner.ts` | Structured node runner: send instruction → poll wait → parse receipt                              |
+| `route-item-manager.ts`     | Route item management: handles route edge branching after node success                            |
 
 #### 2.2.9 Other Helper Modules
 
-| File | Responsibility |
-|------|------|
-| `execution-timeout.ts` | Timeout configuration (node execution 15 min, polling interval 300ms) |
-| `artifact-storage.ts` | Artifact directory construction (`buildArtifactStorageDirs`) |
-| `timeline-log-store.ts` | Timeline log persistence to NDJSON files |
-| `execution-status.ts` | Build runtime status snapshot (`PipelineExecutionStatusPayload`) |
-| `agent-activity.ts` / `tool-activity.ts` | Agent/tool activity tracking |
+| File                                     | Responsibility                                                        |
+| ---------------------------------------- | --------------------------------------------------------------------- |
+| `execution-timeout.ts`                   | Timeout configuration (node execution 15 min, polling interval 300ms) |
+| `artifact-storage.ts`                    | Artifact directory construction (`buildArtifactStorageDirs`)          |
+| `timeline-log-store.ts`                  | Timeline log persistence to NDJSON files                              |
+| `execution-status.ts`                    | Build runtime status snapshot (`PipelineExecutionStatusPayload`)      |
+| `agent-activity.ts` / `tool-activity.ts` | Agent/tool activity tracking                                          |
 
 ---
 
@@ -334,57 +342,58 @@ Serves as the intermediate layer between the HTTP API and the pipeline engine, p
 
 #### PipelineService (`pipeline-service.ts`)
 
-| Method | Description |
-|------|------|
-| `listPipelines()` | List all pipelines (id + title) |
-| `getPipeline(pipelineId)` | Get pipeline details (including run/scheduler/batchRun/workflow) |
-| `getTimeline()` | Get merged timeline |
-| `startPipeline(pipelineId)` | Start pipeline (auto-detects single/remote_batch mode) |
-| `getPipelineExecutionStatus(pipelineId, target?)` | Query execution status (supports runId/batchRunId targeting) |
-| `stopPipeline(pipelineId, target?)` | Stop batch run |
-| `runPipeline(pipelineId)` | Compatibility entry, equivalent to startPipeline |
-| `startBatchRun(input)` | Start local keyword batch run |
-| `startRemoteBatchRun(input)` | Start remote keyword pool batch run (fetch URL → parse → shard) |
-| `retryNode(input)` | Retry node |
+| Method                                            | Description                                                      |
+| ------------------------------------------------- | ---------------------------------------------------------------- |
+| `listPipelines()`                                 | List all pipelines (id + title)                                  |
+| `getPipeline(pipelineId)`                         | Get pipeline details (including run/scheduler/batchRun/workflow) |
+| `getTimeline()`                                   | Get merged timeline                                              |
+| `startPipeline(pipelineId)`                       | Start pipeline (auto-detects single/remote_batch mode)           |
+| `getPipelineExecutionStatus(pipelineId, target?)` | Query execution status (supports runId/batchRunId targeting)     |
+| `stopPipeline(pipelineId, target?)`               | Stop batch run                                                   |
+| `runPipeline(pipelineId)`                         | Compatibility entry, equivalent to startPipeline                 |
+| `startBatchRun(input)`                            | Start local keyword batch run                                    |
+| `startRemoteBatchRun(input)`                      | Start remote keyword pool batch run (fetch URL → parse → shard)  |
+| `retryNode(input)`                                | Retry node                                                       |
 
 **Run identity system** (`PipelineRunIdentityTarget`):
+
 - Supports `runId` and `batchRunId` dimensions for locating run instances
 - `matchPipelineIdentityTarget()` implements run instance matching
 - Used for precise targeting by CLI status/stop commands
 
 #### AgentService (`agent-service.ts`)
 
-| Method | Description |
-|------|------|
+| Method         | Description                                                        |
+| -------------- | ------------------------------------------------------------------ |
 | `listAgents()` | List agents (with last activity time, inferred from session cache) |
 
 #### SessionService (`session-service.ts`)
 
-| Method | Description |
-|------|------|
-| `listSessions(options?)` | List sessions (optionally refresh) |
-| `getSessionHistory(sessionId)` | Get session history |
-| `sendMessage(input)` | Send message (supports auto/chat/sessions modes with fallback) |
+| Method                         | Description                                                    |
+| ------------------------------ | -------------------------------------------------------------- |
+| `listSessions(options?)`       | List sessions (optionally refresh)                             |
+| `getSessionHistory(sessionId)` | Get session history                                            |
+| `sendMessage(input)`           | Send message (supports auto/chat/sessions modes with fallback) |
 
 #### ArtifactService (`artifact-service.ts`)
 
-| Method | Description |
-|------|------|
-| `listArtifacts(query?)` | Query artifact listing |
-| `getArtifactContent(query)` | Read single artifact content |
+| Method                           | Description                                                 |
+| -------------------------------- | ----------------------------------------------------------- |
+| `listArtifacts(query?)`          | Query artifact listing                                      |
+| `getArtifactContent(query)`      | Read single artifact content                                |
 | `exportArtifactContents(query?)` | Export artifact contents (aggregated by date→pipeline→node) |
 
 #### SchedulerService (`scheduler-service.ts`)
 
-| Method | Description |
-|------|------|
-| `toggleScheduler(pipelineId, enabled)` | Toggle scheduler on/off |
-| `setSchedulerMode(pipelineId, mode)` | Set scheduler mode (auto/manual) |
+| Method                                 | Description                      |
+| -------------------------------------- | -------------------------------- |
+| `toggleScheduler(pipelineId, enabled)` | Toggle scheduler on/off          |
+| `setSchedulerMode(pipelineId, mode)`   | Set scheduler mode (auto/manual) |
 
 #### SystemService (`system-service.ts`)
 
-| Method | Description |
-|------|------|
+| Method          | Description                                                                |
+| --------------- | -------------------------------------------------------------------------- |
 | `getSnapshot()` | Get full system snapshot (gateway status + pipeline list + bootstrap data) |
 
 #### Service Layer Separation Design (`read-services.ts`)
@@ -434,11 +443,13 @@ WevraAgent (Facade)
 #### 2.4.1 Core Components
 
 **WevraAgent** (`index.ts`)
+
 - Facade class that assembles all subsystems
 - Single entry point for all Agent operations
 - Manages model configuration, thinking levels, and active chats
 
 **Brain** (`brain/index.ts`)
+
 - LLM reasoning engine wrapping OpenAICompatClient
 - Supports synchronous and SSE streaming chat
 - Multi-provider compatibility (DeepSeek, OpenAI, Xiaomi MiMo)
@@ -447,6 +458,7 @@ WevraAgent (Facade)
 - Timeout and abort protection (120s default)
 
 **WevraLoop** (`loop/agent-loop.ts`)
+
 - ReAct (Reasoning + Acting) pattern implementation
 - Multi-turn reasoning loop: think → call tools → observe → continue
 - Maximum 25 iterations per conversation turn
@@ -454,11 +466,13 @@ WevraAgent (Facade)
 - Confirmation flow for write operations
 
 **ToolRegistry** (`tools/registry.ts`)
+
 - Map-based tool registry
 - 28 built-in tools across 8 categories
 - Tool definitions exported to LLM for function calling
 
 **ToolExecutor** (`tools/executor.ts`)
+
 - 5-step execution lifecycle: Lookup → Validate → Permission → Execute → Truncate
 - Parallel execution via `Promise.all()`
 - Permission checking based on tool annotations and user preferences
@@ -469,28 +483,30 @@ WevraAgent (Facade)
 
 **Tool Categories:**
 
-| Category | Count | Tools | Status |
-|----------|-------|-------|--------|
-| Pipeline | 12 | pipeline_list, pipeline_get, pipeline_create, pipeline_update, pipeline_delete, pipeline_status, pipeline_diagnose, pipeline_run, pipeline_stop, pipeline_plugin, pipeline_node, pipeline_validate | ✅ Connected |
-| Agent | 6 | agent_list, agent_get, agent_create, agent_update, agent_delete, agent_send | ✅ Connected |
-| System | 3 | system_status, system_gateway, system_time | ✅ Connected |
-| Memory | 2 | memory_recall, memory_remember | ✅ Connected |
-| Skill | 1 | skill_load | ✅ Connected |
-| Artifact | 2 | artifact_list, artifact_get | ✅ Connected |
-| Session | 3 | session_list, session_get, session_history | ✅ Connected |
-| Web | 2 | web_search, web_fetch | ✅ Connected |
+| Category      | Count | Tools                                                                                                                                                                                              | Status       |
+| ------------- | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
+| Pipeline      | 12    | pipeline_list, pipeline_get, pipeline_create, pipeline_update, pipeline_delete, pipeline_status, pipeline_diagnose, pipeline_run, pipeline_stop, pipeline_plugin, pipeline_node, pipeline_validate | ✅ Connected |
+| Gateway Agent | 7     | gateway_agent_list, gateway_agent_get, gateway_agent_create, gateway_agent_update, gateway_agent_delete, gateway_agent_send, gateway_skill_install                                                 | ✅ Connected |
+| System        | 3     | system_status, system_gateway, system_time                                                                                                                                                         | ✅ Connected |
+| Memory        | 2     | memory_recall, memory_remember                                                                                                                                                                     | ✅ Connected |
+| Skill         | 1     | skill_load                                                                                                                                                                                         | ✅ Connected |
+| Artifact      | 2     | artifact_list, artifact_get                                                                                                                                                                        | ✅ Connected |
+| Session       | 3     | session_list, session_get, session_history                                                                                                                                                         | ✅ Connected |
+| Web           | 2     | web_search, web_fetch                                                                                                                                                                              | ✅ Connected |
 
 **Tool Annotations:**
+
 ```typescript
 interface ToolAnnotations {
-  readOnly: boolean              // Read-only operation
-  destructive: boolean           // Destructive operation
-  requiresConfirmation: boolean  // Requires user confirmation
-  idempotent: boolean            // Idempotent operation
+  readOnly: boolean // Read-only operation
+  destructive: boolean // Destructive operation
+  requiresConfirmation: boolean // Requires user confirmation
+  idempotent: boolean // Idempotent operation
 }
 ```
 
 **Permission Decision Matrix (normal mode):**
+
 - `readOnly=true` → allow
 - `destructive=true` → confirm
 - `requiresConfirmation=true` → confirm
@@ -498,33 +514,37 @@ interface ToolAnnotations {
 - In `alwaysAllow` list → allow
 - Otherwise → allow
 
-#### 2.4.3 Agent Tools (New!)
+#### 2.4.3 Gateway Agent Tools (New!)
 
 Complete agent lifecycle management through natural language:
 
 **CRUD Operations:**
-- `agent_list` — List all registered agents with activity filtering
-- `agent_get` — Get detailed agent info with optional session inclusion
-- `agent_create` — Create new agent (requires confirmation)
-- `agent_update` — Update agent name/workspace (requires confirmation)
-- `agent_delete` — Delete agent permanently (requires confirmation, destructive)
+
+- `gateway_agent_list` — List all registered agents with activity filtering
+- `gateway_agent_get` — Get detailed agent info with optional session inclusion
+- `gateway_agent_create` — Create new agent (requires confirmation)
+- `gateway_agent_update` — Update agent name/workspace (requires confirmation)
+- `gateway_agent_delete` — Delete agent permanently (requires confirmation, destructive)
 
 **Communication:**
-- `agent_send` — Send message to agent and wait for reply
+
+- `gateway_agent_send` — Send message to agent and wait for reply
   - Synchronous communication (waits for reply)
   - Custom session ID support for parallel conversations
   - Configurable timeout (10s - 5min)
   - Automatic execution (no confirmation needed)
 
 **Session ID Format:**
+
 ```
 agent:{sessionId}:{agentId}
 Example: agent:main:agent-123
 ```
 
 **Implementation:**
+
 - Uses `AgentService` for CRUD operations (gateway RPC: agents.create, agents.update, agents.delete)
-- Uses `SessionService.sendMessageAndWaitForReply()` for agent_send (gateway RPC: chat.send or sessions.send)
+- Uses `SessionService.sendMessageAndWaitForReply()` for gateway_agent_send (gateway RPC: chat.send or sessions.send)
 - All write operations require user confirmation
 - Clear error messages with timeout distinction
 
@@ -542,6 +562,7 @@ Persistent conversation management:
 - **Token Tracking** — Per-conversation token usage
 
 **Storage Structure:**
+
 ```
 {dataDir}/wevra/conversations/
 ├── index.json              ← All conversation metadata
@@ -557,12 +578,14 @@ Persistent conversation management:
 Skills are behavior guidelines, not tools:
 
 **Invocation Types:**
+
 - `always` — Injected into every System Prompt
 - `auto` — LLM loads via `skill_load` tool when needed
 - `user` — User manually triggers
 - `model` — LLM decides when to load
 
 **Built-in Skills:**
+
 1. **core-behavior** (always) — Basic behavior guidelines
 2. **pipeline-management** (auto) — Pipeline creation workflow
 3. **failure-diagnosis** (auto) — Failure analysis workflow
@@ -579,13 +602,14 @@ Cross-session knowledge accumulation:
 - **Tool Integration** — `memory_remember` and `memory_recall` tools
 
 **Memory Entry Structure:**
+
 ```typescript
 interface MemoryEntry {
   content: string
-  type: 'fact' | 'preference' | 'event' | 'summary'
-  scope: 'global' | 'pipeline'
+  type: "fact" | "preference" | "event" | "summary"
+  scope: "global" | "pipeline"
   scopeRef?: string
-  importance: number  // 0-1
+  importance: number // 0-1
   tags: string[]
   source: string
   createdAt: string
@@ -598,13 +622,14 @@ interface MemoryEntry {
 
 Three execution modes:
 
-| Mode | Description | Available Tools |
-|------|-------------|-----------------|
-| `plan` | Read-only | Only `readOnly=true` tools |
-| `normal` | Default | Read-only free, write/destructive need confirmation |
-| `auto` | Automatic | All tools execute without confirmation |
+| Mode     | Description | Available Tools                                     |
+| -------- | ----------- | --------------------------------------------------- |
+| `plan`   | Read-only   | Only `readOnly=true` tools                          |
+| `normal` | Default     | Read-only free, write/destructive need confirmation |
+| `auto`   | Automatic   | All tools execute without confirmation              |
 
 **Preferences:**
+
 - Per-conversation preferences
 - Global user preferences
 - Merged at runtime (conversation overrides global)
@@ -632,16 +657,17 @@ System Prompt construction:
 
 **19 WS Methods:**
 
-| Category | Methods |
-|----------|---------|
-| Core | wevra.chat, wevra.status, wevra.debug |
-| Conversations | wevra.conversations.create/rename/archive/delete/list/view |
-| Models | wevra.models, wevra.models.reload, wevra.models.set-thinking-level |
-| Config | wevra.config.get, wevra.models.add-provider/update-provider/remove-provider/set-default |
-| Preferences | wevra.tool-preferences.get/set-mode/always-allow/revoke/save-global |
-| Confirmation | wevra.confirm |
+| Category      | Methods                                                                                 |
+| ------------- | --------------------------------------------------------------------------------------- |
+| Core          | wevra.chat, wevra.status, wevra.debug                                                   |
+| Conversations | wevra.conversations.create/rename/archive/delete/list/view                              |
+| Models        | wevra.models, wevra.models.reload, wevra.models.set-thinking-level                      |
+| Config        | wevra.config.get, wevra.models.add-provider/update-provider/remove-provider/set-default |
+| Preferences   | wevra.tool-preferences.get/set-mode/always-allow/revoke/save-global                     |
+| Confirmation  | wevra.confirm                                                                           |
 
 **Stream Events:**
+
 - thinking_start/delta/end
 - text_start/delta/end
 - tool_start/result
@@ -671,11 +697,13 @@ User Input → Frontend → wsRequest("wevra.chat")
 #### 2.4.11 Multi-Provider Configuration
 
 **Built-in Providers:**
+
 - **DeepSeek** — V4 Flash/Pro (1M context, reasoning)
 - **OpenAI** — GPT-5.4/5.5 (1M context, reasoning)
 - **Xiaomi** — MiMo V2/V2.5 (up to 1M context)
 
 **Custom Providers:**
+
 ```json
 {
   "version": 1,
@@ -693,22 +721,27 @@ User Input → Frontend → wsRequest("wevra.chat")
 #### 2.4.12 Development Status
 
 **Phase 1 — Foundation ✅**
+
 - Core framework, Brain, Loop, 28 tools, Conversation, Permission, Skills, Memory
 
 **Phase 2 — Reliability 🔶 In Progress**
+
 - Mode versioning, thinking persistence, abort support ✅
 - Token management, loop detection, memory persistence ❌
 
 **Phase 3 — Real Tool Integration ✅ Complete**
+
 - All Pipeline tools (12) connected ✅
 - All Agent tools (6) connected ✅
 - All read-only tools connected ✅
 
 **Phase 4 — Pipeline Scoping ❌ Not Started**
+
 - Pipeline-scoped conversations
 - Cross-pipeline access control
 
 **Phase 5 — UX Polish ❌ Not Started**
+
 - Frontend mode restore
 - Global settings page
 
@@ -724,12 +757,13 @@ Unified WebSocket transport layer handling both broadcast events and RPC request
 
 ```typescript
 type WsBroker = {
-  broadcast: (payload: unknown) => void;  // Broadcast to all connected clients
-  close: () => void;                      // Close all connections
-};
+  broadcast: (payload: unknown) => void // Broadcast to all connected clients
+  close: () => void // Close all connections
+}
 ```
 
 **How it works**:
+
 1. `createWsBroker({ server, path, getBootstrapPayload })` creates the broker
 2. Mounts WebSocket Server on the HTTP Server (`/api/ws`)
 3. When a new connection is established, immediately sends `{ type: "bootstrap", payload: ... }` (full state snapshot)
@@ -743,23 +777,24 @@ Handles incoming RPC requests from clients. Dispatches to registered WS methods.
 
 All business API endpoints are now WebSocket RPC methods:
 
-| Module | Methods | Description |
-|------|------|------|
-| `agents.ts` | `agent.list`, `agent.files.list`, `agent.files.get`, `agent.files.set` | Agent management |
-| `sessions.ts` | `session.list`, `session.create`, `session.history`, `session.send` | Session management |
-| `pipelines.ts` | `pipeline.list`, `pipeline.create`, `pipeline.delete`, `pipeline.rename` | Pipeline CRUD |
-| `pipeline-runtime.ts` | `pipeline.current`, `pipeline.run`, `pipeline.stop`, `pipeline.status`, `pipeline.items`, `pipeline.node.retry`, `pipeline.executorBindings`, `pipeline.tick` | Pipeline execution |
-| `pipeline-workflow.ts` | `pipeline.workflow.get`, `pipeline.workflow.save`, `pipeline.template`, `pipeline.plugins.get`, `pipeline.plugins.save` | Workflow management |
-| `pipeline-batch.ts` | `pipeline.batchRun.status`, `pipeline.batchRun.start`, `pipeline.batchRun.startRemote`, `pipeline.batchRun.stop` | Batch run |
-| `pipeline-scheduler.ts` | `pipeline.scheduler.toggle`, `pipeline.scheduler.mode` | Scheduler |
-| `pipeline-links.ts` | `pipeline.link.list`, `pipeline.link.create`, `pipeline.link.update`, `pipeline.link.delete` | Cross-pipeline links |
-| `pipeline-queue.ts` | `pipeline.queue.list`, `pipeline.queue.retry`, `pipeline.queue.cancel`, `pipeline.queue.drain` | Inbound queue |
-| `artifacts.ts` | `artifact.list`, `artifact.content`, `artifact.export` | Artifact storage |
-| `timeline.ts` | `timeline.list` | Timeline |
-| `logs.ts` | `log.timeline`, `log.runs.list` | Runtime logs |
-| `gateway.ts` | `gateway.status` | Gateway status |
+| Module                  | Methods                                                                                                                                                       | Description          |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- |
+| `agents.ts`             | `agent.list`, `agent.files.list`, `agent.files.get`, `agent.files.set`                                                                                        | Agent management     |
+| `sessions.ts`           | `session.list`, `session.create`, `session.history`, `session.send`                                                                                           | Session management   |
+| `pipelines.ts`          | `pipeline.list`, `pipeline.create`, `pipeline.delete`, `pipeline.rename`                                                                                      | Pipeline CRUD        |
+| `pipeline-runtime.ts`   | `pipeline.current`, `pipeline.run`, `pipeline.stop`, `pipeline.status`, `pipeline.items`, `pipeline.node.retry`, `pipeline.executorBindings`, `pipeline.tick` | Pipeline execution   |
+| `pipeline-workflow.ts`  | `pipeline.workflow.get`, `pipeline.workflow.save`, `pipeline.template`, `pipeline.plugins.get`, `pipeline.plugins.save`                                       | Workflow management  |
+| `pipeline-batch.ts`     | `pipeline.batchRun.status`, `pipeline.batchRun.start`, `pipeline.batchRun.startRemote`, `pipeline.batchRun.stop`                                              | Batch run            |
+| `pipeline-scheduler.ts` | `pipeline.scheduler.toggle`, `pipeline.scheduler.mode`                                                                                                        | Scheduler            |
+| `pipeline-links.ts`     | `pipeline.link.list`, `pipeline.link.create`, `pipeline.link.update`, `pipeline.link.delete`                                                                  | Cross-pipeline links |
+| `pipeline-queue.ts`     | `pipeline.queue.list`, `pipeline.queue.retry`, `pipeline.queue.cancel`, `pipeline.queue.drain`                                                                | Inbound queue        |
+| `artifacts.ts`          | `artifact.list`, `artifact.content`, `artifact.export`                                                                                                        | Artifact storage     |
+| `timeline.ts`           | `timeline.list`                                                                                                                                               | Timeline             |
+| `logs.ts`               | `log.timeline`, `log.runs.list`                                                                                                                               | Runtime logs         |
+| `gateway.ts`            | `gateway.status`                                                                                                                                              | Gateway status       |
 
 **Broadcast event types**:
+
 - `bootstrap` — Full state push (on new connection / pipeline change)
 - `pipeline.updated` — Pipeline runtime update
 - `timeline.updated` — Timeline update
@@ -779,17 +814,20 @@ Communicates with remote agent gateways via WebSocket.
 #### Gateway Protocol
 
 **Frame types** (`GatewayFrame`):
+
 - `req` — Request frame (type, id, method, params)
 - `res` — Response frame (type, id, ok, payload, error)
 - `event` — Event frame (type, event, payload, seq, stateVersion)
 
 **Connection lifecycle**:
+
 1. `idle` → `connecting` → `ws_open`
 2. Wait for `connect.challenge` event
 3. `challenged` → `connect_sent` → Wait for `hello-ok` response
 4. `ready` (handshake successful)
 
 **Connection state machine**:
+
 ```
 idle → connecting → ws_open → challenged → connect_sent → ready
                                      ↓
@@ -798,26 +836,29 @@ idle → connecting → ws_open → challenged → connect_sent → ready
 
 #### GatewayClient (`gateway-client.ts`)
 
-| Method | Description |
-|------|------|
-| `connect()` | Initiate connection (with ED25519 device signature authentication) |
-| `close()` | Close connection (isManualClose=true, no reconnect) |
-| `sendReq(method, params, opts?)` | Send request and wait for response (15s timeout) |
-| `onEvent(handler)` | Register event listener |
-| `getStatus()` | Get current connection status |
-| `getSocket()` | Get raw WebSocket instance |
+| Method                           | Description                                                        |
+| -------------------------------- | ------------------------------------------------------------------ |
+| `connect()`                      | Initiate connection (with ED25519 device signature authentication) |
+| `close()`                        | Close connection (isManualClose=true, no reconnect)                |
+| `sendReq(method, params, opts?)` | Send request and wait for response (15s timeout)                   |
+| `onEvent(handler)`               | Register event listener                                            |
+| `getStatus()`                    | Get current connection status                                      |
+| `getSocket()`                    | Get raw WebSocket instance                                         |
 
 **Device authentication**:
+
 - ED25519 key pair generated on first startup, persisted to `~/.taskmeld/openclaw-device.json` by default
 - Private key used to sign device info on connection
 - Supports v1 (no nonce) and v2 (with nonce) signature formats
 
 **Reconnection mechanism**:
+
 - Exponential backoff: `BASE_RECONNECT_MS * 2^attempt` (capped at 30s), with 20% random jitter
 - Authentication failure (`failed_auth`) and protocol failure (`failed_protocol`) do not auto-reconnect
 - Manual close (`isManualClose=true`) does not reconnect
 
 **Type definitions** (`types.ts`):
+
 - `GatewayConnectParams` — Connection parameters (minProtocol, client, role, scopes, auth, device...)
 - `HelloOkPayload` — Handshake success response (protocol, policy, auth...)
 - `SendReqOptions` — Request options (timeoutMs, sideEffect, idempotencyKey)
@@ -865,6 +906,7 @@ type PipelineRegistry = {
 ```
 
 **Multi-pipeline design**:
+
 - Each pipeline has an independent `PipelineRuntime` instance
 - Default pipeline ID is determined by configuration (default "A")
 - Gateway events are broadcast to all pipelines
@@ -901,20 +943,27 @@ Application-wide context, the common entry point for CLI and Server:
 
 ```typescript
 type AppContext = {
-  config: ResolvedAppContextConfig;  // Resolved configuration
-  app: PipelineRegistry;            // Pipeline registry
-  services: { readonly, writable }; // Read-only / writable service layers
-  api: { port, host, webOrigin };   // API server configuration
-  gateway: {                        // Gateway connection management
-    url, token, scopes, client,
-    setHandlers, getHandlers, connect
-  };
-  initialize(): Promise<void>;
-  dispose(): void;
-};
+  config: ResolvedAppContextConfig // Resolved configuration
+  app: PipelineRegistry // Pipeline registry
+  services: { readonly; writable } // Read-only / writable service layers
+  api: { port; host; webOrigin } // API server configuration
+  gateway: {
+    // Gateway connection management
+    url
+    token
+    scopes
+    client
+    setHandlers
+    getHandlers
+    connect
+  }
+  initialize(): Promise<void>
+  dispose(): void
+}
 ```
 
 **Dependency injection flow**:
+
 1. `createAppContext(options)` → Parse environment variables / config
 2. Create `GatewayClient` (lazy initialization)
 3. Create `PipelineRegistry` → Load pipeline definitions → Create PipelineRuntime for each pipeline
@@ -923,12 +972,13 @@ type AppContext = {
 
 #### AppConfig (`app-context-env.ts` / `pipeline-config.ts`)
 
-| File | Responsibility |
-|------|------|
+| File                 | Responsibility                                                                            |
+| -------------------- | ----------------------------------------------------------------------------------------- |
 | `app-context-env.ts` | Parse environment variables → application runtime config (port, domain, scopes, itemKeys) |
-| `pipeline-config.ts` | Pipeline definition management (index.json persistence, CRUD, defaults) |
+| `pipeline-config.ts` | Pipeline definition management (index.json persistence, CRUD, defaults)                   |
 
 **Environment variables**:
+
 - `OPENCLAW_GATEWAY_URL` — Gateway address
 - `OPENCLAW_GATEWAY_TOKEN` — Gateway authentication token
 - `OPENCLAW_GATEWAY_SCOPES` — Gateway permission scopes (default `operator.read,operator.write,operator.admin`)
@@ -938,12 +988,14 @@ type AppContext = {
 - `TASKMELD_DATA_DIR` — Override default data directory
 
 **Data directory isolation**:
+
 - **Production** (CLI): `~/.taskmeld/`
 - **Development** (`npm run dev`): `<project>/.data/` (auto-detected via `tsx` in argv)
 - **Testing** (`npm test`): `<project>/.data/` (auto-detected via test path in argv)
 - Override: Set `TASKMELD_DATA_DIR` environment variable
 
 **Persisted files** (relative to data dir):
+
 - `pipelines/index.json` — Pipeline definition index
 - `pipelines/<id>/workflow.json` — Workflow definition
 - `pipelines/<id>/run-state.json` — Runtime state snapshot
@@ -981,13 +1033,14 @@ artifacts/
 
 **Core functions**:
 
-| Function | Description |
-|------|------|
-| `listStoredArtifacts(definitions, options?)` | Traverse all pipeline artifact directories, return artifact list (supports pipelineId/nodeId/date filtering) |
-| `readStoredArtifactContent(definition, relativePath)` | Read single artifact file content (parse JSON, extract artifact.content) |
-| `exportStoredArtifactContents(definitions, options?)` | Batch export artifact contents (three-level aggregation: date→pipeline→node) |
+| Function                                              | Description                                                                                                  |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `listStoredArtifacts(definitions, options?)`          | Traverse all pipeline artifact directories, return artifact list (supports pipelineId/nodeId/date filtering) |
+| `readStoredArtifactContent(definition, relativePath)` | Read single artifact file content (parse JSON, extract artifact.content)                                     |
+| `exportStoredArtifactContents(definitions, options?)` | Batch export artifact contents (three-level aggregation: date→pipeline→node)                                 |
 
 **Artifact parsing**:
+
 - Preferentially extract `artifact.content` field
 - Fall back to `envelope.artifacts[].content` + `envelope.logs`
 - Path traversal protection: only allow reading files under the current pipeline's artifactDir
@@ -1002,25 +1055,32 @@ artifacts/
 
 ```typescript
 type RunLogEntry = {
-  id: string; ts: string; level: "info" | "warn" | "error";
-  runId: string; text: string; detail?: unknown;
-};
+  id: string
+  ts: string
+  level: "info" | "warn" | "error"
+  runId: string
+  text: string
+  detail?: unknown
+}
 
 type RunLogPage = {
-  items: RunLogEntry[]; total: number;
-  offset: number; limit: number;
-  nextOffset: number | null; hasMore: boolean;
-  parseErrorCount: number;
-};
+  items: RunLogEntry[]
+  total: number
+  offset: number
+  limit: number
+  nextOffset: number | null
+  hasMore: boolean
+  parseErrorCount: number
+}
 ```
 
 #### Log Service (`run-log-service.ts`)
 
-| Method | Description |
-|------|------|
-| `listRuns()` | List all runtime log directories (sorted by name descending) |
-| `queryTimeline(query)` | Paginated runtime log query (supports level/keyword/order filtering) |
-| `readRawTimeline(runId)` | Return raw NDJSON log file path |
+| Method                   | Description                                                          |
+| ------------------------ | -------------------------------------------------------------------- |
+| `listRuns()`             | List all runtime log directories (sorted by name descending)         |
+| `queryTimeline(query)`   | Paginated runtime log query (supports level/keyword/order filtering) |
+| `readRawTimeline(runId)` | Return raw NDJSON log file path                                      |
 
 #### Log Reader (`run-log-reader.ts`)
 
@@ -1082,60 +1142,60 @@ Gateway Client (src/gateway/)
 
 ### Core Domain Types
 
-| Type | Location | Description |
-|------|------|------|
-| `Run` | `pipeline/runtime-model.ts` | Single run state container |
-| `NodeRun` | `pipeline/runtime-model.ts` | Node run state |
-| `NodeItemRun` | `pipeline/runtime-model.ts` | Batch run node item run state |
-| `GroupRun` | `pipeline/runtime-model.ts` | Parallel group run state |
-| `ArtifactManifest` | `pipeline/runtime-model.ts` | Artifact manifest |
-| `TimelineItem` | `pipeline/runtime-model.ts` | Timeline entry |
-| `WorkflowDefinitionRuntime` | `pipeline/template.ts` | Workflow DAG definition |
-| `PipelineTemplateNode` | `pipeline/template.ts` | Template node |
-| `WorkflowNode` | `pipeline/template.ts` | Workflow node |
-| `WorkflowEdge` | `pipeline/template.ts` | Workflow edge |
-| `WorkflowGroup` | `pipeline/template.ts` | Parallel group |
-| `ResultEnvelope` | `pipeline/structured-output/contract.ts` | Structured output receipt |
-| `PipelineDefinition` | `app/pipeline-config.ts` | Pipeline definition |
-| `ItemBatchRunSnapshot` | `pipeline/item-batch-controller.ts` | Batch run snapshot |
-| `PipelineExecutionStatusPayload` | `pipeline/execution-status.ts` | Execution status snapshot |
-| `RunLogEntry` / `RunLogPage` | `logs/run-log-types.ts` | Runtime log entry/page |
-| `StoredArtifactItem` / `StoredArtifactContent` | `artifacts/storage-service.ts` | Artifact entry/content |
+| Type                                           | Location                                 | Description                   |
+| ---------------------------------------------- | ---------------------------------------- | ----------------------------- |
+| `Run`                                          | `pipeline/runtime-model.ts`              | Single run state container    |
+| `NodeRun`                                      | `pipeline/runtime-model.ts`              | Node run state                |
+| `NodeItemRun`                                  | `pipeline/runtime-model.ts`              | Batch run node item run state |
+| `GroupRun`                                     | `pipeline/runtime-model.ts`              | Parallel group run state      |
+| `ArtifactManifest`                             | `pipeline/runtime-model.ts`              | Artifact manifest             |
+| `TimelineItem`                                 | `pipeline/runtime-model.ts`              | Timeline entry                |
+| `WorkflowDefinitionRuntime`                    | `pipeline/template.ts`                   | Workflow DAG definition       |
+| `PipelineTemplateNode`                         | `pipeline/template.ts`                   | Template node                 |
+| `WorkflowNode`                                 | `pipeline/template.ts`                   | Workflow node                 |
+| `WorkflowEdge`                                 | `pipeline/template.ts`                   | Workflow edge                 |
+| `WorkflowGroup`                                | `pipeline/template.ts`                   | Parallel group                |
+| `ResultEnvelope`                               | `pipeline/structured-output/contract.ts` | Structured output receipt     |
+| `PipelineDefinition`                           | `app/pipeline-config.ts`                 | Pipeline definition           |
+| `ItemBatchRunSnapshot`                         | `pipeline/item-batch-controller.ts`      | Batch run snapshot            |
+| `PipelineExecutionStatusPayload`               | `pipeline/execution-status.ts`           | Execution status snapshot     |
+| `RunLogEntry` / `RunLogPage`                   | `logs/run-log-types.ts`                  | Runtime log entry/page        |
+| `StoredArtifactItem` / `StoredArtifactContent` | `artifacts/storage-service.ts`           | Artifact entry/content        |
 
 ### Core Interfaces
 
-| Interface | Location | Description |
-|------|------|------|
-| `Router` | `server/types.ts` | HTTP route registration and matching |
-| `RouteHandler` | `server/types.ts` | Route handler function |
-| `RequestContext` | `server/types.ts` | Request context |
-| `PipelineScopedContext` | `server/types.ts` | Pipeline-scoped context |
-| `GatewayClient` | `gateway/gateway-client.ts` | Gateway client |
-| `PipelineRegistry` | `app/pipeline-registry.ts` | Pipeline registry |
-| `PipelineRuntime` | `app/pipeline-runtime.ts` | Single pipeline runtime instance |
-| `RuntimeStore` | `app/runtime-store.ts` | Runtime state storage |
-| `WorkflowGraph` | `pipeline/workflow-graph.ts` | Workflow graph computation |
-| `ExecutionService` | `pipeline/execution-service.ts` | Node execution engine |
-| `SchedulerService` | `pipeline/scheduler-service.ts` | Scheduling engine |
-| `WsBroker` | `transport/ws-broker.ts` | WebSocket broadcaster |
-| `AppContext` | `app/create-app-context.ts` | Application-wide context |
-| `PipelineService` | `services/pipeline-service.ts` | Pipeline business service |
-| `AgentService` | `services/agent-service.ts` | Agent service |
-| `SessionService` | `services/session-service.ts` | Session service |
-| `ArtifactService` | `services/artifact-service.ts` | Artifact service |
-| `SchedulerService` | `services/scheduler-service.ts` | Scheduler service |
-| `SystemService` | `services/system-service.ts` | System snapshot service |
+| Interface               | Location                        | Description                          |
+| ----------------------- | ------------------------------- | ------------------------------------ |
+| `Router`                | `server/types.ts`               | HTTP route registration and matching |
+| `RouteHandler`          | `server/types.ts`               | Route handler function               |
+| `RequestContext`        | `server/types.ts`               | Request context                      |
+| `PipelineScopedContext` | `server/types.ts`               | Pipeline-scoped context              |
+| `GatewayClient`         | `gateway/gateway-client.ts`     | Gateway client                       |
+| `PipelineRegistry`      | `app/pipeline-registry.ts`      | Pipeline registry                    |
+| `PipelineRuntime`       | `app/pipeline-runtime.ts`       | Single pipeline runtime instance     |
+| `RuntimeStore`          | `app/runtime-store.ts`          | Runtime state storage                |
+| `WorkflowGraph`         | `pipeline/workflow-graph.ts`    | Workflow graph computation           |
+| `ExecutionService`      | `pipeline/execution-service.ts` | Node execution engine                |
+| `SchedulerService`      | `pipeline/scheduler-service.ts` | Scheduling engine                    |
+| `WsBroker`              | `transport/ws-broker.ts`        | WebSocket broadcaster                |
+| `AppContext`            | `app/create-app-context.ts`     | Application-wide context             |
+| `PipelineService`       | `services/pipeline-service.ts`  | Pipeline business service            |
+| `AgentService`          | `services/agent-service.ts`     | Agent service                        |
+| `SessionService`        | `services/session-service.ts`   | Session service                      |
+| `ArtifactService`       | `services/artifact-service.ts`  | Artifact service                     |
+| `SchedulerService`      | `services/scheduler-service.ts` | Scheduler service                    |
+| `SystemService`         | `services/system-service.ts`    | System snapshot service              |
 
 ---
 
 ## 5. Persistence Overview
 
-| Path | Format | Content |
-|------|------|------|
-| `~/.taskmeld/pipelines/index.json` | JSON | Pipeline definition index (version, defaultPipelineId, items) |
-| `~/.taskmeld/pipelines/<id>/workflow.json` | JSON | Workflow DAG definition (v3.0) |
-| `~/.taskmeld/pipelines/<id>/run-state.json` | JSON | Runtime state snapshot (savedAt, workflowVersion, run) |
-| `~/.taskmeld/pipelines/<id>/artifacts/<status>/<date>/<runId>/` | Directory | Artifact files (envelopes + artifacts) |
-| `~/.taskmeld/pipelines/_deleted/` | Directory | Deleted pipeline archive |
-| `~/.taskmeld/logs/runs/<runId>/timeline.log` | NDJSON | Runtime timeline log |
-| `~/.taskmeld/openclaw-device.json` | JSON | Device identity key |
+| Path                                                            | Format    | Content                                                       |
+| --------------------------------------------------------------- | --------- | ------------------------------------------------------------- |
+| `~/.taskmeld/pipelines/index.json`                              | JSON      | Pipeline definition index (version, defaultPipelineId, items) |
+| `~/.taskmeld/pipelines/<id>/workflow.json`                      | JSON      | Workflow DAG definition (v3.0)                                |
+| `~/.taskmeld/pipelines/<id>/run-state.json`                     | JSON      | Runtime state snapshot (savedAt, workflowVersion, run)        |
+| `~/.taskmeld/pipelines/<id>/artifacts/<status>/<date>/<runId>/` | Directory | Artifact files (envelopes + artifacts)                        |
+| `~/.taskmeld/pipelines/_deleted/`                               | Directory | Deleted pipeline archive                                      |
+| `~/.taskmeld/logs/runs/<runId>/timeline.log`                    | NDJSON    | Runtime timeline log                                          |
+| `~/.taskmeld/openclaw-device.json`                              | JSON      | Device identity key                                           |
